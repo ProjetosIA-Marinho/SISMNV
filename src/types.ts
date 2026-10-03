@@ -47,6 +47,16 @@ export interface Member {
   funcao?: string;
 }
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  accessLevel: 'Admin' | 'Editor' | 'Viewer';
+  avatar?: string;
+  rememberMe?: boolean;
+}
+
 export interface Activity {
   id: string;
   workspace: string;

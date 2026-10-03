@@ -26,8 +26,9 @@ import Templates from './components/Templates';
 import Editor from './components/Editor';
 import Settings from './components/Settings';
 import Finance from './components/Finance';
+import Login from './components/Login';
 
-import { Document, Member, Activity, Tab, Template, CalendarEvent } from './types';
+import { Document, Member, Activity, Tab, Template, CalendarEvent, AuthUser } from './types';
 import { 
   INITIAL_DOCUMENTS, 
   INITIAL_MEMBERS, 
@@ -81,6 +82,39 @@ export default function App() {
   const [systemLogo, setSystemLogo] = useState<string | null>(() => {
     return localStorage.getItem('sismnv_system_logo') || null;
   });
+
+  // User Authentication state
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('sismnv_auth_user') || sessionStorage.getItem('sismnv_auth_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLogin = (user: AuthUser) => {
+    setCurrentUser(user);
+    try {
+      if (user.rememberMe) {
+        localStorage.setItem('sismnv_auth_user', JSON.stringify(user));
+      } else {
+        sessionStorage.setItem('sismnv_auth_user', JSON.stringify(user));
+      }
+    } catch (err) {
+      console.error('Failed to save user session', err);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('sismnv_auth_user');
+      sessionStorage.removeItem('sismnv_auth_user');
+    } catch (err) {
+      console.error('Failed to clear user session', err);
+    }
+  };
 
   const handleUpdateSystemLogo = (logo: string | null) => {
     setSystemLogo(logo);
@@ -407,6 +441,17 @@ export default function App() {
     }
   };
 
+  if (!currentUser) {
+    return (
+      <Login
+        onLogin={handleLogin}
+        isHighContrast={isHighContrast}
+        onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+        systemLogo={systemLogo}
+      />
+    );
+  }
+
   return (
     <div className={`min-h-screen flex selection:bg-indigo-600 selection:text-white overflow-x-hidden transition-colors duration-300 ${
       isHighContrast ? 'bg-white text-zinc-800' : 'bg-zinc-950 text-zinc-100'
@@ -422,6 +467,8 @@ export default function App() {
         }}
         isHighContrast={isHighContrast}
         systemLogo={systemLogo}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main viewport canvas with standardized top header */}
@@ -440,6 +487,8 @@ export default function App() {
           isHighContrast={isHighContrast}
           onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
           systemLogo={systemLogo}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         />
 
         {/* Dynamic active tab viewport with padding spacing */}

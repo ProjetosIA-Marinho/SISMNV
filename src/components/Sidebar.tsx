@@ -12,10 +12,11 @@ import {
   Coins,
   X,
   Mail,
-  MessageSquare
+  MessageSquare,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Tab } from '../types';
+import { Tab, AuthUser } from '../types';
 
 interface SidebarProps {
   currentTab: Tab;
@@ -25,6 +26,8 @@ interface SidebarProps {
   onToggleSidebar: () => void;
   isHighContrast: boolean;
   systemLogo?: string | null;
+  currentUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 export default function Sidebar({ 
@@ -33,7 +36,9 @@ export default function Sidebar({
   onNewDocument,
   isOpen,
   isHighContrast,
-  systemLogo
+  systemLogo,
+  currentUser,
+  onLogout
 }: SidebarProps) {
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -213,6 +218,19 @@ export default function Sidebar({
           <User size={18} className={`${currentTab === 'settings' ? 'text-white' : 'text-zinc-400'} shrink-0`} />
           {isExpanded && <span className="text-xs tracking-wide whitespace-nowrap overflow-hidden">Minha Conta</span>}
         </button>
+
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="Sair / Encerrar Sessão"
+            className={`flex items-center rounded-xl transition-all text-left cursor-pointer text-red-400 hover:bg-red-500/10 hover:text-red-300 ${
+              isExpanded ? 'w-full gap-3 px-4 py-2.5' : 'w-11 h-11 mx-auto justify-center p-0'
+            }`}
+          >
+            <LogOut size={18} className="shrink-0" />
+            {isExpanded && <span className="text-xs font-semibold tracking-wide whitespace-nowrap overflow-hidden">Sair</span>}
+          </button>
+        )}
       </div>
       
       {/* Dynamic Support Modal dialog */}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Bell, Sparkles, Laptop, Globe, Info, Menu, Contrast, Sun, Moon } from 'lucide-react';
+import { Search, Bell, Sparkles, Laptop, Globe, Info, Menu, Contrast, Sun, Moon, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Tab } from '../types';
+import { Tab, AuthUser } from '../types';
 
 interface HeaderProps {
   currentTab: Tab;
@@ -13,6 +13,8 @@ interface HeaderProps {
   isHighContrast: boolean;
   onToggleHighContrast: () => void;
   systemLogo?: string | null;
+  currentUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 export default function Header({ 
@@ -24,7 +26,9 @@ export default function Header({
   onToggleSidebar,
   isHighContrast,
   onToggleHighContrast,
-  systemLogo
+  systemLogo,
+  currentUser,
+  onLogout
 }: HeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -242,13 +246,17 @@ export default function Header({
             }`}
           >
             <div className="text-right lg:block hidden">
-              <p className={`text-xs font-semibold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>Admin User</p>
-              <p className="text-[10px] text-zinc-500 font-medium tracking-wide">Administrador</p>
+              <p className={`text-xs font-semibold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                {currentUser?.name || 'Admin User'}
+              </p>
+              <p className="text-[10px] text-indigo-400 font-medium tracking-wide">
+                {currentUser?.role || 'Administrador'}
+              </p>
             </div>
             <div className={`w-9 h-9 rounded-full overflow-hidden p-0.5 ${isHighContrast ? 'border border-zinc-200 bg-zinc-50' : 'border border-zinc-800 bg-zinc-900'}`}>
               <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxBAshwmUynhjtsH0L8ebm92U3El4HH-3A00rJylXxlQuL0uGPeeWORWgxNzOAEmJE6MK7GyaSybaqE_II6ITA0atSLAEh_KMtsCC5T5hdyGh0vw5CFdb_FGN29Jt0jAwgQBIaQpfNxRWjzykYlLb2bwOvPGreTFjPKxRNYeOe7MA2-tr89WCtq2cDJKCA1JOb4DWq1kNvNqFOH3ORegq2nL8-ibRGtWHDBDZNjmnYSfpDfalXirFvog"
-                alt="Profile User"
+                src={currentUser?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCxBAshwmUynhjtsH0L8ebm92U3El4HH-3A00rJylXxlQuL0uGPeeWORWgxNzOAEmJE6MK7GyaSybaqE_II6ITA0atSLAEh_KMtsCC5T5hdyGh0vw5CFdb_FGN29Jt0jAwgQBIaQpfNxRWjzykYlLb2bwOvPGreTFjPKxRNYeOe7MA2-tr89WCtq2cDJKCA1JOb4DWq1kNvNqFOH3ORegq2nL8-ibRGtWHDBDZNjmnYSfpDfalXirFvog"}
+                alt={currentUser?.name || "Profile User"}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover rounded-full"
               />
@@ -256,44 +264,74 @@ export default function Header({
           </button>
 
           {showProfileMenu && (
-            <div className={`absolute right-0 mt-2 w-56 border rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
+            <div className={`absolute right-0 mt-2 w-60 border rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 ${
               isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
             }`}>
-              <div className={`px-4 py-2 border-b flex items-center gap-2.5 ${isHighContrast ? 'border-zinc-100' : 'border-zinc-800'}`}>
+              <div className={`px-4 py-2.5 border-b flex items-center gap-2.5 ${isHighContrast ? 'border-zinc-100' : 'border-zinc-800'}`}>
                 {systemLogo ? (
                   <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-indigo-500/30">
                     <img src={systemLogo} alt="Logo" className="w-full h-full object-cover" />
                   </div>
-                ) : null}
+                ) : (
+                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-indigo-500/30">
+                    <img 
+                      src={currentUser?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCxBAshwmUynhjtsH0L8ebm92U3El4HH-3A00rJylXxlQuL0uGPeeWORWgxNzOAEmJE6MK7GyaSybaqE_II6ITA0atSLAEh_KMtsCC5T5hdyGh0vw5CFdb_FGN29Jt0jAwgQBIaQpfNxRWjzykYlLb2bwOvPGreTFjPKxRNYeOe7MA2-tr89WCtq2cDJKCA1JOb4DWq1kNvNqFOH3ORegq2nL8-ibRGtWHDBDZNjmnYSfpDfalXirFvog"} 
+                      alt="User" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="min-w-0">
-                  <p className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>projetosia.marinho@gmail.com</p>
-                  <p className="text-[10px] text-indigo-500 font-medium">SISMNV Corporate</p>
+                  <p className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                    {currentUser?.name || 'Administrador'}
+                  </p>
+                  <p className="text-[10px] text-zinc-500 truncate font-mono">
+                    {currentUser?.email || 'projetosia.marinho@gmail.com'}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => { setShowProfileMenu(false); }}
-                className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2 ${
-                  isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                }`}
-              >
-                <Info size={14} /> Informações Gerais: SISMNV v1.2.0
-              </button>
-              <button
-                onClick={() => { setShowProfileMenu(false); alert('Chave de API do Gemini gerenciada no painel de segredos.'); }}
-                className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2 ${
-                  isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                }`}
-              >
-                <Laptop size={14} /> Chave de API Gemini
-              </button>
-              <button
-                onClick={() => { setShowProfileMenu(false); alert('Serviço hospedado e protegido por AI Studio.'); }}
-                className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2 ${
-                  isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                }`}
-              >
-                <Globe size={14} /> Localização Servidor
-              </button>
+              
+              <div className="py-1">
+                <button
+                  onClick={() => { setShowProfileMenu(false); }}
+                  className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2.5 ${
+                    isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <Info size={14} className="text-indigo-400" /> SISMNV v1.2.0 • Online
+                </button>
+                <button
+                  onClick={() => { setShowProfileMenu(false); alert('Chave de API do Gemini gerenciada no painel de segredos.'); }}
+                  className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2.5 ${
+                    isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <Laptop size={14} className="text-indigo-400" /> Inteligência Artificial Ativa
+                </button>
+                <button
+                  onClick={() => { setShowProfileMenu(false); alert('Serviço hospedado e protegido por Vercel / Cloud.'); }}
+                  className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2.5 ${
+                    isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <Globe size={14} className="text-indigo-400" /> Servidor Seguro (SSL)
+                </button>
+              </div>
+
+              {onLogout && (
+                <div className={`pt-1 mt-1 border-t ${isHighContrast ? 'border-zinc-100' : 'border-zinc-800'}`}>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      onLogout();
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2.5 cursor-pointer"
+                  >
+                    <LogOut size={14} className="text-red-400" />
+                    <span>Sair da Conta</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
