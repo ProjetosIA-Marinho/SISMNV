@@ -55,6 +55,7 @@ import * as XLSX from 'xlsx';
 import { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset } from '../types';
 import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 import { BulkImportModal } from './BulkImportModal';
+import { BulkCategoryImportModal } from './BulkCategoryImportModal';
 
 export const getAccountTypeLabel = (type?: BankAccountType | string) => {
   switch (type) {
@@ -489,11 +490,28 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [showBulkCategoryImportModal, setShowBulkCategoryImportModal] = useState(false);
   const [bulkImportSuccessMsg, setBulkImportSuccessMsg] = useState<{
     count: number;
     totalReceitas: number;
     totalDespesas: number;
   } | null>(null);
+  const [categoryImportSuccessMsg, setCategoryImportSuccessMsg] = useState<{
+    count: number;
+    subcategoriesCount: number;
+  } | null>(null);
+
+  const handleBulkImportCategories = (updatedCategories: TransactionCategory[], _mergeStrategy: 'merge' | 'replace') => {
+    setCategories(updatedCategories);
+    const totalSubs = updatedCategories.reduce((sum, c) => sum + (c.subcategories?.length || 0), 0);
+    setCategoryImportSuccessMsg({
+      count: updatedCategories.length,
+      subcategoriesCount: totalSubs
+    });
+    setTimeout(() => {
+      setCategoryImportSuccessMsg(null);
+    }, 7000);
+  };
 
   const handleBulkImportTransactions = (newTxs: Transaction[]) => {
     setTransactions(prev => [...newTxs, ...prev]);
@@ -5981,12 +5999,49 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
         {/* 4. TRANSACTION CATEGORIES SCREEN (WITH SUBCATEGORIES) */}
         {activeSubTab === 'categories' && (
           <div>
+            {/* Notification Banner for Bulk Category Import Success */}
+            <AnimatePresence>
+              {categoryImportSuccessMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  className={`mx-5 mt-4 p-4 rounded-xl border flex items-center justify-between gap-3 shadow-lg ${
+                    isHighContrast
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-emerald-100'
+                      : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-100 backdrop-blur-md shadow-emerald-950/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0 border border-emerald-500/30">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-emerald-400">
+                        Categorias importadas e atualizadas com sucesso!
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        Total de <span className="text-emerald-400 font-bold">{categoryImportSuccessMsg.count} categorias</span> e <span className="text-purple-400 font-bold">{categoryImportSuccessMsg.subcategoriesCount} subcategorias</span> configuradas no plano de contas.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryImportSuccessMsg(null)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className={`p-4 border-b flex justify-between items-center ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-900'}`}>
               <h3 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
                 Categorias e Subcategorias Financeiras
               </h3>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
                 {/* Segmented View Mode Toggle */}
                 <div className={`flex items-center rounded-lg p-0.5 border ${isHighContrast ? 'bg-zinc-100 border-zinc-250' : 'bg-zinc-900 border-zinc-800'}`}>
                   <button
@@ -6014,6 +6069,21 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     <span className="sr-only sm:not-sr-only">Lista</span>
                   </button>
                 </div>
+
+                {/* Botão de Importar Categorias em Massa */}
+                <button
+                  type="button"
+                  onClick={() => setShowBulkCategoryImportModal(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer uppercase tracking-wider border transition-all ${
+                    isHighContrast
+                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 shadow-indigo-100'
+                      : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border-indigo-500/40 hover:border-indigo-400'
+                  }`}
+                  title="Importar categorias e subcategorias em lote via Excel ou CSV"
+                >
+                  <Upload size={12} className="text-indigo-400" />
+                  <span>Importar em Massa</span>
+                </button>
 
                 <button
                   onClick={() => handleOpenCategoryModal()}
@@ -11371,6 +11441,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
           accounts={accounts}
           categories={categories}
           onImport={handleBulkImportTransactions}
+          isHighContrast={isHighContrast}
+        />
+
+        {/* Modal: Bulk Import Categories (Excel / CSV) */}
+        <BulkCategoryImportModal
+          isOpen={showBulkCategoryImportModal}
+          onClose={() => setShowBulkCategoryImportModal(false)}
+          existingCategories={categories}
+          onImport={handleBulkImportCategories}
           isHighContrast={isHighContrast}
         />
 
