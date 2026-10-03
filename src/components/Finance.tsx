@@ -41,7 +41,11 @@ import {
   Layers,
   PieChart,
   ShieldCheck,
-  ChevronUp
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -568,6 +572,34 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [txStatusFilter, setTxStatusFilter] = useState<string>('all');
   const [txFilterType, setTxFilterType] = useState<'all' | 'entrada' | 'saida' | 'transfer'>('all');
   const [txSortOrder, setTxSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  // --- PAGINATION & BULK SELECTION FOR TRANSACTIONS ---
+  const [txCurrentPage, setTxCurrentPage] = useState<number>(1);
+  const [txItemsPerPage, setTxItemsPerPage] = useState<number>(25);
+  const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
+
+  // Reset page to 1 whenever filters or search change
+  useEffect(() => {
+    setTxCurrentPage(1);
+  }, [
+    searchQuery,
+    txFilterType,
+    txSelectedAccountId,
+    txSelectedCategoryId,
+    txStatusFilter,
+    txSelectedYear,
+    txSelectedMonth,
+    txSelectedPeriod,
+    txStartDateFilter,
+    txEndDateFilter,
+    txSortOrder,
+    txItemsPerPage
+  ]);
+
+  // Clean up selection if transactions change
+  useEffect(() => {
+    setSelectedTxIds(prev => prev.filter(id => transactions.some(t => t.id === id)));
+  }, [transactions]);
 
   // --- FORM STATES ---
   const [txDescription, setTxDescription] = useState('');
@@ -1945,6 +1977,76 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       }
     });
   }, [filteredTransactions, txSortOrder]);
+
+  // Pagination computations for transactions table
+  const totalTxPages = Math.max(1, Math.ceil(displayTransactions.length / txItemsPerPage));
+  const validCurrentPage = Math.min(Math.max(1, txCurrentPage), totalTxPages);
+
+  const paginatedTransactions = React.useMemo(() => {
+    const start = (validCurrentPage - 1) * txItemsPerPage;
+    return displayTransactions.slice(start, start + txItemsPerPage);
+  }, [displayTransactions, validCurrentPage, txItemsPerPage]);
+
+  // Selection states & helpers for bulk deletion
+  const isAllPageSelected = React.useMemo(() => {
+    if (paginatedTransactions.length === 0) return false;
+    return paginatedTransactions.every(tx => selectedTxIds.includes(tx.id));
+  }, [paginatedTransactions, selectedTxIds]);
+
+  const isSomePageSelected = React.useMemo(() => {
+    if (paginatedTransactions.length === 0) return false;
+    return paginatedTransactions.some(tx => selectedTxIds.includes(tx.id)) && !isAllPageSelected;
+  }, [paginatedTransactions, selectedTxIds, isAllPageSelected]);
+
+  const isAllFilteredSelected = React.useMemo(() => {
+    if (displayTransactions.length === 0) return false;
+    return displayTransactions.every(tx => selectedTxIds.includes(tx.id));
+  }, [displayTransactions, selectedTxIds]);
+
+  const toggleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      const pageIds = new Set(paginatedTransactions.map(t => t.id));
+      setSelectedTxIds(prev => prev.filter(id => !pageIds.has(id)));
+    } else {
+      const pageIds = paginatedTransactions.map(t => t.id);
+      setSelectedTxIds(prev => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const selectAllFiltered = () => {
+    setSelectedTxIds(displayTransactions.map(t => t.id));
+  };
+
+  const clearSelection = () => {
+    setSelectedTxIds([]);
+  };
+
+  const toggleSelectTx = (id: string) => {
+    setSelectedTxIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteTx = () => {
+    if (selectedTxIds.length === 0) return;
+    const count = selectedTxIds.length;
+    const totalValue = transactions
+      .filter(t => selectedTxIds.includes(t.id))
+      .reduce((sum, t) => sum + t.value, 0);
+
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Excluir Lançamentos em Massa',
+      description: `Tem certeza que deseja excluir permanentemente os ${count} lançamentos selecionados?`,
+      warningNote: `Valor total dos lançamentos a serem excluídos: ${formatCurrency(totalValue)}. Esta ação não poderá ser desfeita.`,
+      confirmButtonText: `Excluir ${count} Lançamento(s)`,
+      onConfirm: () => {
+        setTransactions(prev => prev.filter(t => !selectedTxIds.includes(t.id)));
+        setSelectedTxIds([]);
+        setDeleteConfirmState(null);
+      }
+    });
+  };
 
   const displayTransfers = React.useMemo(() => {
     if (!txSortOrder) return filteredTransfers;
@@ -5196,6 +5298,53 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               )}
             </div>
 
+            {/* Bulk Action Bar for Selected Transactions */}
+            {selectedTxIds.length > 0 && (
+              <div className={`mx-5 mb-4 p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 transition-all animate-in fade-in duration-200 ${
+                isHighContrast 
+                  ? 'bg-indigo-50/90 border-indigo-200 text-indigo-950 shadow-sm' 
+                  : 'bg-indigo-950/40 border-indigo-800/80 text-indigo-200 shadow-lg'
+              }`}>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-md bg-indigo-600 text-white text-xs font-bold shrink-0">
+                    {selectedTxIds.length}
+                  </span>
+                  <span className="text-xs font-bold">
+                    {selectedTxIds.length} {selectedTxIds.length === 1 ? 'lançamento selecionado' : 'lançamentos selecionados'}
+                  </span>
+                  {!isAllFilteredSelected && displayTransactions.length > paginatedTransactions.length && (
+                    <button
+                      onClick={selectAllFiltered}
+                      className="text-xs font-semibold text-indigo-500 hover:text-indigo-400 underline cursor-pointer ml-1"
+                    >
+                      Selecionar todos os {displayTransactions.length} lançamentos filtrados
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={clearSelection}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      isHighContrast
+                        ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100'
+                        : 'bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800'
+                    }`}
+                  >
+                    Limpar seleção
+                  </button>
+
+                  <button
+                    onClick={handleBulkDeleteTx}
+                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Trash2 size={13} />
+                    <span>Excluir Selecionados ({selectedTxIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Table data renderer */}
             {txFilterType !== 'transfer' ? (
               displayTransactions.length === 0 ? (
@@ -5204,228 +5353,408 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   <p className="text-xs font-bold text-zinc-400">Nenhum lançamento de caixa localizado</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto scrollbar-thin">
-                  <table className="w-full border-collapse text-left min-w-[1050px]">
-                    <thead>
-                      <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap ${
-                        isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/20 border-zinc-900'
-                      }`}>
-                        <th 
-                          onClick={() => setTxSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                          className="py-3.5 px-3 cursor-pointer select-none group transition-colors hover:text-indigo-400"
-                          title="Clique para ordenar por data (crescente / decrescente)"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span>
-                              {txFilterType === 'entrada' ? 'Data de Recebido' : txFilterType === 'saida' ? 'Data de Lançamento' : 'Data'}
-                            </span>
-                            {txSortOrder === 'asc' ? (
-                              <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem crescente">
-                                <ArrowUp size={11} className="shrink-0" />
+                <div>
+                  <div className="overflow-x-auto scrollbar-thin">
+                    <table className="w-full border-collapse text-left min-w-[1100px]">
+                      <thead>
+                        <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/20 border-zinc-900'
+                        }`}>
+                          {/* Checkbox Header for Mass Selection */}
+                          <th className="py-3.5 px-3 w-10 text-center select-none">
+                            <input
+                              type="checkbox"
+                              checked={isAllPageSelected}
+                              ref={el => {
+                                if (el) el.indeterminate = isSomePageSelected;
+                              }}
+                              onChange={toggleSelectAllPage}
+                              className="w-4 h-4 rounded border-zinc-700 text-indigo-600 focus:ring-indigo-500/30 accent-indigo-600 cursor-pointer"
+                              title={isAllPageSelected ? "Desmarcar todos desta página" : "Selecionar todos desta página"}
+                            />
+                          </th>
+                          <th 
+                            onClick={() => setTxSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            className="py-3.5 px-3 cursor-pointer select-none group transition-colors hover:text-indigo-400"
+                            title="Clique para ordenar por data (crescente / decrescente)"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>
+                                {txFilterType === 'entrada' ? 'Data de Recebido' : txFilterType === 'saida' ? 'Data de Lançamento' : 'Data'}
                               </span>
-                            ) : txSortOrder === 'desc' ? (
-                              <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem decrescente">
-                                <ArrowDown size={11} className="shrink-0" />
-                              </span>
-                            ) : (
-                              <ArrowUpDown size={11} className="text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
-                            )}
-                          </div>
-                        </th>
-                        <th className="py-3.5 px-4 min-w-[150px]">Descrição</th>
-                        <th className="py-3.5 px-3">Valor</th>
-                        <th className="py-3.5 px-3">Tipo</th>
-                        <th className="py-3.5 px-3">Categoria</th>
-                        <th className="py-3.5 px-3">Conta Bancária</th>
-                        <th className="py-3.5 px-3">
-                          {txFilterType === 'entrada' ? 'Recebido' : txFilterType === 'saida' ? 'Pago' : 'Recebido / Pago'}
-                        </th>
-                        <th className="py-3.5 px-3">
-                          {txFilterType === 'entrada' ? 'Recebido de' : txFilterType === 'saida' ? 'Pagar quem' : 'Recebido de / Pagar quem'}
-                        </th>
-                        <th className="py-3.5 px-3">Forma de Pagamento</th>
-                        <th className="py-3.5 px-3">Parcelamento</th>
-                        <th className="py-3.5 px-3">Observações</th>
-                        <th className="py-3.5 px-4 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y text-xs font-medium ${isHighContrast ? 'divide-zinc-200 text-zinc-800' : 'divide-zinc-900 text-zinc-300'}`}>
-                      {displayTransactions.map(tx => {
-                        const category = categories.find(c => c.id === tx.categoryId);
-                        const account = accounts.find(a => a.id === tx.accountId);
-                        const isEntrada = tx.type === 'entrada';
-                        const dateValue = isEntrada 
-                          ? (tx.dataRecebido || tx.date) 
-                          : (tx.dataLancamento || tx.date);
-                        const isDone = isEntrada 
-                          ? (tx.recebido !== 'nao') 
-                          : (tx.pago !== 'nao');
-                        const personEntity = isEntrada 
-                          ? (tx.recebidoDe || '—') 
-                          : (tx.vaiPagarQuem || '—');
+                              {txSortOrder === 'asc' ? (
+                                <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem crescente">
+                                  <ArrowUp size={11} className="shrink-0" />
+                                </span>
+                              ) : txSortOrder === 'desc' ? (
+                                <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem decrescente">
+                                  <ArrowDown size={11} className="shrink-0" />
+                                </span>
+                              ) : (
+                                <ArrowUpDown size={11} className="text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
+                              )}
+                            </div>
+                          </th>
+                          <th className="py-3.5 px-4 min-w-[150px]">Descrição</th>
+                          <th className="py-3.5 px-3">Valor</th>
+                          <th className="py-3.5 px-3">Tipo</th>
+                          <th className="py-3.5 px-3">Categoria</th>
+                          <th className="py-3.5 px-3">Conta Bancária</th>
+                          <th className="py-3.5 px-3">
+                            {txFilterType === 'entrada' ? 'Recebido' : txFilterType === 'saida' ? 'Pago' : 'Recebido / Pago'}
+                          </th>
+                          <th className="py-3.5 px-3">
+                            {txFilterType === 'entrada' ? 'Recebido de' : txFilterType === 'saida' ? 'Pagar quem' : 'Recebido de / Pagar quem'}
+                          </th>
+                          <th className="py-3.5 px-3">Forma de Pagamento</th>
+                          <th className="py-3.5 px-3">Parcelamento</th>
+                          <th className="py-3.5 px-3">Observações</th>
+                          <th className="py-3.5 px-4 text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className={`divide-y text-xs font-medium ${isHighContrast ? 'divide-zinc-200 text-zinc-800' : 'divide-zinc-900 text-zinc-300'}`}>
+                        {paginatedTransactions.map(tx => {
+                          const category = categories.find(c => c.id === tx.categoryId);
+                          const account = accounts.find(a => a.id === tx.accountId);
+                          const isEntrada = tx.type === 'entrada';
+                          const dateValue = isEntrada 
+                            ? (tx.dataRecebido || tx.date) 
+                            : (tx.dataLancamento || tx.date);
+                          const isDone = isEntrada 
+                            ? (tx.recebido !== 'nao') 
+                            : (tx.pago !== 'nao');
+                          const personEntity = isEntrada 
+                            ? (tx.recebidoDe || '—') 
+                            : (tx.vaiPagarQuem || '—');
+                          const isSelected = selectedTxIds.includes(tx.id);
 
-                        return (
-                          <tr key={tx.id} className={`hover:bg-zinc-50/10 transition-colors ${isHighContrast ? 'hover:bg-zinc-50' : ''}`}>
-                            {/* 1. Data de recebido / Data de lançamento */}
-                            <td className="py-3.5 px-3 font-mono text-[11px] text-zinc-500 whitespace-nowrap">
-                              {dateValue ? dateValue.split('-').reverse().join('/') : '—'}
-                            </td>
+                          return (
+                            <tr 
+                              key={tx.id} 
+                              className={`transition-colors ${
+                                isSelected 
+                                  ? (isHighContrast ? 'bg-indigo-50/80' : 'bg-indigo-950/30') 
+                                  : (isHighContrast ? 'hover:bg-zinc-50' : 'hover:bg-zinc-50/10')
+                              }`}
+                            >
+                              {/* Checkbox column */}
+                              <td className="py-3.5 px-3 text-center select-none" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelectTx(tx.id)}
+                                  className="w-4 h-4 rounded border-zinc-700 text-indigo-600 focus:ring-indigo-500/30 accent-indigo-600 cursor-pointer"
+                                />
+                              </td>
 
-                            {/* 2. Descrição */}
-                            <td className="py-3.5 px-4 font-semibold min-w-[150px]">
-                              <div className="flex items-center gap-2">
-                                <span className={isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}>{tx.description}</span>
-                                {tx.receiptImage && (
-                                  <button
-                                    onClick={() => setSelectedReceiptImage(tx.receiptImage || null)}
-                                    className={`px-1.5 py-0.5 rounded flex items-center gap-1 text-[9px] font-bold border transition-colors cursor-pointer shrink-0 ${
-                                      isHighContrast 
-                                        ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700' 
-                                        : 'bg-zinc-800/60 hover:bg-zinc-750 border-zinc-750 text-zinc-300'
-                                    }`}
-                                    title="Visualizar Recibo Anexo"
-                                  >
-                                    <FileText size={10} className="text-indigo-400" />
-                                    <span>Recibo</span>
-                                  </button>
-                                )}
-                              </div>
-                            </td>
+                              {/* 1. Data de recebido / Data de lançamento */}
+                              <td className="py-3.5 px-3 font-mono text-[11px] text-zinc-500 whitespace-nowrap">
+                                {dateValue ? dateValue.split('-').reverse().join('/') : '—'}
+                              </td>
 
-                            {/* 3. Valor */}
-                            <td className={`py-3.5 px-3 font-bold whitespace-nowrap font-mono ${isEntrada ? 'text-emerald-500' : 'text-red-500'}`}>
-                              {isEntrada ? '+' : '-'} {formatCurrency(tx.value)}
-                            </td>
+                              {/* 2. Descrição */}
+                              <td className="py-3.5 px-4 font-semibold min-w-[150px]">
+                                <div className="flex items-center gap-2">
+                                  <span className={isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}>{tx.description}</span>
+                                  {tx.receiptImage && (
+                                    <button
+                                      onClick={() => setSelectedReceiptImage(tx.receiptImage || null)}
+                                      className={`px-1.5 py-0.5 rounded flex items-center gap-1 text-[9px] font-bold border transition-colors cursor-pointer shrink-0 ${
+                                        isHighContrast 
+                                          ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700' 
+                                          : 'bg-zinc-800/60 hover:bg-zinc-750 border-zinc-750 text-zinc-300'
+                                      }`}
+                                      title="Visualizar Recibo Anexo"
+                                    >
+                                      <FileText size={10} className="text-indigo-400" />
+                                      <span>Recibo</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
 
-                            {/* 4. Tipo */}
-                            <td className="py-3.5 px-3 uppercase text-[9px] font-bold whitespace-nowrap">
-                              <span className={`px-2 py-0.5 rounded-full ${isEntrada ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500'}`}>
-                                {isEntrada ? 'Receita' : 'Despesa'}
-                              </span>
-                            </td>
+                              {/* 3. Valor */}
+                              <td className={`py-3.5 px-3 font-bold whitespace-nowrap font-mono ${isEntrada ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {isEntrada ? '+' : '-'} {formatCurrency(tx.value)}
+                              </td>
 
-                            {/* 5. Categoria */}
-                            <td className="py-3.5 px-3 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-medium border ${category?.color || 'bg-zinc-500/10'}`}>
-                                {category?.name || 'Não classificado'}{tx.subcategory ? ` • ${tx.subcategory}` : ''}
-                              </span>
-                            </td>
+                              {/* 4. Tipo */}
+                              <td className="py-3.5 px-3 uppercase text-[9px] font-bold whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded-full ${isEntrada ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500'}`}>
+                                  {isEntrada ? 'Receita' : 'Despesa'}
+                                </span>
+                              </td>
 
-                            {/* 6. Conta bancária */}
-                            <td className="py-3.5 px-3 font-semibold whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                {account ? (
-                                  <>
-                                    <BankLogo bankName={account.bankName} imageUrl={account.image} size={18} />
-                                    <span className={isHighContrast ? 'text-zinc-700' : 'text-indigo-400 font-semibold text-xs'}>{account.name}</span>
-                                  </>
+                              {/* 5. Categoria */}
+                              <td className="py-3.5 px-3 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-medium border ${category?.color || 'bg-zinc-500/10'}`}>
+                                  {category?.name || 'Não classificado'}{tx.subcategory ? ` • ${tx.subcategory}` : ''}
+                                </span>
+                              </td>
+
+                              {/* 6. Conta bancária */}
+                              <td className="py-3.5 px-3 font-semibold whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  {account ? (
+                                    <>
+                                      <BankLogo bankName={account.bankName} imageUrl={account.image} size={18} />
+                                      <span className={isHighContrast ? 'text-zinc-700' : 'text-indigo-400 font-semibold text-xs'}>{account.name}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-zinc-500">—</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* 7. Recebido / Pago */}
+                              <td className="py-3.5 px-3 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                  isDone 
+                                    ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20' 
+                                    : 'bg-amber-500/15 text-amber-500 border-amber-500/20'
+                                }`}>
+                                  {isDone ? 'Sim' : 'Não'}
+                                </span>
+                              </td>
+
+                              {/* 8. Recebido de / Pagar quem */}
+                              <td className="py-3.5 px-3 text-xs text-zinc-400 whitespace-nowrap">
+                                {personEntity}
+                              </td>
+
+                              {/* 9. Forma de pagamento */}
+                              <td className="py-3.5 px-3 whitespace-nowrap">
+                                {tx.formaPagamento ? (
+                                  <span className={`uppercase text-[9px] font-bold px-2 py-0.5 rounded border ${
+                                    isHighContrast ? 'bg-zinc-100 text-zinc-700 border-zinc-200' : 'bg-zinc-800/60 text-zinc-300 border-zinc-700/60'
+                                  }`}>
+                                    {tx.formaPagamento}
+                                  </span>
                                 ) : (
                                   <span className="text-zinc-500">—</span>
                                 )}
-                              </div>
-                            </td>
+                              </td>
 
-                            {/* 7. Recebido / Pago */}
-                            <td className="py-3.5 px-3 whitespace-nowrap">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                                isDone 
-                                  ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20' 
-                                  : 'bg-amber-500/15 text-amber-500 border-amber-500/20'
-                              }`}>
-                                {isDone ? 'Sim' : 'Não'}
-                              </span>
-                            </td>
+                              {/* 10. Parcelamento */}
+                              <td className="py-3.5 px-3 whitespace-nowrap text-xs">
+                                {tx.parcelamento === 'sim' ? (
+                                  <span className="font-semibold text-indigo-400">
+                                    {tx.numeroParcelas || 1}x {tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}
+                                  </span>
+                                ) : tx.parcelamento === 'recorrente' ? (
+                                  <span className="font-semibold text-purple-400">Recorrente</span>
+                                ) : (
+                                  <span className="text-zinc-500">À Vista</span>
+                                )}
+                              </td>
 
-                            {/* 8. Recebido de / Pagar quem */}
-                            <td className="py-3.5 px-3 text-xs text-zinc-400 whitespace-nowrap">
-                              {personEntity}
-                            </td>
+                              {/* 11. Observações */}
+                              <td className="py-3.5 px-3 max-w-[200px] truncate text-[11px] text-zinc-400" title={tx.observation || ''}>
+                                {tx.observation || '—'}
+                              </td>
 
-                            {/* 9. Forma de pagamento */}
-                            <td className="py-3.5 px-3 whitespace-nowrap">
-                              {tx.formaPagamento ? (
-                                <span className={`uppercase text-[9px] font-bold px-2 py-0.5 rounded border ${
-                                  isHighContrast ? 'bg-zinc-100 text-zinc-700 border-zinc-200' : 'bg-zinc-800/60 text-zinc-300 border-zinc-700/60'
-                                }`}>
-                                  {tx.formaPagamento}
-                                </span>
-                              ) : (
-                                <span className="text-zinc-500">—</span>
-                              )}
-                            </td>
+                              {/* 12. Ações */}
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <div className="flex justify-end gap-1.5 items-center">
+                                  <button
+                                    onClick={() => {
+                                      setEditingTx(tx);
+                                      setTxDescription(tx.description);
+                                      setTxValue(tx.value.toString());
+                                      setTxType(tx.type);
+                                      setTxCategoryId(tx.categoryId);
+                                      setTxSubcategory(tx.subcategory || '');
+                                      setTxAccountId(tx.accountId);
+                                      setTxDate(tx.date);
+                                      setTxObservation(tx.observation || '');
+                                      
+                                      // Populate new fields or default if undefined
+                                      setTxRecebido(tx.recebido || 'sim');
+                                      setTxRecebidoDe(tx.recebidoDe || '');
+                                      setTxDataRecebido(tx.dataRecebido || tx.date);
+                                      setTxDataLancamento(tx.dataLancamento || tx.date);
+                                      setTxParcelamento(tx.parcelamento || 'nao');
+                                      setTxFrequenciaParcelas(tx.frequenciaParcelas || 'mensal');
+                                      setTxNumeroParcelas(tx.numeroParcelas ? tx.numeroParcelas.toString() : '1');
+                                      setTxFormaPagamento(tx.formaPagamento || 'pix');
+                                      setTxPago(tx.pago || 'sim');
+                                      setTxVaiPagarQuem(tx.vaiPagarQuem || '');
+                                      setTxDataVencimento(tx.dataVencimento || tx.date);
+                                      setTxReceiptImage(tx.receiptImage || null);
+                                      
+                                      setShowTxModal(true);
+                                    }}
+                                    className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                      isHighContrast ? 'text-zinc-500 hover:text-indigo-600 hover:bg-zinc-100' : 'text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800/40'
+                                    }`}
+                                    title="Editar Lançamento"
+                                  >
+                                    <Edit3 size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTx(tx.id)}
+                                    className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                      isHighContrast ? 'text-zinc-500 hover:text-red-600 hover:bg-zinc-100' : 'text-zinc-500 hover:text-red-500 hover:bg-red-500/5'
+                                    }`}
+                                    title="Excluir Lançamento"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
-                            {/* 10. Parcelamento */}
-                            <td className="py-3.5 px-3 whitespace-nowrap text-xs">
-                              {tx.parcelamento === 'sim' ? (
-                                <span className="font-semibold text-indigo-400">
-                                  {tx.numeroParcelas || 1}x {tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}
-                                </span>
-                              ) : tx.parcelamento === 'recorrente' ? (
-                                <span className="font-semibold text-purple-400">Recorrente</span>
-                              ) : (
-                                <span className="text-zinc-500">À Vista</span>
-                              )}
-                            </td>
+                  {/* Pagination Footer */}
+                  {displayTransactions.length > 0 && (
+                    <div className={`p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-xs ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-700' : 'bg-zinc-950/40 border-zinc-900 text-zinc-400'
+                    }`}>
+                      {/* Range Info */}
+                      <div className="flex items-center gap-2">
+                        <span>
+                          Mostrando <strong className={isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}>
+                            {Math.min((validCurrentPage - 1) * txItemsPerPage + 1, displayTransactions.length)}
+                          </strong> a <strong className={isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}>
+                            {Math.min(validCurrentPage * txItemsPerPage, displayTransactions.length)}
+                          </strong> de <strong className={isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}>
+                            {displayTransactions.length}
+                          </strong> lançamentos
+                        </span>
+                      </div>
 
-                            {/* 11. Observações */}
-                            <td className="py-3.5 px-3 max-w-[200px] truncate text-[11px] text-zinc-400" title={tx.observation || ''}>
-                              {tx.observation || '—'}
-                            </td>
+                      {/* Items Per Page Selector */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-zinc-500">Linhas por página:</span>
+                        <select
+                          value={txItemsPerPage}
+                          onChange={(e) => {
+                            setTxItemsPerPage(Number(e.target.value));
+                            setTxCurrentPage(1);
+                          }}
+                          className={`px-2 py-1 rounded-lg border text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                            isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                          }`}
+                        >
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                      </div>
 
-                            {/* 12. Ações */}
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <div className="flex justify-end gap-1.5 items-center">
+                      {/* Navigation Buttons */}
+                      <div className="flex items-center gap-1">
+                        {/* First Page */}
+                        <button
+                          onClick={() => setTxCurrentPage(1)}
+                          disabled={validCurrentPage === 1}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            validCurrentPage === 1
+                              ? 'opacity-40 cursor-not-allowed border-transparent'
+                              : isHighContrast
+                                ? 'hover:bg-zinc-200 border-zinc-200 text-zinc-700 cursor-pointer'
+                                : 'hover:bg-zinc-800 border-zinc-800 text-zinc-300 cursor-pointer'
+                          }`}
+                          title="Primeira página"
+                        >
+                          <ChevronsLeft size={15} />
+                        </button>
+
+                        {/* Previous Page */}
+                        <button
+                          onClick={() => setTxCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={validCurrentPage === 1}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            validCurrentPage === 1
+                              ? 'opacity-40 cursor-not-allowed border-transparent'
+                              : isHighContrast
+                                ? 'hover:bg-zinc-200 border-zinc-200 text-zinc-700 cursor-pointer'
+                                : 'hover:bg-zinc-800 border-zinc-800 text-zinc-300 cursor-pointer'
+                          }`}
+                          title="Página anterior"
+                        >
+                          <ChevronLeft size={15} />
+                        </button>
+
+                        {/* Page Numbers */}
+                        <div className="flex items-center gap-1 mx-1">
+                          {(() => {
+                            const pages: (number | string)[] = [];
+                            if (totalTxPages <= 7) {
+                              for (let i = 1; i <= totalTxPages; i++) pages.push(i);
+                            } else {
+                              if (validCurrentPage <= 4) {
+                                pages.push(1, 2, 3, 4, 5, '...', totalTxPages);
+                              } else if (validCurrentPage >= totalTxPages - 3) {
+                                pages.push(1, '...', totalTxPages - 4, totalTxPages - 3, totalTxPages - 2, totalTxPages - 1, totalTxPages);
+                              } else {
+                                pages.push(1, '...', validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, '...', totalTxPages);
+                              }
+                            }
+
+                            return pages.map((page, idx) => {
+                              if (page === '...') {
+                                return <span key={`ellipsis-${idx}`} className="px-1 text-zinc-500 font-bold">...</span>;
+                              }
+                              const isCurrent = page === validCurrentPage;
+                              return (
                                 <button
-                                  onClick={() => {
-                                    setEditingTx(tx);
-                                    setTxDescription(tx.description);
-                                    setTxValue(tx.value.toString());
-                                    setTxType(tx.type);
-                                    setTxCategoryId(tx.categoryId);
-                                    setTxSubcategory(tx.subcategory || '');
-                                    setTxAccountId(tx.accountId);
-                                    setTxDate(tx.date);
-                                    setTxObservation(tx.observation || '');
-                                    
-                                    // Populate new fields or default if undefined
-                                    setTxRecebido(tx.recebido || 'sim');
-                                    setTxRecebidoDe(tx.recebidoDe || '');
-                                    setTxDataRecebido(tx.dataRecebido || tx.date);
-                                    setTxDataLancamento(tx.dataLancamento || tx.date);
-                                    setTxParcelamento(tx.parcelamento || 'nao');
-                                    setTxFrequenciaParcelas(tx.frequenciaParcelas || 'mensal');
-                                    setTxNumeroParcelas(tx.numeroParcelas ? tx.numeroParcelas.toString() : '1');
-                                    setTxFormaPagamento(tx.formaPagamento || 'pix');
-                                    setTxPago(tx.pago || 'sim');
-                                    setTxVaiPagarQuem(tx.vaiPagarQuem || '');
-                                    setTxDataVencimento(tx.dataVencimento || tx.date);
-                                    setTxReceiptImage(tx.receiptImage || null);
-                                    
-                                    setShowTxModal(true);
-                                  }}
-                                  className={`p-1.5 rounded transition-colors cursor-pointer ${
-                                    isHighContrast ? 'text-zinc-500 hover:text-indigo-600 hover:bg-zinc-100' : 'text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800/40'
+                                  key={`page-${page}`}
+                                  onClick={() => setTxCurrentPage(Number(page))}
+                                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    isCurrent
+                                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                                      : isHighContrast
+                                        ? 'text-zinc-700 hover:bg-zinc-200'
+                                        : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
                                   }`}
-                                  title="Editar Lançamento"
                                 >
-                                  <Edit3 size={13} />
+                                  {page}
                                 </button>
-                                <button
-                                  onClick={() => handleDeleteTx(tx.id)}
-                                  className={`p-1.5 rounded transition-colors cursor-pointer ${
-                                    isHighContrast ? 'text-zinc-500 hover:text-red-600 hover:bg-zinc-100' : 'text-zinc-500 hover:text-red-500 hover:bg-red-500/5'
-                                  }`}
-                                  title="Excluir Lançamento"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              );
+                            });
+                          })()}
+                        </div>
+
+                        {/* Next Page */}
+                        <button
+                          onClick={() => setTxCurrentPage(prev => Math.min(totalTxPages, prev + 1))}
+                          disabled={validCurrentPage === totalTxPages}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            validCurrentPage === totalTxPages
+                              ? 'opacity-40 cursor-not-allowed border-transparent'
+                              : isHighContrast
+                                ? 'hover:bg-zinc-200 border-zinc-200 text-zinc-700 cursor-pointer'
+                                : 'hover:bg-zinc-800 border-zinc-800 text-zinc-300 cursor-pointer'
+                          }`}
+                          title="Próxima página"
+                        >
+                          <ChevronRight size={15} />
+                        </button>
+
+                        {/* Last Page */}
+                        <button
+                          onClick={() => setTxCurrentPage(totalTxPages)}
+                          disabled={validCurrentPage === totalTxPages}
+                          className={`p-1.5 rounded-lg border transition-all ${
+                            validCurrentPage === totalTxPages
+                              ? 'opacity-40 cursor-not-allowed border-transparent'
+                              : isHighContrast
+                                ? 'hover:bg-zinc-200 border-zinc-200 text-zinc-700 cursor-pointer'
+                                : 'hover:bg-zinc-800 border-zinc-800 text-zinc-300 cursor-pointer'
+                          }`}
+                          title="Última página"
+                        >
+                          <ChevronsRight size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             ) : (
