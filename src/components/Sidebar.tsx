@@ -5,17 +5,10 @@ import {
   Users, 
   FileText, 
   Settings, 
-  HelpCircle, 
-  User, 
   Plus, 
-  FileSpreadsheet,
-  Coins,
-  X,
-  Mail,
-  MessageSquare,
+  Coins, 
   LogOut
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { Tab, AuthUser } from '../types';
 
 interface SidebarProps {
@@ -188,37 +181,6 @@ export default function Sidebar({
           {isExpanded && <span className="whitespace-nowrap overflow-hidden">Novo Documento</span>}
         </button>
 
-        <button
-          onClick={() => setShowSupportModal(true)}
-          title="Suporte"
-          className={`flex items-center rounded-xl transition-all text-left cursor-pointer ${
-            isExpanded ? 'w-full gap-3 px-4 py-2.5' : 'w-11 h-11 mx-auto justify-center p-0'
-          } ${
-            isHighContrast 
-              ? 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 font-medium' 
-              : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 font-medium'
-          }`}
-        >
-          <HelpCircle size={18} className="shrink-0" />
-          {isExpanded && <span className="text-xs font-medium tracking-wide whitespace-nowrap overflow-hidden">Suporte</span>}
-        </button>
-        <button
-          onClick={() => setCurrentTab('settings')}
-          title="Minha Conta"
-          className={`flex items-center rounded-xl transition-all text-left cursor-pointer ${
-            isExpanded ? 'w-full gap-3 px-4 py-2.5' : 'w-11 h-11 mx-auto justify-center p-0'
-          } ${
-            currentTab === 'settings'
-              ? 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/10'
-              : isHighContrast
-                ? 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 font-medium'
-                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 font-medium'
-          }`}
-        >
-          <User size={18} className={`${currentTab === 'settings' ? 'text-white' : 'text-zinc-400'} shrink-0`} />
-          {isExpanded && <span className="text-xs tracking-wide whitespace-nowrap overflow-hidden">Minha Conta</span>}
-        </button>
-
         {onLogout && (
           <button
             onClick={onLogout}
@@ -232,77 +194,6 @@ export default function Sidebar({
           </button>
         )}
       </div>
-      
-      {/* Dynamic Support Modal dialog */}
-      <AnimatePresence>
-        {showSupportModal && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[90]">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className={`border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl p-6 text-left ${
-                isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-100'
-              }`}
-            >
-              <div className="flex justify-between items-center pb-3 border-b border-zinc-800/60 mb-4">
-                <div className="flex items-center gap-2 text-indigo-400">
-                  <HelpCircle size={18} />
-                  <h3 className="text-sm font-bold uppercase tracking-wider font-sans">Suporte Técnico</h3>
-                </div>
-                <button
-                  onClick={() => setShowSupportModal(false)}
-                  className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Precisa de auxílio ou encontrou alguma inconsistência no SISMNV? Entre em contato direto com a nossa equipe especializada:
-                </p>
-
-                <div className="space-y-2.5">
-                  <div className={`p-3 rounded-xl border flex items-center gap-3 ${
-                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800'
-                  }`}>
-                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
-                      <Mail size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] uppercase font-bold text-zinc-500">E-mail Principal</p>
-                      <p className="text-xs font-semibold font-mono truncate text-indigo-400">suporte@sismnv.com</p>
-                    </div>
-                  </div>
-
-                  <div className={`p-3 rounded-xl border flex items-center gap-3 ${
-                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800'
-                  }`}>
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                      <MessageSquare size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] uppercase font-bold text-zinc-500">Tempo de Resposta</p>
-                      <p className="text-xs font-semibold text-zinc-300">Menos de 12 horas úteis</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => setShowSupportModal(false)}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/10 hover:shadow-indigo-500/20 active:scale-98 transition-all cursor-pointer"
-                  >
-                    Entendido
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </aside>
   );
 }

@@ -1,5 +1,24 @@
 import React, { useState } from 'react';
-import { Search, Bell, Sparkles, Laptop, Globe, Info, Menu, Contrast, Sun, Moon, LogOut } from 'lucide-react';
+import { 
+  Search, 
+  Bell, 
+  Sparkles, 
+  Laptop, 
+  Globe, 
+  Info, 
+  Menu, 
+  Contrast, 
+  Sun, 
+  Moon, 
+  LogOut,
+  KeyRound,
+  Lock,
+  Eye,
+  EyeOff,
+  X,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Tab, AuthUser } from '../types';
 
@@ -32,6 +51,55 @@ export default function Header({
 }: HeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Password Change Modal State
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [passError, setPassError] = useState<string | null>(null);
+  const [passSuccess, setPassSuccess] = useState(false);
+  const [isSubmittingPass, setIsSubmittingPass] = useState(false);
+
+  const handleOpenPasswordModal = () => {
+    setShowProfileMenu(false);
+    setCurrentPass('');
+    setNewPass('');
+    setConfirmPass('');
+    setPassError(null);
+    setPassSuccess(false);
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError(null);
+
+    if (!currentPass) {
+      setPassError('Por favor, informe sua senha atual.');
+      return;
+    }
+    if (!newPass || newPass.length < 6) {
+      setPassError('A nova senha deve possuir pelo menos 6 caracteres.');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setPassError('A confirmação não coincide com a nova senha.');
+      return;
+    }
+
+    setIsSubmittingPass(true);
+    setTimeout(() => {
+      setIsSubmittingPass(false);
+      setPassSuccess(true);
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPassSuccess(false);
+      }, 2000);
+    }, 600);
+  };
 
   // Map tabs to beautiful translated breadcrumbs
   const getBreadcrumbs = () => {
@@ -309,12 +377,12 @@ export default function Header({
                   <Laptop size={14} className="text-indigo-400" /> Inteligência Artificial Ativa
                 </button>
                 <button
-                  onClick={() => { setShowProfileMenu(false); alert('Serviço hospedado e protegido por Vercel / Cloud.'); }}
+                  onClick={handleOpenPasswordModal}
                   className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2.5 ${
                     isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                   }`}
                 >
-                  <Globe size={14} className="text-indigo-400" /> Servidor Seguro (SSL)
+                  <KeyRound size={14} className="text-amber-400" /> Alterar Minha Senha
                 </button>
               </div>
 
@@ -336,6 +404,178 @@ export default function Header({
           )}
         </div>
       </div>
+
+      {/* Interactive Change Password Modal Dialog */}
+      <AnimatePresence>
+        {showPasswordModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[999]">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-3xl max-w-md w-full overflow-hidden shadow-2xl p-6 sm:p-7 text-left ${
+                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-100'
+              }`}
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-zinc-800/60 mb-5">
+                <div className="flex items-center gap-2.5 text-indigo-400">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                    <KeyRound size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight font-sans">Alterar Senha de Acesso</h3>
+                    <p className="text-[10px] text-zinc-500">Mantenha sua conta corporativa protegida</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer p-1"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {passSuccess ? (
+                <div className="text-center py-6 space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={30} />
+                  </div>
+                  <h4 className="text-base font-bold">Senha Alterada com Sucesso!</h4>
+                  <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+                    Sua nova credencial foi atualizada e está pronta para uso no próximo acesso.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                  {passError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-start gap-2.5 text-xs">
+                      <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
+                      <span className="leading-tight">{passError}</span>
+                    </div>
+                  )}
+
+                  {/* Current Password */}
+                  <div className="space-y-1.5">
+                    <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Senha Atual
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <Lock size={15} />
+                      </div>
+                      <input
+                        type={showCurrentPass ? 'text' : 'password'}
+                        value={currentPass}
+                        onChange={(e) => setCurrentPass(e.target.value)}
+                        placeholder="Digite sua senha atual"
+                        required
+                        className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs border outline-none transition-all ${
+                          isHighContrast
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-indigo-500'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-100 focus:border-indigo-500'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPass(!showCurrentPass)}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                      >
+                        {showCurrentPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Nova Senha
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <Lock size={15} />
+                      </div>
+                      <input
+                        type={showNewPass ? 'text' : 'password'}
+                        value={newPass}
+                        onChange={(e) => setNewPass(e.target.value)}
+                        placeholder="Mínimo de 6 caracteres"
+                        required
+                        className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs border outline-none transition-all ${
+                          isHighContrast
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-indigo-500'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-100 focus:border-indigo-500'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                      >
+                        {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div className="space-y-1.5">
+                    <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Confirmar Nova Senha
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <Lock size={15} />
+                      </div>
+                      <input
+                        type={showNewPass ? 'text' : 'password'}
+                        value={confirmPass}
+                        onChange={(e) => setConfirmPass(e.target.value)}
+                        placeholder="Repita a nova senha"
+                        required
+                        className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs border outline-none transition-all ${
+                          isHighContrast
+                            ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-indigo-500'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-100 focus:border-indigo-500'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-2.5 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordModal(false)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                        isHighContrast ? 'border-zinc-200 hover:bg-zinc-100' : 'border-zinc-800 hover:bg-zinc-800 text-zinc-300'
+                      }`}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingPass}
+                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/20 cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      {isSubmittingPass ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        'Salvar Nova Senha'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

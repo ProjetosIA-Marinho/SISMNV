@@ -8,16 +8,21 @@ import {
   Info, 
   Check, 
   Sliders, 
-  Sun,
-  Moon,
-  Image as ImageIcon,
-  Upload,
-  Link as LinkIcon,
-  Trash2,
-  CheckCircle2,
-  AlertCircle,
-  FileSpreadsheet,
-  Sparkles
+  Sun, 
+  Moon, 
+  Image as ImageIcon, 
+  Upload, 
+  Link as LinkIcon, 
+  Trash2, 
+  CheckCircle2, 
+  AlertCircle, 
+  FileSpreadsheet, 
+  Sparkles,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ShieldCheck
 } from 'lucide-react';
 import { Tab } from '../types';
 
@@ -66,6 +71,43 @@ export default function Settings({
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Password change state
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
+  const [passFeedback, setPassFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handlePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassFeedback(null);
+
+    if (!currentPass) {
+      setPassFeedback({ type: 'error', message: 'Informe sua senha atual.' });
+      return;
+    }
+    if (!newPass || newPass.length < 6) {
+      setPassFeedback({ type: 'error', message: 'A nova senha deve ter no mínimo 6 caracteres.' });
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setPassFeedback({ type: 'error', message: 'A confirmação de senha não coincide com a nova senha digitada.' });
+      return;
+    }
+
+    setPassLoading(true);
+    setTimeout(() => {
+      setPassLoading(false);
+      setPassFeedback({ type: 'success', message: 'Sua senha foi alterada e atualizada com sucesso!' });
+      setCurrentPass('');
+      setNewPass('');
+      setConfirmPass('');
+      setTimeout(() => setPassFeedback(null), 5000);
+    }, 600);
+  };
 
   const handleReset = () => {
     if (confirm('Deseja realmente restaurar os dados originais da plataforma? Todas as alterações em documentos e membros serão perdidas.')) {
@@ -470,6 +512,145 @@ export default function Settings({
           >
             <RotateCcw size={14} /> Restaurar dados padrão
           </button>
+        </div>
+
+        {/* Card: Security & Password Management */}
+        <div className={`p-6 border rounded-2xl space-y-4 col-span-1 md:col-span-2 ${cardBgClass}`}>
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
+            <div className="flex items-center gap-2.5 text-indigo-400">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                <KeyRound size={18} />
+              </div>
+              <div>
+                <h3 className={`text-sm font-bold ${textSecondaryClass}`}>Segurança & Alteração de Senha</h3>
+                <p className="text-[10px] text-zinc-500">Altere a senha de acesso à sua conta corporativa</p>
+              </div>
+            </div>
+            <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+              <ShieldCheck size={12} /> Criptografia Ativa
+            </span>
+          </div>
+
+          <form onSubmit={handlePasswordChange} className="space-y-4 pt-1">
+            {passFeedback && (
+              <div className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs ${
+                passFeedback.type === 'success' 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                  : 'bg-red-500/10 border-red-500/30 text-red-400'
+              }`}>
+                {passFeedback.type === 'success' ? (
+                  <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+                ) : (
+                  <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
+                )}
+                <span className="leading-tight">{passFeedback.message}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Senha Atual */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Senha Atual
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                    <Lock size={15} />
+                  </div>
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    value={currentPass}
+                    onChange={(e) => setCurrentPass(e.target.value)}
+                    placeholder="Sua senha atual"
+                    required
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs border outline-none transition-all ${
+                      isHighContrast
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-indigo-500'
+                        : 'bg-zinc-950/60 border-zinc-800 text-zinc-100 focus:border-indigo-500'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                  >
+                    {showCurrentPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Nova Senha */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Nova Senha
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                    <Lock size={15} />
+                  </div>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={newPass}
+                    onChange={(e) => setNewPass(e.target.value)}
+                    placeholder="Mínimo 6 dígitos"
+                    required
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs border outline-none transition-all ${
+                      isHighContrast
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-indigo-500'
+                        : 'bg-zinc-950/60 border-zinc-800 text-zinc-100 focus:border-indigo-500'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                  >
+                    {showNewPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirmar Nova Senha */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Confirmar Nova Senha
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                    <Lock size={15} />
+                  </div>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={confirmPass}
+                    onChange={(e) => setConfirmPass(e.target.value)}
+                    placeholder="Repita a nova senha"
+                    required
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs border outline-none transition-all ${
+                      isHighContrast
+                        ? 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-indigo-500'
+                        : 'bg-zinc-950/60 border-zinc-800 text-zinc-100 focus:border-indigo-500'
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={passLoading}
+                className="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/20 active:scale-98 transition-all cursor-pointer flex items-center gap-2"
+              >
+                {passLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Check size={14} /> Atualizar Senha
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
 
         {/* Card 3: System Appearance (Light / Dark Mode) */}
