@@ -52,6 +52,7 @@ import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas-pro';
 import * as XLSX from 'xlsx';
 import { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset } from '../types';
+import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 
 export const getAccountTypeLabel = (type?: BankAccountType | string) => {
   switch (type) {
@@ -140,91 +141,17 @@ function BankLogo({ bankName, imageUrl, size = 32 }: { bankName: string; imageUr
 
 function MNVLogo({ size = 72, className = '' }: { size?: number; className?: string }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`shrink-0 ${className}`}
+    <div 
+      style={{ width: size, height: size }}
+      className={`shrink-0 flex items-center justify-center overflow-hidden rounded-full ${className}`}
     >
-      {/* Outer black circle */}
-      <circle cx="50" cy="50" r="47" stroke="#09090b" strokeWidth="2.8" fill="#ffffff" />
-      {/* Inner thin accent ring */}
-      <circle cx="50" cy="50" r="43.5" stroke="#71717a" strokeWidth="0.8" fill="none" opacity="0.65" />
-
-      {/* Heart outline */}
-      <path
-        d="M 50 39 C 45 28, 29 20, 23 28 C 16 36, 22 47, 33 55 C 39 59, 47 63, 50 65 C 53 63, 61 59, 67 55 C 78 47, 84 36, 77 28 C 71 20, 55 28, 50 39 Z"
-        stroke="#09090b"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
+      <img
+        src={MNV_LOGO_BASE64}
+        alt="Logo Ministério Nova Vida"
+        style={{ width: size, height: size }}
+        className="w-full h-full object-contain"
       />
-
-      {/* Musical note integrated on right side of heart */}
-      <path
-        d="M 64 24 L 64 43"
-        stroke="#09090b"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <ellipse
-        cx="59.5"
-        cy="43"
-        rx="4.5"
-        ry="3.2"
-        transform="rotate(-20 59.5 43)"
-        fill="#09090b"
-      />
-      <path
-        d="M 64 24 C 68 26, 72 30, 71 34"
-        stroke="#09090b"
-        strokeWidth="2"
-        strokeLinecap="round"
-        fill="none"
-      />
-
-      {/* Open Bible / Book at bottom of heart */}
-      <path
-        d="M 24 66 C 32 63, 42 63, 50 66 C 58 63, 68 63, 76 66 L 76 71 C 68 68, 58 68, 50 71 C 42 68, 32 68, 24 71 Z"
-        fill="#09090b"
-      />
-      <path
-        d="M 23 70 C 32 67, 42 67, 50 70 C 58 67, 68 67, 77 70 L 76 73 C 68 70, 58 70, 50 73 C 42 70, 32 70, 24 73 Z"
-        fill="#27272a"
-      />
-      <line x1="50" y1="65" x2="50" y2="72" stroke="#ffffff" strokeWidth="1" />
-
-      {/* MNV Text */}
-      <text
-        x="50"
-        y="82"
-        textAnchor="middle"
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontWeight="900"
-        fontSize="8.5"
-        letterSpacing="0.08em"
-        fill="#09090b"
-      >
-        MNV
-      </text>
-
-      {/* Subtitle */}
-      <text
-        x="50"
-        y="88"
-        textAnchor="middle"
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontWeight="700"
-        fontSize="2.7"
-        letterSpacing="0.1em"
-        fill="#52525b"
-      >
-        PALAVRA, AMOR E LOUVOR
-      </text>
-    </svg>
+    </div>
   );
 }
 

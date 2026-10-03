@@ -29,6 +29,7 @@ import Finance from './components/Finance';
 import Login from './components/Login';
 
 import { Document, Member, Activity, Tab, Template, CalendarEvent, AuthUser } from './types';
+import { MNV_LOGO_BASE64 } from './assets/logoMnvBase64';
 import { 
   INITIAL_DOCUMENTS, 
   INITIAL_MEMBERS, 
@@ -80,7 +81,7 @@ export default function App() {
 
   // System branding logo (persisted in localStorage)
   const [systemLogo, setSystemLogo] = useState<string | null>(() => {
-    return localStorage.getItem('sismnv_system_logo') || null;
+    return localStorage.getItem('sismnv_system_logo') || MNV_LOGO_BASE64;
   });
 
   // User Authentication state

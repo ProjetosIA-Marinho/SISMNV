@@ -25,6 +25,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { Tab } from '../types';
+import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 
 interface SettingsProps {
   onResetData: () => void;
@@ -37,6 +38,11 @@ interface SettingsProps {
 
 // Built-in presets for quick preview and church / institutional branding
 const LOGO_PRESETS = [
+  {
+    id: 'preset-mnv-official',
+    name: 'MNV Oficial (Palavra, Amor e Louvor)',
+    dataUri: MNV_LOGO_BASE64
+  },
   {
     id: 'preset-cross',
     name: 'Cruz & Dourado',
