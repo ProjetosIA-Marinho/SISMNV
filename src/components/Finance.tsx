@@ -45,7 +45,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CheckSquare,
-  Square
+  Square,
+  CheckCircle2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -53,6 +54,7 @@ import html2canvas from 'html2canvas-pro';
 import * as XLSX from 'xlsx';
 import { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset } from '../types';
 import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
+import { BulkImportModal } from './BulkImportModal';
 
 export const getAccountTypeLabel = (type?: BankAccountType | string) => {
   switch (type) {
@@ -486,6 +488,26 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportSuccessMsg, setBulkImportSuccessMsg] = useState<{
+    count: number;
+    totalReceitas: number;
+    totalDespesas: number;
+  } | null>(null);
+
+  const handleBulkImportTransactions = (newTxs: Transaction[]) => {
+    setTransactions(prev => [...newTxs, ...prev]);
+    const totalReceitas = newTxs.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0);
+    const totalDespesas = newTxs.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0);
+    setBulkImportSuccessMsg({
+      count: newTxs.length,
+      totalReceitas,
+      totalDespesas
+    });
+    setTimeout(() => {
+      setBulkImportSuccessMsg(null);
+    }, 7000);
+  };
 
   // --- EDITING & FILTER STATES FOR TRANSACTIONS ---
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -4692,6 +4714,43 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
         {/* 2. TRANSACTIONS SCREEN */}
         {activeSubTab === 'transactions' && (
           <div>
+            {/* Notification Banner for Bulk Import Success */}
+            <AnimatePresence>
+              {bulkImportSuccessMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  className={`mx-5 mt-4 p-4 rounded-xl border flex items-center justify-between gap-3 shadow-lg ${
+                    isHighContrast
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-emerald-100'
+                      : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-100 backdrop-blur-md shadow-emerald-950/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0 border border-emerald-500/30">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-emerald-400">
+                        {bulkImportSuccessMsg.count} {bulkImportSuccessMsg.count === 1 ? 'lançamento importado com sucesso!' : 'lançamentos importados com sucesso!'}
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        Receitas: <span className="text-emerald-400 font-bold font-mono">+{formatCurrency(bulkImportSuccessMsg.totalReceitas)}</span> | Despesas: <span className="text-rose-400 font-bold font-mono">-{formatCurrency(bulkImportSuccessMsg.totalDespesas)}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBulkImportSuccessMsg(null)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Bank account cards in transactions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
               {accounts.map(acc => {
@@ -5013,11 +5072,49 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               <p className="text-[9px] text-zinc-500 truncate">Planilha detalhada (.xlsx)</p>
                             </div>
                           </button>
+
+                          <div className="my-1 border-t border-zinc-700/20" />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              setShowBulkImportModal(true);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                              isHighContrast
+                                ? 'hover:bg-indigo-50 text-zinc-800 hover:text-indigo-700'
+                                : 'hover:bg-indigo-500/10 text-zinc-200 hover:text-indigo-300'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-md bg-indigo-500/15 text-indigo-400 shrink-0">
+                              <Upload size={14} />
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                              <p className="font-bold text-[11px] leading-tight text-indigo-400">Importar em Massa</p>
+                              <p className="text-[9px] text-zinc-500 truncate">Planilha Excel (.xlsx) ou CSV</p>
+                            </div>
+                          </button>
                         </motion.div>
                       </>
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Botão de Importar em Massa dedicado */}
+                <button
+                  type="button"
+                  onClick={() => setShowBulkImportModal(true)}
+                  className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer shadow-sm ${
+                    isHighContrast
+                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 shadow-indigo-100'
+                      : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border-indigo-500/40 hover:border-indigo-400'
+                  }`}
+                  title="Importar receitas e despesas em lote via Excel ou CSV"
+                >
+                  <Upload size={12} className="text-indigo-400" />
+                  <span>Importar em Massa</span>
+                </button>
 
                 <button
                   onClick={() => { setEditingTx(null); setTxType('entrada'); setShowTxModal(true); }}
@@ -11266,6 +11363,16 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             </motion.div>
           </motion.div>
         )}
+
+        {/* Modal: Bulk Import Transactions (Excel / CSV) */}
+        <BulkImportModal
+          isOpen={showBulkImportModal}
+          onClose={() => setShowBulkImportModal(false)}
+          accounts={accounts}
+          categories={categories}
+          onImport={handleBulkImportTransactions}
+          isHighContrast={isHighContrast}
+        />
 
       </AnimatePresence>
 
