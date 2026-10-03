@@ -1,0 +1,11091 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  ArrowUpRight, 
+  ArrowDownRight,
+  ArrowDownLeft, 
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  RefreshCw, 
+  CreditCard, 
+  Plus, 
+  Trash2, 
+  Tags, 
+  Wallet, 
+  TrendingUp, 
+  Calendar, 
+  Building2, 
+  X, 
+  Search,
+  DollarSign,
+  AlertCircle,
+  FileText,
+  Printer,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  ArrowRightLeft,
+  Check,
+  Edit3,
+  Camera,
+  Upload,
+  Eye,
+  LayoutGrid,
+  List,
+  Download,
+  FileSpreadsheet,
+  Loader2,
+  Scale,
+  Landmark,
+  Layers,
+  PieChart,
+  ShieldCheck,
+  ChevronUp
+} from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas-pro';
+import * as XLSX from 'xlsx';
+import { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset } from '../types';
+
+export const getAccountTypeLabel = (type?: BankAccountType | string) => {
+  switch (type) {
+    case 'caixa_fisico':
+      return 'Caixa Físico';
+    case 'conta_corrente':
+      return 'Conta Corrente';
+    case 'conta_poupanca':
+      return 'Conta Poupança';
+    case 'conta_investimento':
+      return 'Conta Investimento';
+    default:
+      return 'Conta Corrente';
+  }
+};
+
+function BankLogo({ bankName, imageUrl, size = 32 }: { bankName: string; imageUrl?: string; size?: number }) {
+  if (imageUrl) {
+    return (
+      <div 
+        className="rounded-full overflow-hidden border border-zinc-700/50 flex items-center justify-center shrink-0"
+        style={{ width: size, height: size }}
+      >
+        <img src={imageUrl} alt={bankName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+      </div>
+    );
+  }
+  const normalized = bankName.toLowerCase();
+  let bg = 'bg-zinc-800';
+  let fg = 'text-white';
+  let content: React.ReactNode = bankName.charAt(0).toUpperCase();
+
+  if (normalized.includes('itau') || normalized.includes('itaú')) {
+    bg = 'bg-[#ec7000]';
+    fg = 'text-white font-black';
+    content = (
+      <div className="flex flex-col items-center justify-center leading-none">
+        <span className="text-[13px] font-black">i</span>
+        <span className="text-[5px] tracking-widest font-bold">ITAÚ</span>
+      </div>
+    );
+  } else if (normalized.includes('caixa')) {
+    bg = 'bg-[#005c9a]';
+    fg = 'text-white font-black';
+    content = (
+      <div className="relative flex items-center justify-center w-full h-full">
+        <span className="text-[11px] font-black italic">X</span>
+        <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[#f29100]" />
+      </div>
+    );
+  } else if (normalized.includes('nubank')) {
+    bg = 'bg-[#820ad1]';
+    fg = 'text-white font-bold';
+    content = <span className="text-[10px] font-black">Nu</span>;
+  } else if (normalized.includes('bradesco')) {
+    bg = 'bg-[#cc092f]';
+    fg = 'text-white font-black';
+    content = <span className="text-[10px] font-black">B</span>;
+  } else if (normalized.includes('brasil') || normalized.includes('banco do brasil') || normalized.includes('bb')) {
+    bg = 'bg-[#fcf300]';
+    fg = 'text-[#0038a8] font-extrabold';
+    content = <span className="text-[10px] font-black">BB</span>;
+  } else if (normalized.includes('inter')) {
+    bg = 'bg-[#ff7a00]';
+    fg = 'text-white font-black';
+    content = <span className="text-[10px] font-black">I</span>;
+  } else if (normalized.includes('santander')) {
+    bg = 'bg-[#ec0000]';
+    fg = 'text-white font-black';
+    content = <span className="text-[10px]">S</span>;
+  } else if (normalized.includes('dinheiro') || normalized.includes('espécie') || normalized.includes('espece')) {
+    bg = 'bg-emerald-600';
+    fg = 'text-white font-black';
+    content = <span className="text-[11px] font-mono">$</span>;
+  }
+
+  return (
+    <div 
+      className={`rounded-lg ${bg} ${fg} flex items-center justify-center shadow-inner shrink-0 select-none overflow-hidden font-bold`}
+      style={{ width: size, height: size }}
+    >
+      {content}
+    </div>
+  );
+}
+
+function MNVLogo({ size = 72, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={`shrink-0 ${className}`}
+    >
+      {/* Outer black circle */}
+      <circle cx="50" cy="50" r="47" stroke="#09090b" strokeWidth="2.8" fill="#ffffff" />
+      {/* Inner thin accent ring */}
+      <circle cx="50" cy="50" r="43.5" stroke="#71717a" strokeWidth="0.8" fill="none" opacity="0.65" />
+
+      {/* Heart outline */}
+      <path
+        d="M 50 39 C 45 28, 29 20, 23 28 C 16 36, 22 47, 33 55 C 39 59, 47 63, 50 65 C 53 63, 61 59, 67 55 C 78 47, 84 36, 77 28 C 71 20, 55 28, 50 39 Z"
+        stroke="#09090b"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+
+      {/* Musical note integrated on right side of heart */}
+      <path
+        d="M 64 24 L 64 43"
+        stroke="#09090b"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <ellipse
+        cx="59.5"
+        cy="43"
+        rx="4.5"
+        ry="3.2"
+        transform="rotate(-20 59.5 43)"
+        fill="#09090b"
+      />
+      <path
+        d="M 64 24 C 68 26, 72 30, 71 34"
+        stroke="#09090b"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* Open Bible / Book at bottom of heart */}
+      <path
+        d="M 24 66 C 32 63, 42 63, 50 66 C 58 63, 68 63, 76 66 L 76 71 C 68 68, 58 68, 50 71 C 42 68, 32 68, 24 71 Z"
+        fill="#09090b"
+      />
+      <path
+        d="M 23 70 C 32 67, 42 67, 50 70 C 58 67, 68 67, 77 70 L 76 73 C 68 70, 58 70, 50 73 C 42 70, 32 70, 24 73 Z"
+        fill="#27272a"
+      />
+      <line x1="50" y1="65" x2="50" y2="72" stroke="#ffffff" strokeWidth="1" />
+
+      {/* MNV Text */}
+      <text
+        x="50"
+        y="82"
+        textAnchor="middle"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        fontWeight="900"
+        fontSize="8.5"
+        letterSpacing="0.08em"
+        fill="#09090b"
+      >
+        MNV
+      </text>
+
+      {/* Subtitle */}
+      <text
+        x="50"
+        y="88"
+        textAnchor="middle"
+        fontFamily="system-ui, -apple-system, sans-serif"
+        fontWeight="700"
+        fontSize="2.7"
+        letterSpacing="0.1em"
+        fill="#52525b"
+      >
+        PALAVRA, AMOR E LOUVOR
+      </text>
+    </svg>
+  );
+}
+
+interface FinanceProps {
+  isHighContrast: boolean;
+  searchQuery: string;
+}
+
+export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
+  // --- SUB-TABS NAVIGATION ---
+  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'transactions' | 'accounts' | 'categories' | 'reports'>('dashboard');
+  const [categoryViewMode, setCategoryViewMode] = useState<'list' | 'grid'>('grid');
+
+  // --- STATE WITH LOCAL STORAGE PERSISTENCE ---
+  const [accounts, setAccounts] = useState<BankAccount[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_accounts');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const mapped = parsed.map((a: BankAccount) => ({
+          ...a,
+          accountType: a.accountType || (a.name.toLowerCase().includes('caixa') ? 'caixa_fisico' : a.name.toLowerCase().includes('poupança') ? 'conta_poupanca' : a.name.toLowerCase().includes('invest') ? 'conta_investimento' : 'conta_corrente'),
+          initialBalanceDate: a.initialBalanceDate || '2026-01-01'
+        }));
+        if (mapped.length === 3 && mapped.every((a: BankAccount) => ['acc-1', 'acc-2', 'acc-3'].includes(a.id))) {
+          return [
+            ...mapped,
+            { id: 'acc-4', name: 'Movimento Bradesco', bankName: 'Banco Bradesco', agency: '0456', accountNumber: '78901-2', initialBalance: 8720, currentBalance: 8720, accountType: 'conta_corrente', initialBalanceDate: '2026-01-01' },
+            { id: 'acc-5', name: 'Reserva Santander', bankName: 'Banco Santander', agency: '3344', accountNumber: '55667-8', initialBalance: 18900, currentBalance: 18900, accountType: 'conta_investimento', initialBalanceDate: '2026-01-01' },
+            { id: 'acc-6', name: 'Conta Digital Nubank', bankName: 'Nubank', agency: '0001', accountNumber: '99887-1', initialBalance: 4350, currentBalance: 4350, accountType: 'conta_corrente', initialBalanceDate: '2026-01-01' },
+          ];
+        }
+        return mapped;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: 'acc-1', name: 'Caixa Geral', bankName: 'Dinheiro em Espécie', agency: '0000', accountNumber: '001', initialBalance: 1500, currentBalance: 1500, accountType: 'caixa_fisico', initialBalanceDate: '2026-01-01' },
+      { id: 'acc-2', name: 'Conta Principal Itaú', bankName: 'Itaú Unibanco', agency: '1234', accountNumber: '56789-0', initialBalance: 12450.50, currentBalance: 12450.50, accountType: 'conta_corrente', initialBalanceDate: '2026-01-01' },
+      { id: 'acc-3', name: 'Poupança Caixa', bankName: 'Caixa Econômica', agency: '4321', accountNumber: '102030-4', initialBalance: 35000, currentBalance: 35000, accountType: 'conta_poupanca', initialBalanceDate: '2026-01-01' },
+      { id: 'acc-4', name: 'Movimento Bradesco', bankName: 'Banco Bradesco', agency: '0456', accountNumber: '78901-2', initialBalance: 8720, currentBalance: 8720, accountType: 'conta_corrente', initialBalanceDate: '2026-01-01' },
+      { id: 'acc-5', name: 'Reserva Santander', bankName: 'Banco Santander', agency: '3344', accountNumber: '55667-8', initialBalance: 18900, currentBalance: 18900, accountType: 'conta_investimento', initialBalanceDate: '2026-01-01' },
+      { id: 'acc-6', name: 'Conta Digital Nubank', bankName: 'Nubank', agency: '0001', accountNumber: '99887-1', initialBalance: 4350, currentBalance: 4350, accountType: 'conta_corrente', initialBalanceDate: '2026-01-01' },
+    ];
+  });
+
+  // Dashboard Bank Accounts Horizontal View state
+  const [accountsViewMode, setAccountsViewMode] = useState<'horizontal' | 'grid'>('horizontal');
+  const accountsScrollRef = React.useRef<HTMLDivElement | null>(null);
+  const [canScrollAccountsLeft, setCanScrollAccountsLeft] = useState(false);
+  const [canScrollAccountsRight, setCanScrollAccountsRight] = useState(false);
+
+  const checkAccountsScroll = () => {
+    if (!accountsScrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = accountsScrollRef.current;
+    setCanScrollAccountsLeft(scrollLeft > 10);
+    setCanScrollAccountsRight(scrollLeft + clientWidth < scrollWidth - 10);
+  };
+
+  const scrollAccounts = (direction: 'left' | 'right') => {
+    if (!accountsScrollRef.current) return;
+    const scrollAmount = 300;
+    accountsScrollRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkAccountsScroll();
+    }, 60);
+    const handleResize = () => checkAccountsScroll();
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [accounts, activeSubTab, accountsViewMode]);
+
+  const [categories, setCategories] = useState<TransactionCategory[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_categories');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 'cat-1', name: 'Dízimos', type: 'entrada', color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20', subcategories: ['Membros', 'Visitantes', 'Transferências Online'], mainCategory: 'Receitas' },
+      { id: 'cat-2', name: 'Ofertas Regulares', type: 'entrada', color: 'bg-green-500/15 text-green-500 border-green-500/20', subcategories: ['Culto de Domingo', 'Culto de Ensino', 'Círculo de Oração'], mainCategory: 'Receitas' },
+      { id: 'cat-3', name: 'Ofertas de Missões', type: 'entrada', color: 'bg-teal-500/15 text-teal-500 border-teal-500/20', subcategories: ['Sertão', 'Projetos Globais', 'Missão Urbana'], mainCategory: 'Receitas' },
+      { id: 'cat-4', name: 'Aluguel do Templo', type: 'saida', color: 'bg-red-500/15 text-red-500 border-red-500/20', subcategories: ['Sede Principal', 'Estacionamento'], mainCategory: 'Despesas Fixas' },
+      { id: 'cat-5', name: 'Energia & Água', type: 'saida', color: 'bg-amber-500/15 text-amber-500 border-amber-500/20', subcategories: ['Energia Elétrica', 'Saneamento Água'], mainCategory: 'Despesas Variáveis' },
+      { id: 'cat-6', name: 'Salários & Prebendas', type: 'saida', color: 'bg-rose-500/15 text-rose-500 border-rose-500/20', subcategories: ['Prebenda Pastoral', 'Zeladoria', 'Secretaria'], mainCategory: 'Despesas Fixas' },
+      { id: 'cat-7', name: 'Ação Social', type: 'saida', color: 'bg-sky-500/15 text-sky-500 border-sky-500/20', subcategories: ['Cestas Básicas', 'Medicamentos', 'Ajuda de Custo'], mainCategory: 'Despesas Variáveis' },
+    ];
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_transactions');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 'tx-1', description: 'Dízimo Dominical Unificado', value: 3450, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-07-12', observation: 'Dízimos cultos de domingo' },
+      { id: 'tx-2', description: 'Oferta Especial Culto de Missões', value: 850, type: 'entrada', categoryId: 'cat-3', subcategory: 'Projetos Globais', accountId: 'acc-1', date: '2026-07-12', observation: 'Destinado ao projeto África' },
+      { id: 'tx-3', description: 'Pagamento Aluguel Julho', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-07-10' },
+      { id: 'tx-4', description: 'Fatura de Energia Elétrica', value: 432.80, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-07-08' },
+      { id: 'tx-5', description: 'Cesta Básica Ação Social', value: 350, type: 'saida', categoryId: 'cat-7', subcategory: 'Cestas Básicas', accountId: 'acc-1', date: '2026-07-05', observation: 'Ajuda de custo família necessitada' },
+      
+      // Histórico de dízimos, ofertas e despesas para completar 12 meses
+      // Junho 2026
+      { id: 'tx-jun-1', description: 'Dízimos Gerais Junho', value: 3200, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-06-15' },
+      { id: 'tx-jun-2', description: 'Ofertas Regulares Junho', value: 900, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2026-06-20' },
+      { id: 'tx-jun-3', description: 'Aluguel do Templo Junho', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-06-10' },
+      { id: 'tx-jun-4', description: 'Energia Elétrica Junho', value: 380, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-06-08' },
+      
+      // Maio 2026
+      { id: 'tx-mai-1', description: 'Dízimos Gerais Maio', value: 4100, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-05-15' },
+      { id: 'tx-mai-2', description: 'Ofertas Regulares Maio', value: 1200, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2026-05-20' },
+      { id: 'tx-mai-3', description: 'Aluguel do Templo Maio', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-05-10' },
+      { id: 'tx-mai-4', description: 'Energia Elétrica Maio', value: 410, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-05-08' },
+      
+      // Abril 2026
+      { id: 'tx-abr-1', description: 'Dízimos Gerais Abril', value: 3800, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-04-15' },
+      { id: 'tx-abr-2', description: 'Ofertas Regulares Abril', value: 800, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2026-04-20' },
+      { id: 'tx-abr-3', description: 'Aluguel do Templo Abril', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-04-10' },
+      { id: 'tx-abr-4', description: 'Energia Elétrica Abril', value: 390, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-04-08' },
+
+      // Março 2026
+      { id: 'tx-mar-1', description: 'Dízimos Gerais Março', value: 3500, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-03-15' },
+      { id: 'tx-mar-2', description: 'Ofertas Regulares Março', value: 950, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2026-03-20' },
+      { id: 'tx-mar-3', description: 'Aluguel do Templo Março', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-03-10' },
+      { id: 'tx-mar-4', description: 'Energia Elétrica Março', value: 420, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-03-08' },
+
+      // Fevereiro 2026
+      { id: 'tx-fev-1', description: 'Dízimos Gerais Fevereiro', value: 3100, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-02-15' },
+      { id: 'tx-fev-2', description: 'Ofertas Regulares Fevereiro', value: 750, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2026-02-20' },
+      { id: 'tx-fev-3', description: 'Aluguel do Templo Fevereiro', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-02-10' },
+      { id: 'tx-fev-4', description: 'Energia Elétrica Fevereiro', value: 350, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-02-08' },
+
+      // Janeiro 2026
+      { id: 'tx-jan-1', description: 'Dízimos Gerais Janeiro', value: 4500, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2026-01-15' },
+      { id: 'tx-jan-2', description: 'Ofertas Regulares Janeiro', value: 1100, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2026-01-20' },
+      { id: 'tx-jan-3', description: 'Aluguel do Templo Janeiro', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2026-01-10' },
+      { id: 'tx-jan-4', description: 'Energia Elétrica Janeiro', value: 450, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2026-01-08' },
+
+      // Dezembro 2025
+      { id: 'tx-dez-1', description: 'Dízimos Especiais Dezembro', value: 5200, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-12-15' },
+      { id: 'tx-dez-2', description: 'Ofertas de Natal', value: 1500, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-12-24' },
+      { id: 'tx-dez-3', description: 'Aluguel do Templo Dezembro', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-12-10' },
+      { id: 'tx-dez-4', description: 'Energia Elétrica Dezembro', value: 480, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-12-08' },
+
+      // Novembro 2025
+      { id: 'tx-nov-1', description: 'Dízimos Novembro', value: 3400, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-11-15' },
+      { id: 'tx-nov-2', description: 'Ofertas Regulares Novembro', value: 850, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-11-20' },
+      { id: 'tx-nov-3', description: 'Aluguel do Templo Novembro', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-11-10' },
+      { id: 'tx-nov-4', description: 'Energia Elétrica Novembro', value: 400, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-11-08' },
+
+      // Outubro 2025
+      { id: 'tx-out-1', description: 'Dízimos Outubro', value: 3700, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-10-15' },
+      { id: 'tx-out-2', description: 'Ofertas Regulares Outubro', value: 900, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-10-20' },
+      { id: 'tx-out-3', description: 'Aluguel do Templo Outubro', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-10-10' },
+      { id: 'tx-out-4', description: 'Energia Elétrica Outubro', value: 390, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-10-08' },
+
+      // Setembro 2025
+      { id: 'tx-set-1', description: 'Dízimos Setembro', value: 3600, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-09-15' },
+      { id: 'tx-set-2', description: 'Ofertas Regulares Setembro', value: 780, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-09-20' },
+      { id: 'tx-set-3', description: 'Aluguel do Templo Setembro', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-09-10' },
+      { id: 'tx-set-4', description: 'Energia Elétrica Setembro', value: 370, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-09-08' },
+
+      // Agosto 2025
+      { id: 'tx-ago-1', description: 'Dízimos Agosto', value: 3300, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-08-15' },
+      { id: 'tx-ago-2', description: 'Ofertas Regulares Agosto', value: 820, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-08-20' },
+      { id: 'tx-ago-3', description: 'Aluguel do Templo Agosto', value: 2500, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-08-10' },
+      { id: 'tx-ago-4', description: 'Energia Elétrica Agosto', value: 410, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-08-08' },
+
+      // Julho 2025
+      { id: 'tx-jul25-1', description: 'Dízimos Julho', value: 3500, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-07-15' },
+      { id: 'tx-jul25-2', description: 'Ofertas Regulares Julho', value: 800, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-07-20' },
+      { id: 'tx-jul25-3', description: 'Aluguel do Templo Julho', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-07-10' },
+      { id: 'tx-jul25-4', description: 'Energia Elétrica Julho', value: 380, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-07-08' },
+
+      // Junho 2025
+      { id: 'tx-jun25-1', description: 'Dízimos Junho', value: 3100, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-06-15' },
+      { id: 'tx-jun25-2', description: 'Ofertas Regulares Junho', value: 850, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-06-20' },
+      { id: 'tx-jun25-3', description: 'Aluguel do Templo Junho', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-06-10' },
+      { id: 'tx-jun25-4', description: 'Energia Elétrica Junho', value: 360, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-06-08' },
+
+      // Maio 2025
+      { id: 'tx-mai25-1', description: 'Dízimos Maio', value: 3900, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-05-15' },
+      { id: 'tx-mai25-2', description: 'Ofertas Regulares Maio', value: 1100, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-05-20' },
+      { id: 'tx-mai25-3', description: 'Aluguel do Templo Maio', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-05-10' },
+      { id: 'tx-mai25-4', description: 'Energia Elétrica Maio', value: 390, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-05-08' },
+
+      // Abril 2025
+      { id: 'tx-abr25-1', description: 'Dízimos Abril', value: 3600, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-04-15' },
+      { id: 'tx-abr25-2', description: 'Ofertas Regulares Abril', value: 750, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-04-20' },
+      { id: 'tx-abr25-3', description: 'Aluguel do Templo Abril', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-04-10' },
+      { id: 'tx-abr25-4', description: 'Energia Elétrica Abril', value: 370, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-04-08' },
+
+      // Março 2025
+      { id: 'tx-mar25-1', description: 'Dízimos Março', value: 3300, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-03-15' },
+      { id: 'tx-mar25-2', description: 'Ofertas Regulares Março', value: 900, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-03-20' },
+      { id: 'tx-mar25-3', description: 'Aluguel do Templo Março', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-03-10' },
+      { id: 'tx-mar25-4', description: 'Energia Elétrica Março', value: 400, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-03-08' },
+
+      // Fevereiro 2025
+      { id: 'tx-fev25-1', description: 'Dízimos Fevereiro', value: 2900, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-02-15' },
+      { id: 'tx-fev25-2', description: 'Ofertas Regulares Fevereiro', value: 700, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-02-20' },
+      { id: 'tx-fev25-3', description: 'Aluguel do Templo Fevereiro', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-02-10' },
+      { id: 'tx-fev25-4', description: 'Energia Elétrica Fevereiro', value: 340, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-02-08' },
+
+      // Janeiro 2025
+      { id: 'tx-jan25-1', description: 'Dízimos Janeiro', value: 4200, type: 'entrada', categoryId: 'cat-1', subcategory: 'Membros', accountId: 'acc-2', date: '2025-01-15' },
+      { id: 'tx-jan25-2', description: 'Ofertas Regulares Janeiro', value: 1000, type: 'entrada', categoryId: 'cat-2', subcategory: 'Culto de Domingo', accountId: 'acc-1', date: '2025-01-20' },
+      { id: 'tx-jan25-3', description: 'Aluguel do Templo Janeiro', value: 2400, type: 'saida', categoryId: 'cat-4', subcategory: 'Sede Principal', accountId: 'acc-2', date: '2025-01-10' },
+      { id: 'tx-jan25-4', description: 'Energia Elétrica Janeiro', value: 420, type: 'saida', categoryId: 'cat-5', subcategory: 'Energia Elétrica', accountId: 'acc-2', date: '2025-01-08' }
+    ];
+  });
+
+  const [transfers, setTransfers] = useState<Transfer[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_transfers');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 'tf-1', sourceAccountId: 'acc-1', destinationAccountId: 'acc-2', value: 1000, date: '2026-07-13', observation: 'Depósito de dinheiro do caixa em conta' },
+      { id: 'tf-2', sourceAccountId: 'acc-2', destinationAccountId: 'acc-3', value: 2000, date: '2026-07-11', observation: 'Aporte poupança reformas' }
+    ];
+  });
+
+  // --- ATIVOS IMOBILIZADOS / PATRIMÔNIO (PARA BALANÇO PATRIMONIAL) ---
+  const [fixedAssets, setFixedAssets] = useState<FixedAsset[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_fixed_assets');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      { id: 'fa-1', name: 'Templo Sede (Imóvel & Terreno Próprio)', category: 'Imóveis e Terrenos', acquisitionValue: 580000, currentValue: 650000, acquisitionDate: '2023-03-15', description: 'Edificação principal com 480m²' },
+      { id: 'fa-2', name: 'Van Renault Master 16L', category: 'Veículos', acquisitionValue: 160000, currentValue: 135000, acquisitionDate: '2024-05-10', description: 'Transporte ministerial e ação social' },
+      { id: 'fa-3', name: 'Sistema de Som e Instrumentos Musicais', category: 'Equipamentos e Instrumentos', acquisitionValue: 52000, currentValue: 45000, acquisitionDate: '2024-11-20', description: 'Mesa digital Behringer X32, microfones, bateria eletrônica e teclado Roland' },
+      { id: 'fa-4', name: 'Climatização e Iluminação Cênica', category: 'Mobiliário e TI', acquisitionValue: 38000, currentValue: 32000, acquisitionDate: '2025-02-18', description: '4 aparelhos inverter 60k BTU e canhões LED' },
+      { id: 'fa-5', name: 'Mobiliário e 250 Cadeiras Estofadas', category: 'Mobiliário e TI', acquisitionValue: 30000, currentValue: 26000, acquisitionDate: '2024-08-12', description: 'Cadeiras acolchoadas, púlpito e mesa de apoio' },
+      { id: 'fa-6', name: 'Equipamentos de Transmissão e Informática', category: 'Mobiliário e TI', acquisitionValue: 24000, currentValue: 21500, acquisitionDate: '2025-06-05', description: '2 Câmeras 4K Sony, switcher Blackmagic e PC de transmissão' }
+    ];
+  });
+
+  // --- BALANÇO PATRIMONIAL FILTERS & MODAL STATE ---
+  const [balancoBaseYear, setBalancoBaseYear] = useState<string>('2025');
+  const [balancoCompYear, setBalancoCompYear] = useState<string>('2024');
+  const [balancoPeriodScope, setBalancoPeriodScope] = useState<string>('all');
+  const [balancoCompareEnabled, setBalancoCompareEnabled] = useState<boolean>(true);
+  const [showAddAssetModal, setShowAddAssetModal] = useState<boolean>(false);
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [assetFormName, setAssetFormName] = useState<string>('');
+  const [assetFormCategory, setAssetFormCategory] = useState<FixedAsset['category']>('Imóveis e Terrenos');
+  const [assetFormAcqValue, setAssetFormAcqValue] = useState<string>('');
+  const [assetFormCurValue, setAssetFormCurValue] = useState<string>('');
+  const [assetFormDate, setAssetFormDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [assetFormDesc, setAssetFormDesc] = useState<string>('');
+
+  // --- DEMONSTRATIVO (DRE / FLUXO DE CAIXA) STATE ---
+  const [dreSelectedYear, setDreSelectedYear] = useState<string>('2026');
+  const [dreExpandedCategories, setDreExpandedCategories] = useState<Record<string, boolean>>({});
+  const [dreExpandAll, setDreExpandAll] = useState<boolean>(true);
+
+  // --- DASHBOARD FILTER STATE ---
+  const [dashSelectedYear, setDashSelectedYear] = useState<string>('all');
+  const [dashSelectedMonth, setDashSelectedMonth] = useState<string>('all');
+  const [showPrintReportModal, setShowPrintReportModal] = useState<boolean>(false);
+  const [showPrintBalancoModal, setShowPrintBalancoModal] = useState<boolean>(false);
+  const [showPrintDREModal, setShowPrintDREModal] = useState<boolean>(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
+  const [isGeneratingBalancoPDF, setIsGeneratingBalancoPDF] = useState<boolean>(false);
+  const [isGeneratingDREPDF, setIsGeneratingDREPDF] = useState<boolean>(false);
+
+  const monthsList = [
+    { value: '01', label: 'Janeiro' },
+    { value: '02', label: 'Fevereiro' },
+    { value: '03', label: 'Março' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Maio' },
+    { value: '06', label: 'Junho' },
+    { value: '07', label: 'Julho' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Setembro' },
+    { value: '10', label: 'Outubro' },
+    { value: '11', label: 'Novembro' },
+    { value: '12', label: 'Dezembro' }
+  ];
+
+  const availableDashYears = Array.from(new Set([
+    new Date().getFullYear().toString(),
+    ...transactions.map(t => t.date.substring(0, 4))
+  ])).sort().reverse();
+
+  // --- LOCALSTORAGE SYNC ---
+  useEffect(() => { localStorage.setItem('admmnv_finance_accounts', JSON.stringify(accounts)); }, [accounts]);
+  useEffect(() => { localStorage.setItem('admmnv_finance_categories', JSON.stringify(categories)); }, [categories]);
+  useEffect(() => { localStorage.setItem('admmnv_finance_transactions', JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem('admmnv_finance_transfers', JSON.stringify(transfers)); }, [transfers]);
+  useEffect(() => { localStorage.setItem('admmnv_finance_fixed_assets', JSON.stringify(fixedAssets)); }, [fixedAssets]);
+
+  // --- DYNAMIC BALANCE RECALCULATION ---
+  useEffect(() => {
+    const updatedAccounts = accounts.map(acc => {
+      let balance = Number(acc.initialBalance);
+      
+      transactions.forEach(tx => {
+        if (tx.accountId === acc.id) {
+          if (tx.type === 'entrada') balance += tx.value;
+          else balance -= tx.value;
+        }
+      });
+
+      transfers.forEach(tf => {
+        if (tf.sourceAccountId === acc.id) balance -= tf.value;
+        if (tf.destinationAccountId === acc.id) balance += tf.value;
+      });
+
+      return { ...acc, currentBalance: balance };
+    });
+
+    if (JSON.stringify(updatedAccounts) !== JSON.stringify(accounts)) {
+      setAccounts(updatedAccounts);
+    }
+  }, [transactions, transfers]);
+
+  // --- FINANCIAL CALCULATIONS REMOVED TO BE MOVED BELOW STATE DECLARATIONS ---
+
+  // --- MODAL STATE ---
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // --- EDITING & FILTER STATES FOR TRANSACTIONS ---
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [txSelectedYear, setTxSelectedYear] = useState<string>('all');
+  const [txSelectedMonth, setTxSelectedMonth] = useState<string>('all');
+  const [txSelectedPeriod, setTxSelectedPeriod] = useState<string>('all');
+  const [txStartDateFilter, setTxStartDateFilter] = useState<string>('');
+  const [txEndDateFilter, setTxEndDateFilter] = useState<string>('');
+  const [txSelectedAccountId, setTxSelectedAccountId] = useState<string>('all');
+  const [txSelectedCategoryId, setTxSelectedCategoryId] = useState<string>('all');
+  const [txStatusFilter, setTxStatusFilter] = useState<string>('all');
+  const [txFilterType, setTxFilterType] = useState<'all' | 'entrada' | 'saida' | 'transfer'>('all');
+  const [txSortOrder, setTxSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  // --- FORM STATES ---
+  const [txDescription, setTxDescription] = useState('');
+  const [txValue, setTxValue] = useState('');
+  const [txType, setTxType] = useState<'entrada' | 'saida'>('entrada');
+  const [txCategoryId, setTxCategoryId] = useState('');
+  const [txSubcategory, setTxSubcategory] = useState('');
+  const [txAccountId, setTxAccountId] = useState('');
+  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+  const [txObservation, setTxObservation] = useState('');
+
+  // --- NEW FORM STATES FOR ENTRADA/SAIDA ---
+  const [txRecebido, setTxRecebido] = useState<'sim' | 'nao'>('sim');
+  const [txRecebidoDe, setTxRecebidoDe] = useState('');
+  const [txDataRecebido, setTxDataRecebido] = useState(new Date().toISOString().split('T')[0]);
+  const [txDataLancamento, setTxDataLancamento] = useState(new Date().toISOString().split('T')[0]);
+  const [txParcelamento, setTxParcelamento] = useState<'sim' | 'nao' | 'recorrente'>('nao');
+  const [txFrequenciaParcelas, setTxFrequenciaParcelas] = useState<'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | ''>('mensal');
+  const [txNumeroParcelas, setTxNumeroParcelas] = useState('1');
+  const [txFormaPagamento, setTxFormaPagamento] = useState<'pix' | 'boleto' | 'cartão' | 'dinheiro' | 'débito automático' | 'transferência' | 'cheque' | ''>('pix');
+
+  const [txPago, setTxPago] = useState<'sim' | 'nao'>('sim');
+  const [txVaiPagarQuem, setTxVaiPagarQuem] = useState('');
+  const [txDataVencimento, setTxDataVencimento] = useState(new Date().toISOString().split('T')[0]);
+  
+  const [txReceiptImage, setTxReceiptImage] = useState<string | null>(null);
+  const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const mediaStreamRef = React.useRef<MediaStream | null>(null);
+
+  const startCamera = async () => {
+    setCameraActive(true);
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err: any) {
+      console.error('Erro ao acessar a câmera:', err);
+      setCameraError('Não foi possível acessar a câmera. Verifique as permissões de acesso à câmera do seu navegador.');
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setTxReceiptImage(dataUrl);
+      }
+      stopCamera();
+    }
+  };
+
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTxReceiptImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  useEffect(() => {
+    if (!showTxModal) {
+      stopCamera();
+    }
+  }, [showTxModal]);
+  
+  const [closeOnSave, setCloseOnSave] = useState(true);
+  const [showInlineCategory, setShowInlineCategory] = useState(false);
+  const [inlineCategoryName, setInlineCategoryName] = useState('');
+  const [inlineCategorySubcategories, setInlineCategorySubcategories] = useState('');
+
+  const [showInlineSubcategory, setShowInlineSubcategory] = useState(false);
+  const [inlineSubcategoryName, setInlineSubcategoryName] = useState('');
+
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showTfSuggestions, setShowTfSuggestions] = useState(false);
+
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const [accName, setAccName] = useState('');
+  const [accBankName, setAccBankName] = useState('');
+  const [accAgency, setAccAgency] = useState('');
+  const [accNumber, setAccNumber] = useState('');
+  const [accInitialBalance, setAccInitialBalance] = useState('');
+  const [accImage, setAccImage] = useState('');
+  const [accType, setAccType] = useState<BankAccountType>('conta_corrente');
+  const [accInitialBalanceDate, setAccInitialBalanceDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [tfSourceId, setTfSourceId] = useState('');
+  const [tfDestId, setTfDestId] = useState('');
+  const [tfValue, setTfValue] = useState('');
+  const [tfDate, setTfDate] = useState(new Date().toISOString().split('T')[0]);
+  const [tfObservation, setTfObservation] = useState('');
+
+  const [catName, setCatName] = useState('');
+  const [catType, setCatType] = useState<'entrada' | 'saida' | 'ambas'>('entrada');
+  const [catColor, setCatColor] = useState('emerald');
+  const [catMainCategory, setCatMainCategory] = useState<'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas'>('Despesas Fixas');
+  const [catSubcategories, setCatSubcategories] = useState<string[]>([]);
+  const [modalNewSubcategory, setModalNewSubcategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState<TransactionCategory | null>(null);
+  const [analyticsFilter, setAnalyticsFilter] = useState<'entrada' | 'saida' | 'saldo'>('entrada');
+
+  const [newSubcategoryName, setNewSubcategoryName] = useState<Record<string, string>>({});
+
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    warningNote?: string;
+    confirmButtonText?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // --- REPORTS FILTER STATE ---
+  const [reportType, setReportType] = useState<'demonstrativo' | 'balanco_patrimonial'>('demonstrativo');
+
+  // Dynamic available years for Balanço Patrimonial comparison
+  const balancoAvailableYears = React.useMemo(() => {
+    const years = new Set<string>();
+    transactions.forEach(t => {
+      const d = t.dataRecebido || t.dataLancamento || t.date;
+      if (d && d.length >= 4) years.add(d.substring(0, 4));
+    });
+    transfers.forEach(tf => {
+      if (tf.date && tf.date.length >= 4) years.add(tf.date.substring(0, 4));
+    });
+    fixedAssets.forEach(fa => {
+      if (fa.acquisitionDate && fa.acquisitionDate.length >= 4) years.add(fa.acquisitionDate.substring(0, 4));
+    });
+    years.add('2026');
+    years.add('2025');
+    years.add('2024');
+    return Array.from(years).sort().reverse();
+  }, [transactions, transfers, fixedAssets]);
+
+  // --- DEMONSTRATIVO (DRE / FLUXO DE CAIXA) CALCULATION HOOK ---
+  const dreCalculations = React.useMemo(() => {
+    const DRE_MONTHS_LIST = [
+      { key: '01', label: 'Jan', name: 'Janeiro' },
+      { key: '02', label: 'Fev', name: 'Fevereiro' },
+      { key: '03', label: 'Mar', name: 'Março' },
+      { key: '04', label: 'Abr', name: 'Abril' },
+      { key: '05', label: 'Mai', name: 'Maio' },
+      { key: '06', label: 'Jun', name: 'Junho' },
+      { key: '07', label: 'Jul', name: 'Julho' },
+      { key: '08', label: 'Ago', name: 'Agosto' },
+      { key: '09', label: 'Set', name: 'Setembro' },
+      { key: '10', label: 'Out', name: 'Outubro' },
+      { key: '11', label: 'Nov', name: 'Novembro' },
+      { key: '12', label: 'Dez', name: 'Dezembro' }
+    ];
+
+    const cutoffYearStart = `${dreSelectedYear}-01-01`;
+
+    let yearInitialCash = 0;
+    accounts.forEach(acc => {
+      let b = Number(acc.initialBalance);
+      transactions.forEach(t => {
+        const d = t.dataRecebido || t.dataLancamento || t.date;
+        if (t.accountId === acc.id && d < cutoffYearStart) {
+          if (t.type === 'entrada') b += t.value;
+          else b -= t.value;
+        }
+      });
+      transfers.forEach(tf => {
+        if (tf.date < cutoffYearStart) {
+          if (tf.destinationAccountId === acc.id) b += tf.value;
+          if (tf.sourceAccountId === acc.id) b -= tf.value;
+        }
+      });
+      yearInitialCash += b;
+    });
+
+    const monthlyInflow = Array(12).fill(0);
+    const monthlyOutflow = Array(12).fill(0);
+
+    transactions.forEach(t => {
+      const d = t.dataRecebido || t.dataLancamento || t.date;
+      if (d && d.startsWith(`${dreSelectedYear}-`)) {
+        const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+        if (mIdx >= 0 && mIdx < 12) {
+          if (t.type === 'entrada') monthlyInflow[mIdx] += t.value;
+          else if (t.type === 'saida') monthlyOutflow[mIdx] += t.value;
+        }
+      }
+    });
+
+    const monthlyResult = monthlyInflow.map((inf, idx) => inf - monthlyOutflow[idx]);
+    const monthlyStartCash = Array(12).fill(0);
+    const monthlyEndCash = Array(12).fill(0);
+
+    for (let i = 0; i < 12; i++) {
+      monthlyStartCash[i] = i === 0 ? yearInitialCash : monthlyEndCash[i - 1];
+      monthlyEndCash[i] = monthlyStartCash[i] + monthlyResult[i];
+    }
+
+    const totalInflowYear = monthlyInflow.reduce((a, b) => a + b, 0);
+    const totalOutflowYear = monthlyOutflow.reduce((a, b) => a + b, 0);
+    const totalResultYear = totalInflowYear - totalOutflowYear;
+    const endCashYear = monthlyEndCash[11];
+
+    const incomeCategories = categories
+      .filter(c => c.type === 'entrada' || c.type === 'ambas' || 
+        transactions.some(t => t.categoryId === c.id && t.type === 'entrada' && (t.dataRecebido || t.dataLancamento || t.date).startsWith(`${dreSelectedYear}-`))
+      )
+      .map(cat => {
+        const months = Array(12).fill(0);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'entrada') {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) {
+              const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+              if (mIdx >= 0 && mIdx < 12) months[mIdx] += t.value;
+            }
+          }
+        });
+        const total = months.reduce((a, b) => a + b, 0);
+
+        const subNames = new Set<string>(cat.subcategories || []);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'entrada' && t.subcategory) {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) subNames.add(t.subcategory);
+          }
+        });
+
+        const subs = Array.from(subNames).map(sub => {
+          const subMonths = Array(12).fill(0);
+          transactions.forEach(t => {
+            if (t.categoryId === cat.id && t.type === 'entrada' && t.subcategory === sub) {
+              const d = t.dataRecebido || t.dataLancamento || t.date;
+              if (d && d.startsWith(`${dreSelectedYear}-`)) {
+                const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+                if (mIdx >= 0 && mIdx < 12) subMonths[mIdx] += t.value;
+              }
+            }
+          });
+          const subTotal = subMonths.reduce((a, b) => a + b, 0);
+          return { name: sub, months: subMonths, total: subTotal };
+        }).filter(s => s.total > 0 || (cat.subcategories && cat.subcategories.includes(s.name)));
+
+        return {
+          ...cat,
+          months,
+          total,
+          subcategoriesList: subs
+        };
+      })
+      .filter(c => c.total > 0 || (c.type === 'entrada'));
+
+    const expenseCategories = categories
+      .filter(c => c.type === 'saida' || c.type === 'ambas' || 
+        transactions.some(t => t.categoryId === c.id && t.type === 'saida' && (t.dataLancamento || t.date).startsWith(`${dreSelectedYear}-`))
+      )
+      .map(cat => {
+        const months = Array(12).fill(0);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'saida') {
+            const d = t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) {
+              const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+              if (mIdx >= 0 && mIdx < 12) months[mIdx] += t.value;
+            }
+          }
+        });
+        const total = months.reduce((a, b) => a + b, 0);
+
+        const subNames = new Set<string>(cat.subcategories || []);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'saida' && t.subcategory) {
+            const d = t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) subNames.add(t.subcategory);
+          }
+        });
+
+        const subs = Array.from(subNames).map(sub => {
+          const subMonths = Array(12).fill(0);
+          transactions.forEach(t => {
+            if (t.categoryId === cat.id && t.type === 'saida' && t.subcategory === sub) {
+              const d = t.dataLancamento || t.date;
+              if (d && d.startsWith(`${dreSelectedYear}-`)) {
+                const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+                if (mIdx >= 0 && mIdx < 12) subMonths[mIdx] += t.value;
+              }
+            }
+          });
+          const subTotal = subMonths.reduce((a, b) => a + b, 0);
+          return { name: sub, months: subMonths, total: subTotal };
+        }).filter(s => s.total > 0 || (cat.subcategories && cat.subcategories.includes(s.name)));
+
+        return {
+          ...cat,
+          months,
+          total,
+          subcategoriesList: subs
+        };
+      })
+      .filter(c => c.total > 0 || (c.type === 'saida'));
+
+    return {
+      DRE_MONTHS_LIST,
+      yearInitialCash,
+      monthlyInflow,
+      monthlyOutflow,
+      monthlyResult,
+      monthlyStartCash,
+      monthlyEndCash,
+      totalInflowYear,
+      totalOutflowYear,
+      totalResultYear,
+      endCashYear,
+      incomeCategories,
+      expenseCategories
+    };
+  }, [dreSelectedYear, accounts, transactions, transfers, categories]);
+
+  const getBalancoPeriodDateRange = (year: string, scope: string) => {
+    if (scope === 'all') {
+      return { start: `${year}-01-01`, end: `${year}-12-31`, label: `Exercício de ${year} (Ano Completo)` };
+    }
+    if (scope === '1s') {
+      return { start: `${year}-01-01`, end: `${year}-06-30`, label: `1º Semestre de ${year} (Jan - Jun)` };
+    }
+    if (scope === '2s') {
+      return { start: `${year}-07-01`, end: `${year}-12-31`, label: `2º Semestre de ${year} (Jul - Dez)` };
+    }
+    if (scope === '1t') {
+      return { start: `${year}-01-01`, end: `${year}-03-31`, label: `1º Trimestre de ${year} (Jan - Mar)` };
+    }
+    if (scope === '2t') {
+      return { start: `${year}-04-01`, end: `${year}-06-30`, label: `2º Trimestre de ${year} (Abr - Jun)` };
+    }
+    if (scope === '3t') {
+      return { start: `${year}-07-01`, end: `${year}-09-30`, label: `3º Trimestre de ${year} (Jul - Set)` };
+    }
+    if (scope === '4t') {
+      return { start: `${year}-10-01`, end: `${year}-12-31`, label: `4º Trimestre de ${year} (Out - Dez)` };
+    }
+    const monthNames: Record<string, string> = {
+      '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+      '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+      '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+    };
+    return { start: `${year}-${scope}-01`, end: `${year}-${scope}-31`, label: `${monthNames[scope] || scope} de ${year}` };
+  };
+
+  const getPeriodClosingDescription = (year: string, scope: string) => {
+    if (scope === 'all') return `31 DE DEZEMBRO DE ${year}`;
+    if (scope === '1s') return `30 DE JUNHO DE ${year}`;
+    if (scope === '2s') return `31 DE DEZEMBRO DE ${year}`;
+    if (scope === '1t') return `31 DE MARÇO DE ${year}`;
+    if (scope === '2t') return `30 DE JUNHO DE ${year}`;
+    if (scope === '3t') return `30 DE SETEMBRO DE ${year}`;
+    if (scope === '4t') return `31 DE DEZEMBRO DE ${year}`;
+    const monthEndMap: Record<string, string> = {
+      '01': `31 DE JANEIRO DE ${year}`,
+      '02': `28 DE FEVEREIRO DE ${year}`,
+      '03': `31 DE MARÇO DE ${year}`,
+      '04': `30 DE ABRIL DE ${year}`,
+      '05': `31 DE MAIO DE ${year}`,
+      '06': `30 DE JUNHO DE ${year}`,
+      '07': `31 DE JULHO DE ${year}`,
+      '08': `31 DE AGOSTO DE ${year}`,
+      '09': `30 DE SETEMBRO DE ${year}`,
+      '10': `31 DE OUTUBRO DE ${year}`,
+      '11': `30 DE NOVEMBRO DE ${year}`,
+      '12': `31 DE DEZEMBRO DE ${year}`
+    };
+    return monthEndMap[scope] || `31 DE DEZEMBRO DE ${year}`;
+  };
+
+  const getAccountBalanceAtDate = (accId: string, cutoffDate: string) => {
+    const acc = accounts.find(a => a.id === accId);
+    if (!acc) return 0;
+    let bal = Number(acc.initialBalance);
+    transactions.forEach(t => {
+      const txDate = t.dataRecebido || t.dataLancamento || t.date;
+      if (t.accountId === accId && txDate <= cutoffDate) {
+        if (t.type === 'entrada') bal += t.value;
+        else bal -= t.value;
+      }
+    });
+    transfers.forEach(tf => {
+      if (tf.date <= cutoffDate) {
+        if (tf.destinationAccountId === accId) bal += tf.value;
+        if (tf.sourceAccountId === accId) bal -= tf.value;
+      }
+    });
+    return bal;
+  };
+
+  // --- FINANCIAL CALCULATIONS ---
+  const filteredDashboardTxs = transactions.filter(tx => {
+    if (activeSubTab === 'dashboard') {
+      const txYear = tx.date.substring(0, 4);
+      const txMonth = tx.date.substring(5, 7);
+      if (dashSelectedYear !== 'all' && txYear !== dashSelectedYear) return false;
+      if (dashSelectedMonth !== 'all' && txMonth !== dashSelectedMonth) return false;
+    } else if (activeSubTab === 'transactions') {
+      const category = categories.find(c => c.id === tx.categoryId);
+      const account = accounts.find(a => a.id === tx.accountId);
+      const term = searchQuery.toLowerCase();
+      const matchesSearch = tx.description.toLowerCase().includes(term) ||
+        (category && category.name.toLowerCase().includes(term)) ||
+        (account && account.name.toLowerCase().includes(term)) ||
+        (tx.subcategory && tx.subcategory.toLowerCase().includes(term)) ||
+        tx.value.toString().includes(term);
+
+      if (!matchesSearch) return false;
+
+      // Filter by Account
+      if (txSelectedAccountId !== 'all' && tx.accountId !== txSelectedAccountId) {
+        return false;
+      }
+
+      // Filter by Year
+      if (txSelectedYear !== 'all') {
+        const txYear = tx.date.substring(0, 4);
+        if (txYear !== txSelectedYear) return false;
+      }
+
+      // Filter by Month
+      if (txSelectedMonth !== 'all') {
+        const txMonth = tx.date.substring(5, 7);
+        if (txMonth !== txSelectedMonth) return false;
+      }
+
+      // Filter by Period
+      if (txSelectedPeriod !== 'all') {
+        if (txSelectedPeriod === 'custom') {
+          if (txStartDateFilter && tx.date < txStartDateFilter) return false;
+          if (txEndDateFilter && tx.date > txEndDateFilter) return false;
+        } else {
+          const txDateObj = new Date(tx.date + 'T00:00:00');
+          const now = new Date();
+          const diffTime = now.getTime() - txDateObj.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          if (txSelectedPeriod === '7d' && (diffDays > 7 || diffDays < 0)) return false;
+          if (txSelectedPeriod === '30d' && (diffDays > 30 || diffDays < 0)) return false;
+          if (txSelectedPeriod === '90d' && (diffDays > 90 || diffDays < 0)) return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  const totalInflow = filteredDashboardTxs.filter(tx => tx.type === 'entrada').reduce((sum, tx) => sum + tx.value, 0);
+  const totalOutflow = filteredDashboardTxs.filter(tx => tx.type === 'saida').reduce((sum, tx) => sum + tx.value, 0);
+  const netCashFlow = totalInflow - totalOutflow;
+  const totalBankBalance = accounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
+
+  // --- MINDMAP DATA & BRANCHES CALCULATIONS ---
+  const totalDespesasFixas = filteredDashboardTxs
+    .filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      return cat?.mainCategory === 'Despesas Fixas';
+    })
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const totalDespesasVariaveis = filteredDashboardTxs
+    .filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      return cat?.mainCategory === 'Despesas Variáveis';
+    })
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const totalInvestimentos = filteredDashboardTxs
+    .filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      return cat?.mainCategory === 'Investimentos';
+    })
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const totalOutros = filteredDashboardTxs
+    .filter(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      return cat?.mainCategory === 'Receitas';
+    })
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const receitaComprometidaPct = totalInflow > 0 
+    ? Math.min(100, Math.round(((totalDespesasFixas + totalDespesasVariaveis) / totalInflow) * 100))
+    : 0;
+
+  // Investment sub-branches
+  const investmentCats = categories.filter(c => c.mainCategory === 'Investimentos');
+  const rawInvBranches = investmentCats.map(c => ({
+    name: c.name,
+    val: filteredDashboardTxs.filter(t => t.categoryId === c.id).reduce((sum, t) => sum + t.value, 0)
+  }));
+  const investmentBranches = [...rawInvBranches];
+  const defaultInvs = ['Nubank', 'CDB IPCA', 'Ações', 'Fundos FII'];
+  while (investmentBranches.length < 3) {
+    const currentNames = investmentBranches.map(b => b.name);
+    const nextDefault = defaultInvs.find(d => !currentNames.includes(d)) || 'Outros Inv';
+    investmentBranches.push({ name: nextDefault, val: 0 });
+  }
+
+  // Variable expenses sub-branches
+  const variableCats = categories.filter(c => c.mainCategory === 'Despesas Variáveis');
+  const rawVarBranches = variableCats.map(c => ({
+    name: c.name,
+    val: filteredDashboardTxs.filter(t => t.categoryId === c.id).reduce((sum, t) => sum + t.value, 0)
+  }));
+  const variableBranches = [...rawVarBranches];
+  const defaultVars = ['Supermercado', 'Lazer & Viagens', 'Transporte/Uber', 'Restaurante'];
+  while (variableBranches.length < 3) {
+    const currentNames = variableBranches.map(b => b.name);
+    const nextDefault = defaultVars.find(d => !currentNames.includes(d)) || 'Outras Desp';
+    variableBranches.push({ name: nextDefault, val: 0 });
+  }
+
+  // --- FORM SUBMISSIONS ---
+  const handleCreateInlineCategory = () => {
+    if (!inlineCategoryName.trim()) return;
+    const subsArray = inlineCategorySubcategories
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    const colorsList: Record<string, string> = {
+      emerald: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20',
+      blue: 'bg-blue-500/15 text-blue-500 border-blue-500/20',
+      purple: 'bg-purple-500/15 text-purple-500 border-purple-500/20',
+      amber: 'bg-amber-500/15 text-amber-500 border-amber-500/20',
+      rose: 'bg-rose-500/15 text-rose-500 border-rose-500/20',
+      sky: 'bg-sky-500/15 text-sky-500 border-sky-500/20',
+      indigo: 'bg-indigo-500/15 text-indigo-500 border-indigo-500/20',
+    };
+    const typeColors = txType === 'entrada' ? ['emerald', 'blue', 'indigo'] : ['rose', 'amber', 'sky'];
+    const randomColor = typeColors[Math.floor(Math.random() * typeColors.length)];
+    const newCatId = `cat-${Date.now()}`;
+    const newCat: TransactionCategory = {
+      id: newCatId,
+      name: inlineCategoryName.trim(),
+      type: txType,
+      color: colorsList[randomColor] || colorsList.emerald,
+      subcategories: subsArray,
+      mainCategory: txType === 'entrada' ? 'Receitas' : 'Despesas Variáveis'
+    };
+    setCategories([...categories, newCat]);
+    setTxCategoryId(newCatId);
+    setTxSubcategory(subsArray[0] || '');
+    setInlineCategoryName('');
+    setInlineCategorySubcategories('');
+    setShowInlineCategory(false);
+  };
+
+  const resetTxForm = () => {
+    setTxDescription('');
+    setTxValue('');
+    setTxType('entrada');
+    setTxCategoryId('');
+    setTxSubcategory('');
+    setTxAccountId('');
+    setTxDate(new Date().toISOString().split('T')[0]);
+    setTxObservation('');
+    
+    // new fields reset
+    setTxRecebido('sim');
+    setTxRecebidoDe('');
+    setTxDataRecebido(new Date().toISOString().split('T')[0]);
+    setTxDataLancamento(new Date().toISOString().split('T')[0]);
+    setTxParcelamento('nao');
+    setTxFrequenciaParcelas('mensal');
+    setTxNumeroParcelas('1');
+    setTxFormaPagamento('pix');
+    setTxPago('sim');
+    setTxVaiPagarQuem('');
+    setTxDataVencimento(new Date().toISOString().split('T')[0]);
+    setTxReceiptImage(null);
+    setShowInlineCategory(false);
+    setInlineCategoryName('');
+    setInlineCategorySubcategories('');
+    setShowInlineSubcategory(false);
+    setInlineSubcategoryName('');
+    setShowSuggestions(false);
+  };
+
+  const handleAddTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    const valueNum = parseFloat(txValue);
+    if (!txDescription.trim() || isNaN(valueNum) || valueNum <= 0 || !txCategoryId || !txAccountId) {
+      alert('Por favor, preencha todos os campos corretamente.');
+      return;
+    }
+
+    if (editingTx) {
+      setTransactions(transactions.map(t => {
+        if (t.id === editingTx.id) {
+          return {
+            ...t,
+            description: txDescription,
+            value: valueNum,
+            type: txType,
+            categoryId: txCategoryId,
+            subcategory: txSubcategory || undefined,
+            accountId: txAccountId,
+            date: txType === 'entrada' ? txDataLancamento : txDataLancamento, // default main date
+            observation: txObservation.trim() || undefined,
+            recebido: txType === 'entrada' ? txRecebido : undefined,
+            recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
+            dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
+            dataLancamento: txDataLancamento,
+            parcelamento: txParcelamento,
+            frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
+            numeroParcelas: txParcelamento === 'sim' ? parseInt(txNumeroParcelas) || 1 : undefined,
+            formaPagamento: txFormaPagamento || undefined,
+            pago: txType === 'saida' ? txPago : undefined,
+            vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
+            dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
+            receiptImage: txReceiptImage || undefined,
+          };
+        }
+        return t;
+      }));
+      setEditingTx(null);
+    } else {
+      const newTx: Transaction = {
+        id: `tx-${Date.now()}`,
+        description: txDescription,
+        value: valueNum,
+        type: txType,
+        categoryId: txCategoryId,
+        subcategory: txSubcategory || undefined,
+        accountId: txAccountId,
+        date: txDataLancamento,
+        observation: txObservation.trim() || undefined,
+        recebido: txType === 'entrada' ? txRecebido : undefined,
+        recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
+        dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
+        dataLancamento: txDataLancamento,
+        parcelamento: txParcelamento,
+        frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
+        numeroParcelas: txParcelamento === 'sim' ? parseInt(txNumeroParcelas) || 1 : undefined,
+        formaPagamento: txFormaPagamento || undefined,
+        pago: txType === 'saida' ? txPago : undefined,
+        vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
+        dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
+        receiptImage: txReceiptImage || undefined,
+      };
+      setTransactions([newTx, ...transactions]);
+    }
+    
+    if (closeOnSave) {
+      setShowTxModal(false);
+      resetTxForm();
+    } else {
+      // Save and continue: only reset text fields, keep modal open
+      setTxDescription('');
+      setTxValue('');
+      setTxObservation('');
+      setTxRecebidoDe('');
+      setTxVaiPagarQuem('');
+      setTxReceiptImage(null);
+      // Keep category/account/dates for faster entry if they are typing similar records
+    }
+  };
+
+  const handleSaveAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    const initialNum = parseFloat(accInitialBalance);
+    if (!accName.trim() || !accBankName.trim() || !accNumber.trim() || isNaN(initialNum)) {
+      return;
+    }
+
+    const resolvedDate = accInitialBalanceDate.trim() || new Date().toISOString().split('T')[0];
+
+    if (editingAccount) {
+      // Editing existing account
+      const updatedAccounts = accounts.map(a => {
+        if (a.id === editingAccount.id) {
+          const initialDiff = initialNum - a.initialBalance;
+          return {
+            ...a,
+            name: accName.trim(),
+            bankName: accBankName.trim(),
+            agency: accAgency.trim() || '0000',
+            accountNumber: accNumber.trim(),
+            initialBalance: initialNum,
+            currentBalance: a.currentBalance + initialDiff,
+            image: accImage.trim() || undefined,
+            accountType: accType,
+            initialBalanceDate: resolvedDate
+          };
+        }
+        return a;
+      });
+      setAccounts(updatedAccounts);
+    } else {
+      // Creating new account
+      const newAcc: BankAccount = {
+        id: `acc-${Date.now()}`,
+        name: accName.trim(),
+        bankName: accBankName.trim(),
+        agency: accAgency.trim() || '0000',
+        accountNumber: accNumber.trim(),
+        initialBalance: initialNum,
+        currentBalance: initialNum,
+        image: accImage.trim() || undefined,
+        accountType: accType,
+        initialBalanceDate: resolvedDate
+      };
+      setAccounts([...accounts, newAcc]);
+    }
+
+    setShowAccountModal(false);
+    setEditingAccount(null);
+
+    // Reset Form
+    setAccName('');
+    setAccBankName('');
+    setAccAgency('');
+    setAccNumber('');
+    setAccInitialBalance('');
+    setAccImage('');
+    setAccType('conta_corrente');
+    setAccInitialBalanceDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const handleEditAccount = (acc: BankAccount) => {
+    setEditingAccount(acc);
+    setAccName(acc.name);
+    setAccBankName(acc.bankName);
+    setAccAgency(acc.agency);
+    setAccNumber(acc.accountNumber);
+    setAccInitialBalance(acc.initialBalance.toString());
+    setAccImage(acc.image || '');
+    setAccType((acc.accountType as BankAccountType) || 'conta_corrente');
+    setAccInitialBalanceDate(acc.initialBalanceDate || new Date().toISOString().split('T')[0]);
+    setShowAccountModal(true);
+  };
+
+  const handleAddTransfer = (e: React.FormEvent) => {
+    e.preventDefault();
+    const valNum = parseFloat(tfValue);
+    if (!tfSourceId || !tfDestId || isNaN(valNum) || valNum <= 0) {
+      alert('Por favor, preencha todos os campos.');
+      return;
+    }
+    if (tfSourceId === tfDestId) {
+      alert('A conta de origem não pode ser igual à de destino.');
+      return;
+    }
+
+    const newTransfer: Transfer = {
+      id: `tf-${Date.now()}`,
+      sourceAccountId: tfSourceId,
+      destinationAccountId: tfDestId,
+      value: valNum,
+      date: tfDate,
+      observation: tfObservation.trim() || undefined
+    };
+
+    setTransfers([newTransfer, ...transfers]);
+    setShowTransferModal(false);
+
+    // Reset Form
+    setTfSourceId('');
+    setTfDestId('');
+    setTfValue('');
+    setTfDate(new Date().toISOString().split('T')[0]);
+    setTfObservation('');
+  };
+
+  const handleOpenCategoryModal = (cat?: TransactionCategory) => {
+    if (cat) {
+      setEditingCategory(cat);
+      setCatName(cat.name);
+      setCatType(cat.type);
+      setCatSubcategories(cat.subcategories || []);
+      let foundColor = 'emerald';
+      if (cat.color.includes('blue')) foundColor = 'blue';
+      else if (cat.color.includes('purple')) foundColor = 'purple';
+      else if (cat.color.includes('amber')) foundColor = 'amber';
+      else if (cat.color.includes('rose')) foundColor = 'rose';
+      else if (cat.color.includes('sky')) foundColor = 'sky';
+      else if (cat.color.includes('indigo')) foundColor = 'indigo';
+      setCatColor(foundColor);
+      setCatMainCategory(cat.mainCategory || 'Despesas Fixas');
+    } else {
+      setEditingCategory(null);
+      setCatName('');
+      setCatType('entrada');
+      setCatColor('emerald');
+      setCatSubcategories([]);
+      setCatMainCategory('Despesas Fixas');
+    }
+    setModalNewSubcategory('');
+    setShowCategoryModal(true);
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName.trim()) return;
+
+    const colors: Record<string, string> = {
+      emerald: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20',
+      blue: 'bg-blue-500/15 text-blue-500 border-blue-500/20',
+      purple: 'bg-purple-500/15 text-purple-500 border-purple-500/20',
+      amber: 'bg-amber-500/15 text-amber-500 border-amber-500/20',
+      rose: 'bg-rose-500/15 text-rose-500 border-rose-500/20',
+      sky: 'bg-sky-500/15 text-sky-500 border-sky-500/20',
+      indigo: 'bg-indigo-500/15 text-indigo-500 border-indigo-500/20',
+    };
+
+    if (editingCategory) {
+      setCategories(categories.map(c => {
+        if (c.id === editingCategory.id) {
+          return {
+            ...c,
+            name: catName.trim(),
+            type: catType,
+            color: colors[catColor] || colors.emerald,
+            subcategories: catSubcategories,
+            mainCategory: catMainCategory
+          };
+        }
+        return c;
+      }));
+      setEditingCategory(null);
+    } else {
+      const newCat: TransactionCategory = {
+        id: `cat-${Date.now()}`,
+        name: catName.trim(),
+        type: catType,
+        color: colors[catColor] || colors.emerald,
+        subcategories: catSubcategories,
+        mainCategory: catMainCategory
+      };
+      setCategories([...categories, newCat]);
+    }
+
+    setShowCategoryModal(false);
+
+    // Reset Form
+    setCatName('');
+    setCatType('entrada');
+    setCatColor('emerald');
+    setCatSubcategories([]);
+    setModalNewSubcategory('');
+    setCatMainCategory('Despesas Fixas');
+  };
+
+  const handleAddSubcategory = (categoryId: string) => {
+    const name = newSubcategoryName[categoryId];
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+
+    setCategories(categories.map(cat => {
+      if (cat.id === categoryId) {
+        const currentSubs = cat.subcategories || [];
+        if (currentSubs.includes(trimmed)) {
+          return cat;
+        }
+        return {
+          ...cat,
+          subcategories: [...currentSubs, trimmed]
+        };
+      }
+      return cat;
+    }));
+
+    setNewSubcategoryName({
+      ...newSubcategoryName,
+      [categoryId]: ''
+    });
+  };
+
+  const handleDeleteSubcategory = (categoryId: string, subName: string) => {
+    const cat = categories.find(c => c.id === categoryId);
+    const catName = cat ? cat.name : 'Categoria';
+    const linkedTxs = transactions.filter(t => t.categoryId === categoryId && t.subcategory === subName);
+
+    setDeleteConfirmState({
+      isOpen: true,
+      title: `Excluir Subcategoria: "${subName}"`,
+      description: `Tem certeza que deseja excluir a subcategoria "${subName}" da categoria "${catName}"?`,
+      warningNote: linkedTxs.length > 0 
+        ? `Existem ${linkedTxs.length} lançamento(s) financeiro(s) vinculado(s) a esta subcategoria. Os lançamentos continuarão existindo e o campo de subcategoria será desvinculado.`
+        : undefined,
+      confirmButtonText: 'Excluir Subcategoria',
+      onConfirm: () => {
+        setCategories(prev => prev.map(c => {
+          if (c.id === categoryId) {
+            return {
+              ...c,
+              subcategories: (c.subcategories || []).filter(s => s !== subName)
+            };
+          }
+          return c;
+        }));
+
+        setTransactions(prev => prev.map(t => {
+          if (t.categoryId === categoryId && t.subcategory === subName) {
+            return { ...t, subcategory: undefined };
+          }
+          return t;
+        }));
+
+        setCatSubcategories(prev => prev.filter(s => s !== subName));
+
+        if (editingCategory && editingCategory.id === categoryId) {
+          setEditingCategory({
+            ...editingCategory,
+            subcategories: (editingCategory.subcategories || []).filter(s => s !== subName)
+          });
+        }
+
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  // --- DELETES ---
+  const handleDeleteTx = (id: string) => {
+    const tx = transactions.find(t => t.id === id);
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Excluir Lançamento Financeiro',
+      description: tx 
+        ? `Tem certeza que deseja excluir o lançamento "${tx.description}" no valor de ${formatCurrency(tx.value)}?`
+        : 'Tem certeza que deseja excluir este lançamento financeiro?',
+      confirmButtonText: 'Excluir Lançamento',
+      onConfirm: () => {
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  const handleDeleteTransfer = (id: string) => {
+    const tf = transfers.find(t => t.id === id);
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Excluir Transferência entre Contas',
+      description: tf 
+        ? `Tem certeza que deseja excluir a transferência no valor de ${formatCurrency(tf.value)}?`
+        : 'Tem certeza que deseja excluir esta transferência?',
+      confirmButtonText: 'Excluir Transferência',
+      onConfirm: () => {
+        setTransfers(prev => prev.filter(t => t.id !== id));
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  const handleDeleteAccount = (id: string) => {
+    const acc = accounts.find(a => a.id === id);
+    if (!acc) return;
+    const linked = transactions.some(t => t.accountId === id) || transfers.some(tf => tf.sourceAccountId === id || tf.destinationAccountId === id);
+    if (linked) {
+      setDeleteConfirmState({
+        isOpen: true,
+        title: 'Não é possível excluir conta',
+        description: `A conta "${acc.name}" possui transações ou transferências vinculadas. Para manter a integridade dos seus saldos e relatórios contábeis, contas com histórico ativo não podem ser deletadas.`,
+        confirmButtonText: 'Entendido',
+        onConfirm: () => setDeleteConfirmState(null)
+      });
+      return;
+    }
+
+    setDeleteConfirmState({
+      isOpen: true,
+      title: `Excluir Conta: "${acc.name}"`,
+      description: `Tem certeza que deseja excluir a conta bancária "${acc.name}" (${acc.bankName})?`,
+      confirmButtonText: 'Excluir Conta',
+      onConfirm: () => {
+        setAccounts(prev => prev.filter(a => a.id !== id));
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  const handleOpenAddAssetModal = (asset?: FixedAsset) => {
+    if (asset) {
+      setEditingAssetId(asset.id);
+      setAssetFormName(asset.name);
+      setAssetFormCategory(asset.category);
+      setAssetFormAcqValue(asset.acquisitionValue.toString());
+      setAssetFormCurValue(asset.currentValue.toString());
+      setAssetFormDate(asset.acquisitionDate);
+      setAssetFormDesc(asset.description || '');
+    } else {
+      setEditingAssetId(null);
+      setAssetFormName('');
+      setAssetFormCategory('Imóveis e Terrenos');
+      setAssetFormAcqValue('');
+      setAssetFormCurValue('');
+      setAssetFormDate(new Date().toISOString().split('T')[0]);
+      setAssetFormDesc('');
+    }
+    setShowAddAssetModal(true);
+  };
+
+  const handleSaveAsset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assetFormName.trim()) return;
+    const acqVal = parseFloat(assetFormAcqValue.replace(/\./g, '').replace(',', '.')) || 0;
+    const curVal = parseFloat(assetFormCurValue.replace(/\./g, '').replace(',', '.')) || acqVal;
+
+    if (editingAssetId) {
+      setFixedAssets(prev => prev.map(a => a.id === editingAssetId ? {
+        ...a,
+        name: assetFormName.trim(),
+        category: assetFormCategory,
+        acquisitionValue: acqVal,
+        currentValue: curVal,
+        acquisitionDate: assetFormDate,
+        description: assetFormDesc.trim() || undefined
+      } : a));
+    } else {
+      const newAsset: FixedAsset = {
+        id: `fa-${Date.now()}`,
+        name: assetFormName.trim(),
+        category: assetFormCategory,
+        acquisitionValue: acqVal,
+        currentValue: curVal,
+        acquisitionDate: assetFormDate,
+        description: assetFormDesc.trim() || undefined
+      };
+      setFixedAssets(prev => [...prev, newAsset]);
+    }
+    setShowAddAssetModal(false);
+  };
+
+  const handleDeleteAsset = (id: string, name: string) => {
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Excluir Bem Patrimonial',
+      description: `Tem certeza que deseja excluir o bem "${name}" do patrimônio imobilizado da igreja?`,
+      confirmButtonText: 'Sim, Excluir Bem',
+      onConfirm: () => {
+        setFixedAssets(prev => prev.filter(a => a.id !== id));
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    const cat = categories.find(c => c.id === id);
+    if (!cat) return;
+    const linkedTxs = transactions.filter(t => t.categoryId === id);
+
+    setDeleteConfirmState({
+      isOpen: true,
+      title: `Excluir Categoria: "${cat.name}"`,
+      description: `Tem certeza que deseja excluir a categoria "${cat.name}"?`,
+      warningNote: linkedTxs.length > 0
+        ? `Esta categoria possui ${linkedTxs.length} lançamento(s) financeiro(s) registrado(s). Ao confirmar a exclusão, os lançamentos serão preservados e sua categoria será movida para "Outros".`
+        : `Todas as suas subcategorias (${cat.subcategories?.length || 0}) também serão removidas.`,
+      confirmButtonText: 'Excluir Categoria',
+      onConfirm: () => {
+        let nextCategories = categories.filter(c => c.id !== id);
+
+        if (linkedTxs.length > 0) {
+          let fallbackCat = nextCategories.find(c => c.name.toLowerCase() === 'outros');
+          if (!fallbackCat) {
+            fallbackCat = {
+              id: `cat-outros-${Date.now()}`,
+              name: 'Outros',
+              type: 'ambas',
+              color: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20',
+              subcategories: [],
+              mainCategory: 'Despesas Variáveis'
+            };
+            nextCategories.push(fallbackCat);
+          }
+
+          const fallbackId = fallbackCat.id;
+          setTransactions(prev => prev.map(t => {
+            if (t.categoryId === id) {
+              return {
+                ...t,
+                categoryId: fallbackId,
+                subcategory: undefined
+              };
+            }
+            return t;
+          }));
+        }
+
+        setCategories(nextCategories);
+        setShowCategoryModal(false);
+        setEditingCategory(null);
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  // --- FILTERS AND CHARTS ---
+  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const getMonthlyChartData = () => {
+    const list = [];
+    const endYear = 2026;
+    const endMonth = 6; // July (0-indexed is 6)
+    
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(endYear, endMonth - i, 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const periodStr = `${y}-${m}`;
+      
+      const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const label = `${monthLabels[d.getMonth()]} ${String(y).substring(2)}`;
+      
+      const monthTxs = transactions.filter(t => t.date.startsWith(periodStr));
+      const inflows = monthTxs.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.value, 0);
+      const outflows = monthTxs.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.value, 0);
+      
+      list.push({ label, inflows, outflows, rawPeriod: periodStr });
+    }
+    return list;
+  };
+
+  const chartData = getMonthlyChartData();
+  const maxChartVal = Math.max(...chartData.map(d => Math.max(d.inflows, d.outflows)), 1000);
+
+  // --- DONUT CHART DATA & CALCULATIONS (Analytics) ---
+  const getDonutData = () => {
+    const colors = ['#C084FC', '#FDBA74', '#86EFAC']; // Lavender (#C084FC), Peach (#FDBA74), Mint (#86EFAC)
+    const textClasses = ['text-purple-400', 'text-amber-300', 'text-emerald-400'];
+    const bgClasses = ['bg-purple-400', 'bg-amber-300', 'bg-emerald-400'];
+
+    if (analyticsFilter === 'saldo') {
+      const totalSum = totalInflow + totalOutflow + Math.abs(netCashFlow) || 1;
+      const val1 = Math.round((totalInflow / totalSum) * 100);
+      const val2 = Math.round((totalOutflow / totalSum) * 100);
+      const val3 = Math.round((Math.max(0, netCashFlow) / totalSum) * 100);
+
+      const targetSum = 82;
+      return [
+        { name: 'Receitas', value: val1, color: colors[0], textClass: textClasses[0], bgClass: bgClasses[0], displayPercent: Math.max(Math.round((val1 / 100) * targetSum), 5) },
+        { name: 'Saídas', value: val2, color: colors[1], textClass: textClasses[1], bgClass: bgClasses[1], displayPercent: Math.max(Math.round((val2 / 100) * targetSum), 5) },
+        { name: 'Saldo Líquido', value: val3, color: colors[2], textClass: textClasses[2], bgClass: bgClasses[2], displayPercent: Math.max(Math.round((val3 / 100) * targetSum), 5) }
+      ];
+    }
+
+    const isEntrada = analyticsFilter === 'entrada';
+    const filteredCats = categories.filter(cat => {
+      if (isEntrada) return cat.type === 'entrada';
+      return cat.type === 'saida';
+    });
+
+    const catAmounts = filteredCats.map(cat => {
+      const amt = filteredDashboardTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0);
+      return { cat, amt };
+    }).sort((a, b) => b.amt - a.amt);
+
+    const total = catAmounts.reduce((sum, c) => sum + c.amt, 0);
+
+    if (total === 0) {
+      if (isEntrada) {
+        return [
+          { name: 'Dízimos', value: 50, color: colors[0], textClass: textClasses[0], bgClass: bgClasses[0], displayPercent: 50 },
+          { name: 'Ofertas', value: 30, color: colors[1], textClass: textClasses[1], bgClass: bgClasses[1], displayPercent: 30 },
+          { name: 'Outros', value: 20, color: colors[2], textClass: textClasses[2], bgClass: bgClasses[2], displayPercent: 20 }
+        ];
+      } else {
+        return [
+          { name: 'Aluguel', value: 50, color: colors[0], textClass: textClasses[0], bgClass: bgClasses[0], displayPercent: 50 },
+          { name: 'Energia', value: 30, color: colors[1], textClass: textClasses[1], bgClass: bgClasses[1], displayPercent: 30 },
+          { name: 'Ação Social', value: 20, color: colors[2], textClass: textClasses[2], bgClass: bgClasses[2], displayPercent: 20 }
+        ];
+      }
+    }
+
+    const top3 = catAmounts.slice(0, 3).map((item, idx) => {
+      const pct = Math.round((item.amt / total) * 100);
+      return {
+        name: item.cat.name,
+        value: pct,
+        color: colors[idx] || '#cbd5e1',
+        textClass: textClasses[idx] || 'text-zinc-400',
+        bgClass: bgClasses[idx] || 'bg-zinc-400'
+      };
+    });
+
+    const sumVal = top3.reduce((s, x) => s + x.value, 0) || 1;
+    const targetSum = 82; // leaving ~18% for empty space
+    return top3.map(item => ({
+      ...item,
+      displayPercent: Math.max(Math.round((item.value / sumVal) * targetSum), 5)
+    }));
+  };
+
+  const donutSegments = getDonutData();
+  const d1 = donutSegments[0] || { name: 'Dízimos', value: 50, color: '#C084FC', displayPercent: 50, bgClass: 'bg-purple-400' };
+  const d2 = donutSegments[1] || { name: 'Ofertas', value: 30, color: '#FDBA74', displayPercent: 30, bgClass: 'bg-amber-300' };
+  const d3 = donutSegments[2] || { name: 'Ação Social', value: 20, color: '#86EFAC', displayPercent: 20, bgClass: 'bg-emerald-400' };
+
+  const donutR = 40;
+  const donutC = 2 * Math.PI * donutR; // ~251.32
+
+  const s1Width = (donutC * d1.displayPercent) / 100;
+  const s2Width = (donutC * d2.displayPercent) / 100;
+  const s3Width = (donutC * d3.displayPercent) / 100;
+
+  const s1Offset = 0;
+  const s2Offset = -s1Width;
+  const s3Offset = -(s1Width + s2Width);
+
+  const centerPercent = analyticsFilter === 'entrada'
+    ? (totalInflow + totalOutflow > 0 ? Math.round((totalInflow / (totalInflow + totalOutflow)) * 100) : 100)
+    : analyticsFilter === 'saida'
+    ? (totalInflow + totalOutflow > 0 ? Math.round((totalOutflow / (totalInflow + totalOutflow)) * 100) : 0)
+    : (totalInflow > 0 ? Math.max(0, Math.round((netCashFlow / totalInflow) * 100)) : 100);
+
+  const centerLabel = analyticsFilter === 'entrada'
+    ? 'Receitas'
+    : analyticsFilter === 'saida'
+    ? 'Despesas'
+    : 'Saldo';
+
+  // --- FILTERED LIST FOR TRANSACTION TAB ---
+
+  const filteredTransactions = transactions.filter(tx => {
+    const category = categories.find(c => c.id === tx.categoryId);
+    const account = accounts.find(a => a.id === tx.accountId);
+    const term = searchQuery.toLowerCase();
+    const matchesSearch = tx.description.toLowerCase().includes(term) ||
+      (category && category.name.toLowerCase().includes(term)) ||
+      (account && account.name.toLowerCase().includes(term)) ||
+      (tx.subcategory && tx.subcategory.toLowerCase().includes(term)) ||
+      tx.value.toString().includes(term);
+
+    if (!matchesSearch) return false;
+    if (txFilterType === 'entrada' && tx.type !== 'entrada') return false;
+    if (txFilterType === 'saida' && tx.type !== 'saida') return false;
+    if (txFilterType === 'transfer') return false;
+
+    // Filter by Account
+    if (txSelectedAccountId !== 'all' && tx.accountId !== txSelectedAccountId) {
+      return false;
+    }
+
+    // Filter by Category
+    if (txSelectedCategoryId !== 'all' && tx.categoryId !== txSelectedCategoryId) {
+      return false;
+    }
+
+    // Filter by Recebido / Pago Status
+    if (txStatusFilter !== 'all') {
+      const isEntrada = tx.type === 'entrada';
+      const isDone = isEntrada ? (tx.recebido !== 'nao') : (tx.pago !== 'nao');
+
+      if (txStatusFilter === 'recebido_sim') {
+        if (!isEntrada || tx.recebido === 'nao') return false;
+      } else if (txStatusFilter === 'recebido_nao') {
+        if (!isEntrada || tx.recebido !== 'nao') return false;
+      } else if (txStatusFilter === 'pago_sim') {
+        if (isEntrada || tx.pago === 'nao') return false;
+      } else if (txStatusFilter === 'pago_nao') {
+        if (isEntrada || tx.pago !== 'nao') return false;
+      } else if (txStatusFilter === 'concluido') {
+        if (!isDone) return false;
+      } else if (txStatusFilter === 'pendente') {
+        if (isDone) return false;
+      }
+    }
+
+    // Filter by Year
+    if (txSelectedYear !== 'all') {
+      const txYear = tx.date.substring(0, 4);
+      if (txYear !== txSelectedYear) return false;
+    }
+
+    // Filter by Month
+    if (txSelectedMonth !== 'all') {
+      const txMonth = tx.date.substring(5, 7);
+      if (txMonth !== txSelectedMonth) return false;
+    }
+
+    // Filter by Period
+    if (txSelectedPeriod !== 'all') {
+      if (txSelectedPeriod === 'custom') {
+        if (txStartDateFilter && tx.date < txStartDateFilter) return false;
+        if (txEndDateFilter && tx.date > txEndDateFilter) return false;
+      } else {
+        const txDateObj = new Date(tx.date + 'T00:00:00');
+        const now = new Date();
+        const diffTime = now.getTime() - txDateObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        if (txSelectedPeriod === '7d' && (diffDays > 7 || diffDays < 0)) return false;
+        if (txSelectedPeriod === '30d' && (diffDays > 30 || diffDays < 0)) return false;
+        if (txSelectedPeriod === '90d' && (diffDays > 90 || diffDays < 0)) return false;
+      }
+    }
+
+    return true;
+  });
+
+  const filteredTransfers = transfers.filter(tf => {
+    const src = accounts.find(a => a.id === tf.sourceAccountId);
+    const dest = accounts.find(a => a.id === tf.destinationAccountId);
+    const term = searchQuery.toLowerCase();
+    const matchesSearch = (tf.observation && tf.observation.toLowerCase().includes(term)) ||
+      (src && src.name.toLowerCase().includes(term)) ||
+      (dest && dest.name.toLowerCase().includes(term)) ||
+      tf.value.toString().includes(term);
+
+    if (!matchesSearch) return false;
+
+    // Filter by Account
+    if (txSelectedAccountId !== 'all' && tf.sourceAccountId !== txSelectedAccountId && tf.destinationAccountId !== txSelectedAccountId) {
+      return false;
+    }
+
+    // Filter by Year
+    if (txSelectedYear !== 'all') {
+      const tfYear = tf.date.substring(0, 4);
+      if (tfYear !== txSelectedYear) return false;
+    }
+
+    // Filter by Month
+    if (txSelectedMonth !== 'all') {
+      const tfMonth = tf.date.substring(5, 7);
+      if (tfMonth !== txSelectedMonth) return false;
+    }
+
+    // Filter by Period
+    if (txSelectedPeriod !== 'all') {
+      if (txSelectedPeriod === 'custom') {
+        if (txStartDateFilter && tf.date < txStartDateFilter) return false;
+        if (txEndDateFilter && tf.date > txEndDateFilter) return false;
+      } else {
+        const tfDateObj = new Date(tf.date + 'T00:00:00');
+        const now = new Date();
+        const diffTime = now.getTime() - tfDateObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        if (txSelectedPeriod === '7d' && (diffDays > 7 || diffDays < 0)) return false;
+        if (txSelectedPeriod === '30d' && (diffDays > 30 || diffDays < 0)) return false;
+        if (txSelectedPeriod === '90d' && (diffDays > 90 || diffDays < 0)) return false;
+      }
+    }
+
+    return true;
+  });
+
+  const displayTransactions = React.useMemo(() => {
+    if (!txSortOrder) return filteredTransactions;
+    return [...filteredTransactions].sort((a, b) => {
+      const dateA = (a.type === 'entrada' ? (a.dataRecebido || a.date) : (a.dataLancamento || a.date)) || a.date || '';
+      const dateB = (b.type === 'entrada' ? (b.dataRecebido || b.date) : (b.dataLancamento || b.date)) || b.date || '';
+      if (txSortOrder === 'asc') {
+        return dateA.localeCompare(dateB);
+      } else {
+        return dateB.localeCompare(dateA);
+      }
+    });
+  }, [filteredTransactions, txSortOrder]);
+
+  const displayTransfers = React.useMemo(() => {
+    if (!txSortOrder) return filteredTransfers;
+    return [...filteredTransfers].sort((a, b) => {
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (txSortOrder === 'asc') {
+        return dateA.localeCompare(dateB);
+      } else {
+        return dateB.localeCompare(dateA);
+      }
+    });
+  }, [filteredTransfers, txSortOrder]);
+
+  const handlePrint = () => {
+    setShowPrintDREModal(true);
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
+  const handlePrintBalanco = () => {
+    setShowPrintBalancoModal(true);
+    // Allow modal DOM element to mount cleanly, then trigger print dialog immediately
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
+  const handleExportDREExcel = () => {
+    try {
+      const DRE_MONTHS_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const cutoff = `${dreSelectedYear}-01-01`;
+      
+      let initialCash = 0;
+      accounts.forEach(acc => {
+        let b = Number(acc.initialBalance);
+        transactions.forEach(t => {
+          const d = t.dataRecebido || t.dataLancamento || t.date;
+          if (t.accountId === acc.id && d < cutoff) {
+            if (t.type === 'entrada') b += t.value;
+            else b -= t.value;
+          }
+        });
+        transfers.forEach(tf => {
+          if (tf.date < cutoff) {
+            if (tf.destinationAccountId === acc.id) b += tf.value;
+            if (tf.sourceAccountId === acc.id) b -= tf.value;
+          }
+        });
+        initialCash += b;
+      });
+
+      const monthInflow = Array(12).fill(0);
+      const monthOutflow = Array(12).fill(0);
+
+      transactions.forEach(t => {
+        const d = t.dataRecebido || t.dataLancamento || t.date;
+        if (d && d.startsWith(`${dreSelectedYear}-`)) {
+          const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            if (t.type === 'entrada') monthInflow[mIdx] += t.value;
+            else if (t.type === 'saida') monthOutflow[mIdx] += t.value;
+          }
+        }
+      });
+
+      const monthResult = monthInflow.map((inf, idx) => inf - monthOutflow[idx]);
+      const startCashMonth = Array(12).fill(0);
+      const endCashMonth = Array(12).fill(0);
+
+      for (let i = 0; i < 12; i++) {
+        startCashMonth[i] = i === 0 ? initialCash : endCashMonth[i - 1];
+        endCashMonth[i] = startCashMonth[i] + monthResult[i];
+      }
+
+      const totalInflowYear = monthInflow.reduce((a, b) => a + b, 0);
+      const totalOutflowYear = monthOutflow.reduce((a, b) => a + b, 0);
+      const totalResultYear = totalInflowYear - totalOutflowYear;
+      const endCashTotal = endCashMonth[11];
+
+      const rows: Array<Record<string, any>> = [];
+
+      // Institucional
+      rows.push({
+        'Estrutura / Categoria / Subcategoria': 'MINISTÉRIO NOVA VIDA - CNPJ: 62.471.271-0001-82',
+        ...Object.fromEntries(DRE_MONTHS_NAMES.map(m => [m, ''])),
+        'Total Exercício': `Exercício de ${dreSelectedYear}`
+      });
+      rows.push({
+        'Estrutura / Categoria / Subcategoria': 'DEMONSTRATIVO DE RESULTADO (DRE) E FLUXO DE CAIXA MÊS A MÊS',
+        ...Object.fromEntries(DRE_MONTHS_NAMES.map(m => [m, ''])),
+        'Total Exercício': ''
+      });
+      rows.push({});
+
+      // 1. Saldo Inicial
+      const startCashRow: Record<string, any> = {
+        'Estrutura / Categoria / Subcategoria': 'SALDO INICIAL DE CAIXA / DISPONIBILIDADES'
+      };
+      DRE_MONTHS_NAMES.forEach((m, idx) => {
+        startCashRow[m] = startCashMonth[idx];
+      });
+      startCashRow['Total Exercício'] = initialCash;
+      rows.push(startCashRow);
+      rows.push({});
+
+      // 2. Receitas
+      rows.push({
+        'Estrutura / Categoria / Subcategoria': '1. RECEITAS OPERACIONAIS (+)',
+        ...Object.fromEntries(DRE_MONTHS_NAMES.map(m => [m, ''])),
+        'Total Exercício': ''
+      });
+
+      // Income categories
+      const incomeCategories = categories.filter(c => 
+        c.type === 'entrada' || c.type === 'ambas' || 
+        transactions.some(t => t.categoryId === c.id && t.type === 'entrada' && (t.dataRecebido || t.dataLancamento || t.date).startsWith(`${dreSelectedYear}-`))
+      );
+
+      incomeCategories.forEach(cat => {
+        const catMonths = Array(12).fill(0);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'entrada') {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) {
+              const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+              if (mIdx >= 0 && mIdx < 12) catMonths[mIdx] += t.value;
+            }
+          }
+        });
+        const catTotal = catMonths.reduce((a, b) => a + b, 0);
+
+        const catRow: Record<string, any> = {
+          'Estrutura / Categoria / Subcategoria': `  • ${cat.name}`
+        };
+        DRE_MONTHS_NAMES.forEach((m, idx) => {
+          catRow[m] = catMonths[idx] || 0;
+        });
+        catRow['Total Exercício'] = catTotal;
+        rows.push(catRow);
+
+        // Subcategories
+        const subSet = new Set<string>(cat.subcategories || []);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'entrada' && t.subcategory) {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) subSet.add(t.subcategory);
+          }
+        });
+
+        Array.from(subSet).forEach(sub => {
+          const subMonths = Array(12).fill(0);
+          transactions.forEach(t => {
+            if (t.categoryId === cat.id && t.type === 'entrada' && t.subcategory === sub) {
+              const d = t.dataRecebido || t.dataLancamento || t.date;
+              if (d && d.startsWith(`${dreSelectedYear}-`)) {
+                const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+                if (mIdx >= 0 && mIdx < 12) subMonths[mIdx] += t.value;
+              }
+            }
+          });
+          const subTotal = subMonths.reduce((a, b) => a + b, 0);
+          if (subTotal > 0 || (cat.subcategories && cat.subcategories.includes(sub))) {
+            const subRow: Record<string, any> = {
+              'Estrutura / Categoria / Subcategoria': `      - ${sub}`
+            };
+            DRE_MONTHS_NAMES.forEach((m, idx) => {
+              subRow[m] = subMonths[idx] || 0;
+            });
+            subRow['Total Exercício'] = subTotal;
+            rows.push(subRow);
+          }
+        });
+      });
+
+      // Total Receitas
+      const totalInflowRow: Record<string, any> = {
+        'Estrutura / Categoria / Subcategoria': 'TOTAL DAS RECEITAS'
+      };
+      DRE_MONTHS_NAMES.forEach((m, idx) => {
+        totalInflowRow[m] = monthInflow[idx];
+      });
+      totalInflowRow['Total Exercício'] = totalInflowYear;
+      rows.push(totalInflowRow);
+      rows.push({});
+
+      // 3. Despesas
+      rows.push({
+        'Estrutura / Categoria / Subcategoria': '2. DESPESAS OPERACIONAIS (-)',
+        ...Object.fromEntries(DRE_MONTHS_NAMES.map(m => [m, ''])),
+        'Total Exercício': ''
+      });
+
+      const expenseCategories = categories.filter(c => 
+        c.type === 'saida' || c.type === 'ambas' || 
+        transactions.some(t => t.categoryId === c.id && t.type === 'saida' && (t.dataLancamento || t.date).startsWith(`${dreSelectedYear}-`))
+      );
+
+      expenseCategories.forEach(cat => {
+        const catMonths = Array(12).fill(0);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'saida') {
+            const d = t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) {
+              const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+              if (mIdx >= 0 && mIdx < 12) catMonths[mIdx] += t.value;
+            }
+          }
+        });
+        const catTotal = catMonths.reduce((a, b) => a + b, 0);
+
+        const catRow: Record<string, any> = {
+          'Estrutura / Categoria / Subcategoria': `  • ${cat.name}`
+        };
+        DRE_MONTHS_NAMES.forEach((m, idx) => {
+          catRow[m] = catMonths[idx] || 0;
+        });
+        catRow['Total Exercício'] = catTotal;
+        rows.push(catRow);
+
+        // Subcategories
+        const subSet = new Set<string>(cat.subcategories || []);
+        transactions.forEach(t => {
+          if (t.categoryId === cat.id && t.type === 'saida' && t.subcategory) {
+            const d = t.dataLancamento || t.date;
+            if (d && d.startsWith(`${dreSelectedYear}-`)) subSet.add(t.subcategory);
+          }
+        });
+
+        Array.from(subSet).forEach(sub => {
+          const subMonths = Array(12).fill(0);
+          transactions.forEach(t => {
+            if (t.categoryId === cat.id && t.type === 'saida' && t.subcategory === sub) {
+              const d = t.dataLancamento || t.date;
+              if (d && d.startsWith(`${dreSelectedYear}-`)) {
+                const mIdx = parseInt(d.substring(5, 7), 10) - 1;
+                if (mIdx >= 0 && mIdx < 12) subMonths[mIdx] += t.value;
+              }
+            }
+          });
+          const subTotal = subMonths.reduce((a, b) => a + b, 0);
+          if (subTotal > 0 || (cat.subcategories && cat.subcategories.includes(sub))) {
+            const subRow: Record<string, any> = {
+              'Estrutura / Categoria / Subcategoria': `      - ${sub}`
+            };
+            DRE_MONTHS_NAMES.forEach((m, idx) => {
+              subRow[m] = subMonths[idx] || 0;
+            });
+            subRow['Total Exercício'] = subTotal;
+            rows.push(subRow);
+          }
+        });
+      });
+
+      // Total Despesas
+      const totalOutflowRow: Record<string, any> = {
+        'Estrutura / Categoria / Subcategoria': 'TOTAL DAS DESPESAS'
+      };
+      DRE_MONTHS_NAMES.forEach((m, idx) => {
+        totalOutflowRow[m] = monthOutflow[idx];
+      });
+      totalOutflowRow['Total Exercício'] = totalOutflowYear;
+      rows.push(totalOutflowRow);
+      rows.push({});
+
+      // 4. Resultado Final
+      const resultRow: Record<string, any> = {
+        'Estrutura / Categoria / Subcategoria': '3. RESULTADO DO EXERCÍCIO (SUPERÁVIT / DÉFICIT)'
+      };
+      DRE_MONTHS_NAMES.forEach((m, idx) => {
+        resultRow[m] = monthResult[idx];
+      });
+      resultRow['Total Exercício'] = totalResultYear;
+      rows.push(resultRow);
+      rows.push({});
+
+      // 5. Saldo Final de Caixa
+      const endCashRow: Record<string, any> = {
+        'Estrutura / Categoria / Subcategoria': '4. SALDO FINAL DE CAIXA / DISPONIBILIDADES'
+      };
+      DRE_MONTHS_NAMES.forEach((m, idx) => {
+        endCashRow[m] = endCashMonth[idx];
+      });
+      endCashRow['Total Exercício'] = endCashTotal;
+      rows.push(endCashRow);
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 45 },
+        ...DRE_MONTHS_NAMES.map(() => ({ wch: 14 })),
+        { wch: 18 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `DRE_${dreSelectedYear}`);
+      XLSX.writeFile(wb, `demonstrativo_dre_fluxo_caixa_${dreSelectedYear}.xlsx`);
+    } catch (err) {
+      console.error('Erro ao exportar Excel do DRE:', err);
+      alert('Não foi possível gerar a planilha Excel do Demonstrativo.');
+    }
+  };
+
+  const handleExportBalancoExcel = () => {
+    const rangeBase = getBalancoPeriodDateRange(balancoBaseYear, balancoPeriodScope);
+    const rangeComp = getBalancoPeriodDateRange(balancoCompYear, balancoPeriodScope);
+
+    const rows: Array<Record<string, any>> = [];
+
+    // Header Info
+    rows.push({
+      'Classificação / Seção': 'MINISTÉRIO NOVA VIDA',
+      'Conta / Categoria / Bem': 'AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP',
+      'Subcategoria / Especificação': 'CNPJ: 62.471.271-0001-82',
+      [`Valor Base (${balancoBaseYear})`]: '',
+      [`Valor Comp (${balancoCompYear})`]: '',
+      'Variação Nominal (R$)': '',
+      'Variação Percentual (%)': ''
+    });
+    rows.push({
+      'Classificação / Seção': `BALANÇO PATRIMONIAL DO EXERCÍCIO ENCERRADO EM 31 DE DEZEMBRO DE ${balancoBaseYear}`,
+      'Conta / Categoria / Bem': rangeBase.label,
+      'Subcategoria / Especificação': balancoCompareEnabled ? `Comparativo com ${getBalancoPeriodDateRange(balancoCompYear, balancoPeriodScope).label}` : 'Sem Comparação Anual',
+      [`Valor Base (${balancoBaseYear})`]: '',
+      [`Valor Comp (${balancoCompYear})`]: '',
+      'Variação Nominal (R$)': '',
+      'Variação Percentual (%)': ''
+    });
+    rows.push({});
+
+    // 1. ATIVO CIRCULANTE
+    rows.push({
+      'Classificação / Seção': '1. ATIVO CIRCULANTE (DISPONIBILIDADES: BANCOS & CAIXA)',
+      'Conta / Categoria / Bem': '',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: '',
+      [`Valor Comp (${balancoCompYear})`]: '',
+      'Variação Nominal (R$)': '',
+      'Variação Percentual (%)': ''
+    });
+
+    let totalCircBase = 0;
+    let totalCircComp = 0;
+    accounts.forEach(acc => {
+      const bBal = getAccountBalanceAtDate(acc.id, rangeBase.end);
+      const cBal = balancoCompareEnabled ? getAccountBalanceAtDate(acc.id, rangeComp.end) : 0;
+      totalCircBase += bBal;
+      totalCircComp += cBal;
+      const diff = bBal - cBal;
+      const pct = cBal !== 0 ? ((bBal - cBal) / Math.abs(cBal)) * 100 : (bBal > 0 ? 100 : 0);
+      rows.push({
+        'Classificação / Seção': '1.1 Ativo Circulante',
+        'Conta / Categoria / Bem': acc.name,
+        'Subcategoria / Especificação': `${acc.bankName} - ${getAccountTypeLabel(acc.type)}`,
+        [`Valor Base (${balancoBaseYear})`]: bBal,
+        [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? cBal : '',
+        'Variação Nominal (R$)': balancoCompareEnabled ? diff : '',
+        'Variação Percentual (%)': balancoCompareEnabled ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : ''
+      });
+    });
+    const circDiff = totalCircBase - totalCircComp;
+    const circPct = totalCircComp !== 0 ? (circDiff / Math.abs(totalCircComp)) * 100 : (totalCircBase > 0 ? 100 : 0);
+    rows.push({
+      'Classificação / Seção': 'SUBTOTAL ATIVO CIRCULANTE',
+      'Conta / Categoria / Bem': 'Total de Saldos em Caixa e Bancos',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: totalCircBase,
+      [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? totalCircComp : '',
+      'Variação Nominal (R$)': balancoCompareEnabled ? circDiff : '',
+      'Variação Percentual (%)': balancoCompareEnabled ? `${circPct >= 0 ? '+' : ''}${circPct.toFixed(1)}%` : ''
+    });
+    rows.push({});
+
+    // 2. ATIVO NÃO CIRCULANTE / IMOBILIZADO
+    rows.push({
+      'Classificação / Seção': '2. ATIVO NÃO CIRCULANTE (IMOBILIZADO / PATRIMÔNIO)',
+      'Conta / Categoria / Bem': '',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: '',
+      [`Valor Comp (${balancoCompYear})`]: '',
+      'Variação Nominal (R$)': '',
+      'Variação Percentual (%)': ''
+    });
+
+    let totalImobBase = 0;
+    let totalImobComp = 0;
+    fixedAssets.forEach(fa => {
+      const inBase = fa.acquisitionDate <= rangeBase.end;
+      const inComp = fa.acquisitionDate <= rangeComp.end;
+      const bVal = inBase ? (fa.currentValue || fa.acquisitionValue) : 0;
+      const cVal = inComp ? fa.acquisitionValue : 0;
+      totalImobBase += bVal;
+      totalImobComp += cVal;
+      const diff = bVal - cVal;
+      const pct = cVal !== 0 ? ((bVal - cVal) / Math.abs(cVal)) * 100 : (bVal > 0 ? 100 : 0);
+      rows.push({
+        'Classificação / Seção': '2.1 Bens Imobilizados',
+        'Conta / Categoria / Bem': fa.name,
+        'Subcategoria / Especificação': `${fa.category} | Aquis.: ${fa.acquisitionDate}${fa.description ? ` (${fa.description})` : ''}`,
+        [`Valor Base (${balancoBaseYear})`]: bVal,
+        [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? cVal : '',
+        'Variação Nominal (R$)': balancoCompareEnabled ? diff : '',
+        'Variação Percentual (%)': balancoCompareEnabled ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : ''
+      });
+    });
+    const imobDiff = totalImobBase - totalImobComp;
+    const imobPct = totalImobComp !== 0 ? (imobDiff / Math.abs(totalImobComp)) * 100 : (totalImobBase > 0 ? 100 : 0);
+    rows.push({
+      'Classificação / Seção': 'SUBTOTAL ATIVO NÃO CIRCULANTE',
+      'Conta / Categoria / Bem': 'Total de Bens Móveis, Imóveis e Equipamentos',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: totalImobBase,
+      [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? totalImobComp : '',
+      'Variação Nominal (R$)': balancoCompareEnabled ? imobDiff : '',
+      'Variação Percentual (%)': balancoCompareEnabled ? `${imobPct >= 0 ? '+' : ''}${imobPct.toFixed(1)}%` : ''
+    });
+    rows.push({});
+
+    // TOTAL GERAL DOS ATIVOS
+    const totalAtivoBase = totalCircBase + totalImobBase;
+    const totalAtivoComp = totalCircComp + totalImobComp;
+    const ativoDiff = totalAtivoBase - totalAtivoComp;
+    const ativoPct = totalAtivoComp !== 0 ? (ativoDiff / Math.abs(totalAtivoComp)) * 100 : (totalAtivoBase > 0 ? 100 : 0);
+    rows.push({
+      'Classificação / Seção': 'TOTAL GERAL DO ATIVO (1 + 2)',
+      'Conta / Categoria / Bem': 'Patrimônio Bruto Total da Organização',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: totalAtivoBase,
+      [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? totalAtivoComp : '',
+      'Variação Nominal (R$)': balancoCompareEnabled ? ativoDiff : '',
+      'Variação Percentual (%)': balancoCompareEnabled ? `${ativoPct >= 0 ? '+' : ''}${ativoPct.toFixed(1)}%` : ''
+    });
+    rows.push({});
+
+    // 3. RECEITAS DO PERÍODO
+    rows.push({
+      'Classificação / Seção': '3. DEMONSTRAÇÃO DE RECEITAS (ENTRADAS)',
+      'Conta / Categoria / Bem': '',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: '',
+      [`Valor Comp (${balancoCompYear})`]: '',
+      'Variação Nominal (R$)': '',
+      'Variação Percentual (%)': ''
+    });
+
+    const baseInflowTxs = transactions.filter(t => {
+      const d = t.dataRecebido || t.dataLancamento || t.date;
+      return t.type === 'entrada' && d >= rangeBase.start && d <= rangeBase.end;
+    });
+    const compInflowTxs = transactions.filter(t => {
+      const d = t.dataRecebido || t.dataLancamento || t.date;
+      return t.type === 'entrada' && d >= rangeComp.start && d <= rangeComp.end;
+    });
+
+    categories.filter(c => c.type === 'entrada' || c.type === 'ambas').forEach(cat => {
+      const bSum = baseInflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0);
+      const cSum = balancoCompareEnabled ? compInflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0) : 0;
+      if (bSum === 0 && cSum === 0) return;
+      const diff = bSum - cSum;
+      const pct = cSum !== 0 ? ((bSum - cSum) / Math.abs(cSum)) * 100 : (bSum > 0 ? 100 : 0);
+      rows.push({
+        'Classificação / Seção': '3.1 Receita por Categoria',
+        'Conta / Categoria / Bem': cat.name,
+        'Subcategoria / Especificação': cat.mainCategory || '',
+        [`Valor Base (${balancoBaseYear})`]: bSum,
+        [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? cSum : '',
+        'Variação Nominal (R$)': balancoCompareEnabled ? diff : '',
+        'Variação Percentual (%)': balancoCompareEnabled ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : ''
+      });
+      // Subcategories
+      (cat.subcategories || []).forEach(sub => {
+        const subBase = baseInflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0);
+        const subComp = balancoCompareEnabled ? compInflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0) : 0;
+        if (subBase === 0 && subComp === 0) return;
+        const subDiff = subBase - subComp;
+        const subPct = subComp !== 0 ? ((subBase - subComp) / Math.abs(subComp)) * 100 : (subBase > 0 ? 100 : 0);
+        rows.push({
+          'Classificação / Seção': '   └ Subcategoria',
+          'Conta / Categoria / Bem': `   • ${sub}`,
+          'Subcategoria / Especificação': cat.name,
+          [`Valor Base (${balancoBaseYear})`]: subBase,
+          [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? subComp : '',
+          'Variação Nominal (R$)': balancoCompareEnabled ? subDiff : '',
+          'Variação Percentual (%)': balancoCompareEnabled ? `${subPct >= 0 ? '+' : ''}${subPct.toFixed(1)}%` : ''
+        });
+      });
+    });
+
+    const totalRecBase = baseInflowTxs.reduce((sum, t) => sum + t.value, 0);
+    const totalRecComp = compInflowTxs.reduce((sum, t) => sum + t.value, 0);
+    const recDiff = totalRecBase - totalRecComp;
+    const recPct = totalRecComp !== 0 ? (recDiff / Math.abs(totalRecComp)) * 100 : (totalRecBase > 0 ? 100 : 0);
+    rows.push({
+      'Classificação / Seção': 'TOTAL DAS RECEITAS (3)',
+      'Conta / Categoria / Bem': 'Entradas Líquidas no Período',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: totalRecBase,
+      [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? totalRecComp : '',
+      'Variação Nominal (R$)': balancoCompareEnabled ? recDiff : '',
+      'Variação Percentual (%)': balancoCompareEnabled ? `${recPct >= 0 ? '+' : ''}${recPct.toFixed(1)}%` : ''
+    });
+    rows.push({});
+
+    // 4. DESPESAS DO PERÍODO
+    rows.push({
+      'Classificação / Seção': '4. DEMONSTRAÇÃO DE DESPESAS (SAÍDAS)',
+      'Conta / Categoria / Bem': '',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: '',
+      [`Valor Comp (${balancoCompYear})`]: '',
+      'Variação Nominal (R$)': '',
+      'Variação Percentual (%)': ''
+    });
+
+    const baseOutflowTxs = transactions.filter(t => {
+      const d = t.dataRecebido || t.dataLancamento || t.date;
+      return t.type === 'saida' && d >= rangeBase.start && d <= rangeBase.end;
+    });
+    const compOutflowTxs = transactions.filter(t => {
+      const d = t.dataRecebido || t.dataLancamento || t.date;
+      return t.type === 'saida' && d >= rangeComp.start && d <= rangeComp.end;
+    });
+
+    categories.filter(c => c.type === 'saida' || c.type === 'ambas').forEach(cat => {
+      const bSum = baseOutflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0);
+      const cSum = balancoCompareEnabled ? compOutflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0) : 0;
+      if (bSum === 0 && cSum === 0) return;
+      const diff = bSum - cSum;
+      const pct = cSum !== 0 ? ((bSum - cSum) / Math.abs(cSum)) * 100 : (bSum > 0 ? 100 : 0);
+      rows.push({
+        'Classificação / Seção': '4.1 Despesa por Categoria',
+        'Conta / Categoria / Bem': cat.name,
+        'Subcategoria / Especificação': cat.mainCategory || '',
+        [`Valor Base (${balancoBaseYear})`]: bSum,
+        [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? cSum : '',
+        'Variação Nominal (R$)': balancoCompareEnabled ? diff : '',
+        'Variação Percentual (%)': balancoCompareEnabled ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : ''
+      });
+      // Subcategories
+      (cat.subcategories || []).forEach(sub => {
+        const subBase = baseOutflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0);
+        const subComp = balancoCompareEnabled ? compOutflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0) : 0;
+        if (subBase === 0 && subComp === 0) return;
+        const subDiff = subBase - subComp;
+        const subPct = subComp !== 0 ? ((subBase - subComp) / Math.abs(subComp)) * 100 : (subBase > 0 ? 100 : 0);
+        rows.push({
+          'Classificação / Seção': '   └ Subcategoria',
+          'Conta / Categoria / Bem': `   • ${sub}`,
+          'Subcategoria / Especificação': cat.name,
+          [`Valor Base (${balancoBaseYear})`]: subBase,
+          [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? subComp : '',
+          'Variação Nominal (R$)': balancoCompareEnabled ? subDiff : '',
+          'Variação Percentual (%)': balancoCompareEnabled ? `${subPct >= 0 ? '+' : ''}${subPct.toFixed(1)}%` : ''
+        });
+      });
+    });
+
+    const totalDespBase = baseOutflowTxs.reduce((sum, t) => sum + t.value, 0);
+    const totalDespComp = compOutflowTxs.reduce((sum, t) => sum + t.value, 0);
+    const despDiff = totalDespBase - totalDespComp;
+    const despPct = totalDespComp !== 0 ? (despDiff / Math.abs(totalDespComp)) * 100 : (totalDespBase > 0 ? 100 : 0);
+    rows.push({
+      'Classificação / Seção': 'TOTAL DAS DESPESAS (4)',
+      'Conta / Categoria / Bem': 'Saídas Realizadas no Período',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: totalDespBase,
+      [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? totalDespComp : '',
+      'Variação Nominal (R$)': balancoCompareEnabled ? despDiff : '',
+      'Variação Percentual (%)': balancoCompareEnabled ? `${despPct >= 0 ? '+' : ''}${despPct.toFixed(1)}%` : ''
+    });
+    rows.push({});
+
+    // 5. RESULTADO / SUPERÁVIT
+    const supBase = totalRecBase - totalDespBase;
+    const supComp = totalRecComp - totalDespComp;
+    const supDiff = supBase - supComp;
+    const supPct = supComp !== 0 ? (supDiff / Math.abs(supComp)) * 100 : (supBase > 0 ? 100 : 0);
+    rows.push({
+      'Classificação / Seção': 'SUPERÁVIT / DÉFICIT OPERACIONAL (3 - 4)',
+      'Conta / Categoria / Bem': 'Resultado Líquido do Exercício',
+      'Subcategoria / Especificação': '',
+      [`Valor Base (${balancoBaseYear})`]: supBase,
+      [`Valor Comp (${balancoCompYear})`]: balancoCompareEnabled ? supComp : '',
+      'Variação Nominal (R$)': balancoCompareEnabled ? supDiff : '',
+      'Variação Percentual (%)': balancoCompareEnabled ? `${supPct >= 0 ? '+' : ''}${supPct.toFixed(1)}%` : ''
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 32 }, { wch: 38 }, { wch: 32 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 18 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Balanco_Patrimonial');
+    XLSX.writeFile(wb, `Balanco_Patrimonial_${balancoBaseYear}${balancoCompareEnabled ? `_vs_${balancoCompYear}` : ''}.xlsx`);
+  };
+
+  const handleExportBalancoPDF = async () => {
+    let element = document.getElementById('balanco-printable-sheet');
+    if (!element) {
+      setShowPrintBalancoModal(true);
+      await new Promise(resolve => setTimeout(resolve, 350));
+      element = document.getElementById('balanco-printable-sheet');
+    }
+
+    if (element) {
+      setIsGeneratingBalancoPDF(true);
+      try {
+        const canvas = await html2canvas(element, {
+          scale: 2.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 15000,
+          onclone: (clonedDoc) => {
+            const clonedEl = clonedDoc.getElementById('balanco-printable-sheet');
+            if (clonedEl) {
+              clonedEl.style.boxShadow = 'none';
+              clonedEl.style.border = 'none';
+              clonedEl.style.borderRadius = '0';
+              clonedEl.style.width = '1140px';
+              clonedEl.style.padding = '24px 32px';
+              clonedEl.style.margin = '0 auto';
+            }
+          }
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = 297; // A4 landscape width in mm
+        const pdfHeight = 210; // A4 landscape height in mm
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        if (imgHeight <= pdfHeight + 15) {
+          const scaleFactor = imgHeight > pdfHeight ? (pdfHeight - 4) / imgHeight : 1;
+          const renderW = pdfWidth * scaleFactor;
+          const renderH = imgHeight * scaleFactor;
+          const posX = (pdfWidth - renderW) / 2;
+          const posY = (pdfHeight - renderH) / 2;
+          doc.addImage(imgData, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
+        } else {
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          doc.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+
+          while (heightLeft > 0) {
+            position -= pdfHeight;
+            doc.addPage();
+            doc.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pdfHeight;
+          }
+        }
+
+        doc.save(`Balanco_Patrimonial_${balancoBaseYear}${balancoCompareEnabled ? `_vs_${balancoCompYear}` : ''}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar PDF do Balanço Patrimonial:', err);
+      } finally {
+        setIsGeneratingBalancoPDF(false);
+      }
+    }
+  };
+
+  const handleExportDREPDF = async () => {
+    let element = document.getElementById('dre-printable-sheet');
+    if (!element) {
+      setShowPrintDREModal(true);
+      await new Promise(resolve => setTimeout(resolve, 350));
+      element = document.getElementById('dre-printable-sheet');
+    }
+
+    if (element) {
+      setIsGeneratingDREPDF(true);
+      try {
+        const canvas = await html2canvas(element, {
+          scale: 2.2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 15000,
+          onclone: (clonedDoc) => {
+            const clonedEl = clonedDoc.getElementById('dre-printable-sheet');
+            if (clonedEl) {
+              clonedEl.style.boxShadow = 'none';
+              clonedEl.style.border = 'none';
+              clonedEl.style.borderRadius = '0';
+              clonedEl.style.width = '1200px';
+              clonedEl.style.padding = '24px 32px';
+              clonedEl.style.margin = '0 auto';
+            }
+          }
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = 297; // A4 landscape width in mm
+        const pdfHeight = 210; // A4 landscape height in mm
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        if (imgHeight <= pdfHeight + 15) {
+          const scaleFactor = imgHeight > pdfHeight ? (pdfHeight - 4) / imgHeight : 1;
+          const renderW = pdfWidth * scaleFactor;
+          const renderH = imgHeight * scaleFactor;
+          const posX = (pdfWidth - renderW) / 2;
+          const posY = (pdfHeight - renderH) / 2;
+          doc.addImage(imgData, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
+        } else {
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          doc.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+
+          while (heightLeft > 0) {
+            position -= pdfHeight;
+            doc.addPage();
+            doc.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pdfHeight;
+          }
+        }
+
+        doc.save(`Demonstrativo_DRE_Fluxo_Caixa_${dreSelectedYear}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar PDF do Demonstrativo:', err);
+      } finally {
+        setIsGeneratingDREPDF(false);
+      }
+    }
+  };
+
+  const getTransactionPeriodUpper = () => {
+    if (txSelectedPeriod === '7d') return 'ÚLTIMOS 7 DIAS';
+    if (txSelectedPeriod === '30d') return 'ÚLTIMOS 30 DIAS';
+    if (txSelectedPeriod === '90d') return 'ÚLTIMOS 90 DIAS';
+    if (txSelectedPeriod === 'custom') {
+      const startFmt = txStartDateFilter ? txStartDateFilter.split('-').reverse().join('/') : 'INÍCIO';
+      const endFmt = txEndDateFilter ? txEndDateFilter.split('-').reverse().join('/') : 'FIM';
+      return `${startFmt} A ${endFmt}`;
+    }
+    const year = txSelectedYear !== 'all' ? txSelectedYear : '';
+    const month = txSelectedMonth !== 'all' ? txSelectedMonth : '';
+    if (year && month) {
+      const monthObj = monthsList.find(m => m.value === month);
+      const mName = (monthObj?.label || month).toUpperCase();
+      return `${mName} DE ${year}`;
+    }
+    if (year) return `EXERCÍCIO DE ${year}`;
+    if (month) {
+      const monthObj = monthsList.find(m => m.value === month);
+      const mName = (monthObj?.label || month).toUpperCase();
+      const currentYr = new Date().getFullYear();
+      return `${mName} DE ${currentYr}`;
+    }
+    return `EXERCÍCIO DE ${new Date().getFullYear()}`;
+  };
+
+  const getTransactionReportTitle = () => {
+    const period = getTransactionPeriodUpper();
+    if (txFilterType === 'entrada') {
+      return `RECEITAS - ${period}`;
+    }
+    if (txFilterType === 'saida') {
+      return `DESPESAS - ${period}`;
+    }
+    if (txFilterType === 'transfer') {
+      return `TRANSFERÊNCIA ENTRE CONTAS - ${period}`;
+    }
+    return `RECEITAS E DESPESAS - ${period}`;
+  };
+
+  const getExportPeriodLabel = () => {
+    if (txSelectedPeriod === '7d') return 'Últimos 7 dias';
+    if (txSelectedPeriod === '30d') return 'Últimos 30 dias';
+    if (txSelectedPeriod === '90d') return 'Últimos 90 dias';
+    if (txSelectedPeriod === 'custom') {
+      const startFmt = txStartDateFilter ? txStartDateFilter.split('-').reverse().join('/') : 'Início';
+      const endFmt = txEndDateFilter ? txEndDateFilter.split('-').reverse().join('/') : 'Fim';
+      return `${startFmt} a ${endFmt}`;
+    }
+    const year = txSelectedYear !== 'all' ? txSelectedYear : '';
+    const month = txSelectedMonth !== 'all' ? txSelectedMonth : '';
+    if (year && month) {
+      const monthObj = monthsList.find(m => m.value === month);
+      return `${monthObj?.label || month} de ${year}`;
+    }
+    if (year) return `Ano de ${year}`;
+    if (month) {
+      const monthObj = monthsList.find(m => m.value === month);
+      return `${monthObj?.label || month}`;
+    }
+    return 'Geral (Todo o Período)';
+  };
+
+  const handleExportExcel = () => {
+    try {
+      const periodLabel = getExportPeriodLabel();
+
+      if (txFilterType === 'transfer') {
+        const rows = displayTransfers.map(tf => {
+          const src = accounts.find(a => a.id === tf.sourceAccountId);
+          const dest = accounts.find(a => a.id === tf.destinationAccountId);
+          return {
+            'Data': tf.date.split('-').reverse().join('/'),
+            'Conta Origem (Saída)': src ? `${src.name} (${src.bankName})` : '—',
+            'Conta Destino (Entrada)': dest ? `${dest.name} (${dest.bankName})` : '—',
+            'Valor (R$)': tf.value,
+            'Observação': tf.observation || '—'
+          };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [
+          { wch: 14 },
+          { wch: 30 },
+          { wch: 30 },
+          { wch: 16 },
+          { wch: 40 }
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Transferências');
+        const safePeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+        XLSX.writeFile(wb, `transferencias_${safePeriod}.xlsx`);
+        return;
+      }
+
+      const rows = displayTransactions.map(tx => {
+        const cat = categories.find(c => c.id === tx.categoryId);
+        const acc = accounts.find(a => a.id === tx.accountId);
+        return {
+          'Data': tx.date.split('-').reverse().join('/'),
+          'Tipo': tx.type === 'entrada' ? 'Receita' : 'Despesa',
+          'Descrição': tx.description,
+          'Categoria': cat?.name || '—',
+          'Subcategoria': tx.subcategory || '—',
+          'Conta': acc?.name || '—',
+          'Banco': acc?.bankName || '—',
+          'Forma de Pagamento': tx.paymentMethod ? tx.paymentMethod.toUpperCase() : '—',
+          'Status': tx.reconciled ? 'Conciliado' : 'Pendente',
+          'Valor (R$)': tx.value
+        };
+      });
+
+      const totalEntradas = filteredTransactions
+        .filter(t => t.type === 'entrada')
+        .reduce((sum, t) => sum + t.value, 0);
+      const totalSaidas = filteredTransactions
+        .filter(t => t.type === 'saida')
+        .reduce((sum, t) => sum + t.value, 0);
+      const saldo = totalEntradas - totalSaidas;
+
+      const rowsWithTotals: any[] = [...rows];
+      rowsWithTotals.push({});
+      rowsWithTotals.push({
+        'Data': 'TOTAIS',
+        'Tipo': '',
+        'Descrição': `Receitas: ${formatCurrency(totalEntradas)} | Despesas: ${formatCurrency(totalSaidas)} | Saldo Líquido: ${formatCurrency(saldo)}`,
+        'Categoria': '',
+        'Subcategoria': '',
+        'Conta': '',
+        'Banco': '',
+        'Forma de Pagamento': '',
+        'Status': '',
+        'Valor (R$)': saldo
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rowsWithTotals);
+      ws['!cols'] = [
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 34 },
+        { wch: 22 },
+        { wch: 20 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 14 },
+        { wch: 16 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Transações');
+      const safePeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+      XLSX.writeFile(wb, `transacoes_${safePeriod}.xlsx`);
+    } catch (err) {
+      console.error('Erro ao exportar Excel:', err);
+    }
+  };
+
+  const getAccountPeriodStats = (acc: BankAccount) => {
+    let startDate = '';
+    let endDate = '';
+    if (txSelectedPeriod === 'custom') {
+      startDate = txStartDateFilter;
+      endDate = txEndDateFilter;
+    } else {
+      const year = txSelectedYear !== 'all' ? txSelectedYear : '';
+      const month = txSelectedMonth !== 'all' ? txSelectedMonth : '';
+      if (year && month) {
+        startDate = `${year}-${month}-01`;
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+        endDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+      } else if (year) {
+        startDate = `${year}-01-01`;
+        endDate = `${year}-12-31`;
+      } else if (month) {
+        const curYear = new Date().getFullYear().toString();
+        startDate = `${curYear}-${month}-01`;
+        const lastDay = new Date(parseInt(curYear), parseInt(month), 0).getDate();
+        endDate = `${curYear}-${month}-${lastDay.toString().padStart(2, '0')}`;
+      }
+    }
+
+    const hasActiveRange = !!(startDate || endDate);
+
+    let initialBalanceForPeriod = Number(acc.initialBalance);
+    let periodInflows = 0;
+    let periodOutflows = 0;
+    let periodTransfersIn = 0;
+    let periodTransfersOut = 0;
+
+    transactions.forEach(tx => {
+      if (tx.accountId === acc.id) {
+        if (hasActiveRange) {
+          if (tx.date < startDate) {
+            if (tx.type === 'entrada') initialBalanceForPeriod += tx.value;
+            else initialBalanceForPeriod -= tx.value;
+          } else if (tx.date >= startDate && tx.date <= endDate) {
+            if (tx.type === 'entrada') periodInflows += tx.value;
+            else periodOutflows += tx.value;
+          }
+        } else {
+          if (tx.type === 'entrada') periodInflows += tx.value;
+          else periodOutflows += tx.value;
+        }
+      }
+    });
+
+    transfers.forEach(tf => {
+      if (hasActiveRange) {
+        if (tf.date < startDate) {
+          if (tf.sourceAccountId === acc.id) initialBalanceForPeriod -= tf.value;
+          if (tf.destinationAccountId === acc.id) initialBalanceForPeriod += tf.value;
+        } else if (tf.date >= startDate && tf.date <= endDate) {
+          if (tf.sourceAccountId === acc.id) periodTransfersOut += tf.value;
+          if (tf.destinationAccountId === acc.id) periodTransfersIn += tf.value;
+        }
+      } else {
+        if (tf.sourceAccountId === acc.id) periodTransfersOut += tf.value;
+        if (tf.destinationAccountId === acc.id) periodTransfersIn += tf.value;
+      }
+    });
+
+    const totalEntradas = periodInflows + periodTransfersIn;
+    const totalSaidas = periodOutflows + periodTransfersOut;
+    const diff = totalEntradas - totalSaidas;
+    const finalBalanceForPeriod = initialBalanceForPeriod + diff;
+
+    return {
+      initialBalanceForPeriod,
+      totalEntradas,
+      totalSaidas,
+      finalBalanceForPeriod,
+      diff
+    };
+  };
+
+  // Period transactions independent of txFilterType for the overview cards
+  const periodTransactions = transactions.filter(tx => {
+    if (txSelectedAccountId !== 'all' && tx.accountId !== txSelectedAccountId) return false;
+    if (txSelectedYear !== 'all' && tx.date.substring(0, 4) !== txSelectedYear) return false;
+    if (txSelectedMonth !== 'all' && tx.date.substring(5, 7) !== txSelectedMonth) return false;
+    if (txSelectedPeriod !== 'all') {
+      if (txSelectedPeriod === 'custom') {
+        if (txStartDateFilter && tx.date < txStartDateFilter) return false;
+        if (txEndDateFilter && tx.date > txEndDateFilter) return false;
+      } else {
+        const txDateObj = new Date(tx.date + 'T00:00:00');
+        const now = new Date();
+        const diffTime = now.getTime() - txDateObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        if (txSelectedPeriod === '7d' && (diffDays > 7 || diffDays < 0)) return false;
+        if (txSelectedPeriod === '30d' && (diffDays > 30 || diffDays < 0)) return false;
+        if (txSelectedPeriod === '90d' && (diffDays > 90 || diffDays < 0)) return false;
+      }
+    }
+    return true;
+  });
+
+  const reportTotalReceitas = periodTransactions
+    .filter(t => t.type === 'entrada')
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const reportTotalDespesas = periodTransactions
+    .filter(t => t.type === 'saida')
+    .reduce((sum, t) => sum + t.value, 0);
+
+  const reportSuperavit = reportTotalReceitas - reportTotalDespesas;
+  const reportTotalSaldoContas = accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+
+  const handleExportPDF = async () => {
+    // 1. Ensure modal is open so the full printable element is rendered in DOM
+    let element = document.getElementById('report-printable-sheet');
+    if (!element) {
+      setShowPrintReportModal(true);
+      await new Promise(resolve => setTimeout(resolve, 350));
+      element = document.getElementById('report-printable-sheet');
+    }
+
+    if (element) {
+      setIsGeneratingPDF(true);
+      try {
+        const periodLabel = getExportPeriodLabel();
+
+        // Render the exact HTML element to high-res canvas (scale 2.5 for crisp text & SVGs)
+        const canvas = await html2canvas(element, {
+          scale: 2.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 15000,
+          onclone: (clonedDoc) => {
+            const clonedEl = clonedDoc.getElementById('report-printable-sheet');
+            if (clonedEl) {
+              clonedEl.style.boxShadow = 'none';
+              clonedEl.style.border = 'none';
+              clonedEl.style.borderRadius = '0';
+              clonedEl.style.width = '1140px';
+              clonedEl.style.padding = '24px 32px';
+              clonedEl.style.margin = '0 auto';
+            }
+          }
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = 297; // A4 landscape width in mm
+        const pdfHeight = 210; // A4 landscape height in mm
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        // If it fits within roughly 1 page (up to 225mm), fit cleanly to 1 page
+        if (imgHeight <= pdfHeight + 15) {
+          const scaleFactor = imgHeight > pdfHeight ? (pdfHeight - 4) / imgHeight : 1;
+          const renderW = pdfWidth * scaleFactor;
+          const renderH = imgHeight * scaleFactor;
+          const posX = (pdfWidth - renderW) / 2;
+          const posY = (pdfHeight - renderH) / 2;
+          doc.addImage(imgData, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
+        } else {
+          // Multi-page pagination
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          doc.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+
+          while (heightLeft > 0) {
+            position -= pdfHeight;
+            doc.addPage();
+            doc.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pdfHeight;
+          }
+        }
+
+        const safePeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+        doc.save(`relatorio_${txFilterType}_${safePeriod}.pdf`);
+        return;
+      } catch (err) {
+        console.error('Erro ao gerar PDF visual com html2canvas, usando fallback direto:', err);
+      } finally {
+        setIsGeneratingPDF(false);
+      }
+    }
+
+    // Fallback: direct jsPDF generation if DOM element capture wasn't available
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const periodLabel = getExportPeriodLabel();
+
+      // Top Left Header with MNV Emblem & Left Aligned Titles
+      const logoX = 22;
+      const logoY = 18;
+      const logoR = 8.5;
+      doc.setDrawColor(24, 24, 27);
+      doc.setLineWidth(0.6);
+      doc.setFillColor(255, 255, 255);
+      doc.circle(logoX, logoY, logoR, 'FD');
+      doc.setDrawColor(113, 113, 122);
+      doc.setLineWidth(0.2);
+      doc.circle(logoX, logoY, logoR - 0.6, 'D');
+
+      // Emblem text inside
+      doc.setFontSize(5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(24, 24, 27);
+      doc.text('MNV', logoX, logoY + 4, { align: 'center' });
+      doc.setFontSize(2);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(82, 82, 91);
+      doc.text('PALAVRA, AMOR E LOUVOR', logoX, logoY + 6.3, { align: 'center' });
+
+      // Left-aligned header text next to logo
+      const textStartX = 34;
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(13.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MINISTÉRIO NOVA VIDA', textStartX, 13, { align: 'left' });
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(63, 63, 70);
+      doc.text('AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP', textStartX, 17, { align: 'left' });
+      doc.text('CNPJ: 62.471.271-0001-82', textStartX, 20.5, { align: 'left' });
+
+      // Divider line
+      doc.setDrawColor(212, 212, 216);
+      doc.setLineWidth(0.3);
+      doc.line(textStartX, 22.5, 280, 22.5);
+
+      // Dynamic Section Title in deep indigo
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(49, 46, 129); // text-indigo-900
+      doc.text(getTransactionReportTitle(), textStartX, 27, { align: 'left' });
+
+      // Bottom border line
+      doc.setDrawColor(24, 24, 27);
+      doc.setLineWidth(0.6);
+      doc.line(14, 29.5, 283, 29.5);
+
+      // Section: Visão Geral
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Visão Geral', 14, 34);
+
+      // 4 Cards layout
+      const cardW = 63.5;
+      const cardH = 15;
+      const startY = 32;
+
+      // Card 1: Receitas Totais
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, startY, cardW, cardH, 2, 2, 'FD');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 116, 139);
+      doc.text('RECEITAS TOTAIS', 17, startY + 4.5);
+      doc.setFontSize(9.5);
+      doc.setTextColor(16, 185, 129);
+      doc.text(formatCurrency(reportTotalReceitas), 17, startY + 9.5);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text('Dízimos e ofertas consolidadas', 17, startY + 13.5);
+
+      // Card 2: Despesas Totais
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(81.5, startY, cardW, cardH, 2, 2, 'FD');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 116, 139);
+      doc.text('DESPESAS TOTAIS', 84.5, startY + 4.5);
+      doc.setFontSize(9.5);
+      doc.setTextColor(239, 68, 68);
+      doc.text(formatCurrency(reportTotalDespesas), 84.5, startY + 9.5);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text('Soma de todas as despesas', 84.5, startY + 13.5);
+
+      // Card 3: Superávit Líquido
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(149, startY, cardW, cardH, 2, 2, 'FD');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 116, 139);
+      doc.text('SUPERÁVIT LÍQUIDO', 152, startY + 4.5);
+      doc.setFontSize(9.5);
+      doc.setTextColor(reportSuperavit >= 0 ? 79 : 239, reportSuperavit >= 0 ? 70 : 68, reportSuperavit >= 0 ? 229 : 68);
+      doc.text(formatCurrency(reportSuperavit), 152, startY + 9.5);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text('Inflows operacionais líquidos', 152, startY + 13.5);
+
+      // Card 4: Saldo em Contas (Indigo Filled)
+      doc.setFillColor(67, 56, 202); // #4338ca
+      doc.roundedRect(216.5, startY, cardW, cardH, 2, 2, 'F');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('SALDO EM CONTAS', 219.5, startY + 4.5);
+      doc.setFontSize(9.5);
+      doc.text(formatCurrency(reportTotalSaldoContas), 219.5, startY + 9.5);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(224, 231, 255);
+      doc.text('Total de saldos de bancos', 219.5, startY + 13.5);
+
+      // Section: Bancos
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text('Bancos', 14, 52);
+
+      const bankSlice = accounts.slice(0, 5);
+      const bCardW = (297 - 28 - (bankSlice.length - 1) * 3) / bankSlice.length;
+      const bStartY = 54;
+      const bCardH = 14;
+
+      bankSlice.forEach((acc, idx) => {
+        const bx = 14 + idx * (bCardW + 3);
+        const stats = getAccountPeriodStats(acc);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(bx, bStartY, bCardW, bCardH, 1.5, 1.5, 'FD');
+
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(acc.name, bx + 2, bStartY + 3.5, { maxWidth: bCardW - 4 });
+
+        doc.setFontSize(5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(16, 185, 129);
+        doc.text(`Entradas: +${formatCurrency(stats.totalEntradas)}`, bx + 2, bStartY + 7);
+
+        doc.setTextColor(239, 68, 68);
+        doc.text(`Saídas: -${formatCurrency(stats.totalSaidas)}`, bx + 2, bStartY + 10);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(stats.finalBalanceForPeriod >= 0 ? 79 : 239, stats.finalBalanceForPeriod >= 0 ? 70 : 68, stats.finalBalanceForPeriod >= 0 ? 229 : 68);
+        doc.text(`Saldo: ${formatCurrency(stats.finalBalanceForPeriod)}`, bx + 2, bStartY + 13);
+      });
+
+      // Section: Lançamentos
+      const tableStartY = 72;
+
+      if (txFilterType === 'transfer') {
+        const tableData = displayTransfers.map(tf => {
+          const src = accounts.find(a => a.id === tf.sourceAccountId);
+          const dest = accounts.find(a => a.id === tf.destinationAccountId);
+          return [
+            tf.date.split('-').reverse().join('/'),
+            src ? `${src.name} (${src.bankName})` : '—',
+            dest ? `${dest.name} (${dest.bankName})` : '—',
+            tf.observation || '—',
+            formatCurrency(tf.value)
+          ];
+        });
+
+        const totalTransfer = filteredTransfers.reduce((sum, t) => sum + t.value, 0);
+
+        autoTable(doc, {
+          startY: tableStartY,
+          head: [['Data', 'Conta Origem (Saída)', 'Conta Destino (Entrada)', 'Observação', 'Valor']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+          styles: { fontSize: 8.5, cellPadding: 2.5 },
+          foot: [['Total', '', '', `${filteredTransfers.length} transferências`, formatCurrency(totalTransfer)]],
+          footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+        });
+
+        const safePeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+        doc.save(`transferencias_${safePeriod}.pdf`);
+        return;
+      }
+
+      const isSaida = txFilterType === 'saida';
+      const isEntradaMode = txFilterType === 'entrada';
+
+      const tableData = displayTransactions.map(tx => {
+        const cat = categories.find(c => c.id === tx.categoryId);
+        const acc = accounts.find(a => a.id === tx.accountId);
+        const txIsEntrada = tx.type === 'entrada';
+        const dateVal = (txIsEntrada 
+          ? (tx.dataRecebido || tx.date) 
+          : (tx.dataLancamento || tx.date)
+        )?.split('-').reverse().join('/') || '—';
+        const isDone = txIsEntrada ? tx.recebido !== 'nao' : tx.pago !== 'nao';
+        const personEntity = txIsEntrada ? (tx.recebidoDe || '—') : (tx.vaiPagarQuem || '—');
+        const paymentMethodVal = (tx.paymentMethod || tx.formaPagamento)?.toUpperCase() || '—';
+        const installmentVal = tx.parcelamento === 'sim' 
+          ? `${tx.numeroParcelas || 1}x ${tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}` 
+          : tx.parcelamento === 'recorrente' 
+            ? 'Recorrente' 
+            : (tx.installments || 'À Vista');
+
+        return [
+          dateVal,
+          tx.description,
+          (txIsEntrada ? '+ ' : '- ') + formatCurrency(tx.value),
+          txIsEntrada ? 'Receita' : 'Despesa',
+          (cat?.name || '—') + (tx.subcategory ? ` • ${tx.subcategory}` : ''),
+          acc?.name || '—',
+          isDone ? 'Sim' : 'Não',
+          personEntity,
+          paymentMethodVal,
+          installmentVal,
+          tx.observation || '—'
+        ];
+      });
+
+      const dateHeader = isEntradaMode ? 'Data de Recebido' : isSaida ? 'Data de Lançamento' : 'Data';
+      const statusHeader = isEntradaMode ? 'Recebido' : isSaida ? 'Pago' : 'Status';
+      const personHeader = isEntradaMode ? 'Recebido de' : isSaida ? 'Pagar quem' : 'Recebido / Pagar';
+
+      const totalValFormatted = isSaida 
+        ? `- ${formatCurrency(displayTransactions.filter(t => t.type === 'saida').reduce((s, t) => s + t.value, 0))}`
+        : isEntradaMode 
+          ? `+ ${formatCurrency(displayTransactions.filter(t => t.type === 'entrada').reduce((s, t) => s + t.value, 0))}`
+          : formatCurrency(reportSuperavit);
+
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [[dateHeader, 'Descrição', 'Valor', 'Tipo', 'Categoria', 'Conta Bancária', statusHeader, personHeader, 'Forma Pgto', 'Parcelamento', 'Observações']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [248, 250, 252], textColor: [71, 85, 105], fontStyle: 'bold', fontSize: 6.5, cellPadding: 1.8 },
+        styles: { fontSize: 6.5, cellPadding: 1.6, overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 18 },
+          1: { cellWidth: 44 },
+          2: { cellWidth: 24, fontStyle: 'bold', halign: 'right' },
+          3: { cellWidth: 16 },
+          4: { cellWidth: 32 },
+          5: { cellWidth: 28 },
+          6: { cellWidth: 14, halign: 'center' },
+          7: { cellWidth: 24 },
+          8: { cellWidth: 16, halign: 'center' },
+          9: { cellWidth: 18 },
+          10: { cellWidth: 36 }
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 2) {
+            const raw = String(data.cell.raw);
+            if (raw.startsWith('+')) {
+              data.cell.styles.textColor = [16, 185, 129];
+            } else if (raw.startsWith('-')) {
+              data.cell.styles.textColor = [239, 68, 68];
+            }
+          }
+        },
+        foot: [['Total', '', totalValFormatted, '', '', '', '', '', '', '', `${displayTransactions.length} lançamentos`]],
+        footStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 7 }
+      });
+
+      const safePeriod = periodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`relatorio_${txFilterType}_${safePeriod}.pdf`);
+    } catch (err) {
+      console.error('Erro ao exportar PDF:', err);
+    }
+  };
+
+  return (
+    <div className="space-y-6 font-sans">
+      
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className={`text-xl font-bold tracking-tight ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+            Gestão de Finanças
+          </h2>
+          <p className="text-[11px] text-zinc-500 font-medium">Controle de caixa, dízimos, ofertas, transferências e demonstrativos</p>
+        </div>
+
+        {/* PERIOD SELECTOR & ACTIONS FOR REPORT TAB */}
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          {activeSubTab === 'dashboard' && (
+            <div className={`flex items-center gap-1 p-1 rounded-xl border ${
+              isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900/40 border-zinc-850'
+            }`}>
+              <span className="text-[9px] font-bold uppercase text-zinc-500 px-2">Filtrar por:</span>
+              <select
+                value={dashSelectedYear}
+                onChange={(e) => setDashSelectedYear(e.target.value)}
+                className={`text-xs bg-transparent focus:outline-none px-2 py-1 cursor-pointer font-bold ${
+                  isHighContrast ? 'text-zinc-800' : 'text-zinc-300'
+                }`}
+              >
+                <option value="all" className={isHighContrast ? 'text-zinc-900' : 'text-zinc-950 bg-zinc-900'}>Todos os Anos</option>
+                {availableDashYears.map(yr => (
+                  <option key={yr} value={yr} className={isHighContrast ? 'text-zinc-900' : 'text-zinc-950 bg-zinc-900'}>{yr}</option>
+                ))}
+              </select>
+              <div className={`h-4 w-px ${isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800'}`} />
+              <select
+                value={dashSelectedMonth}
+                onChange={(e) => setDashSelectedMonth(e.target.value)}
+                className={`text-xs bg-transparent focus:outline-none px-2 py-1 cursor-pointer font-bold ${
+                  isHighContrast ? 'text-zinc-800' : 'text-zinc-300'
+                }`}
+              >
+                <option value="all" className={isHighContrast ? 'text-zinc-900' : 'text-zinc-950 bg-zinc-900'}>Todos os Meses</option>
+                {monthsList.map(mo => (
+                  <option key={mo.value} value={mo.value} className={isHighContrast ? 'text-zinc-900' : 'text-zinc-950 bg-zinc-900'}>{mo.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          <div className={`flex items-center gap-1.5 p-1 rounded-xl border transition-colors ${
+            isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950/80 p-1 border-zinc-900'
+          }`}>
+            <button
+              onClick={() => setActiveSubTab('dashboard')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                activeSubTab === 'dashboard' 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : (isHighContrast ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+              }`}
+            >
+              Painel
+            </button>
+            <button
+              onClick={() => setActiveSubTab('transactions')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                activeSubTab === 'transactions' 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : (isHighContrast ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+              }`}
+            >
+              Transações
+            </button>
+            <button
+              onClick={() => setActiveSubTab('accounts')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                activeSubTab === 'accounts' 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : (isHighContrast ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+              }`}
+            >
+              Contas Bancárias
+            </button>
+            <button
+              onClick={() => setActiveSubTab('categories')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                activeSubTab === 'categories' 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : (isHighContrast ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+              }`}
+            >
+              Categorias
+            </button>
+            <button
+              onClick={() => setActiveSubTab('reports')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                activeSubTab === 'reports' 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : (isHighContrast ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+              }`}
+            >
+              Relatórios
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI SUMMARY CARDS (STAYS ON TOP) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`p-5 rounded-2xl border shadow-sm relative overflow-hidden ${
+          isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Receitas Totais</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+              <ArrowUpRight size={14} />
+            </div>
+          </div>
+          <h3 className={`text-lg font-bold tracking-tight ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+            {formatCurrency(totalInflow)}
+          </h3>
+          <p className="text-[9px] text-zinc-500 mt-1">Dízimos e ofertas consolidadas</p>
+        </div>
+
+        <div className={`p-5 rounded-2xl border shadow-sm relative overflow-hidden ${
+          isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Despesas Totais</span>
+            <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+              <ArrowDownLeft size={14} />
+            </div>
+          </div>
+          <h3 className={`text-lg font-bold tracking-tight ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+            {formatCurrency(totalOutflow)}
+          </h3>
+          <p className="text-[9px] text-zinc-500 mt-1">Soma de todas as despesas</p>
+        </div>
+
+        <div className={`p-5 rounded-2xl border shadow-sm relative overflow-hidden ${
+          isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Superávit Líquido</span>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              netCashFlow >= 0 ? 'bg-indigo-500/10 text-indigo-500' : 'bg-rose-500/10 text-rose-500'
+            }`}>
+              <TrendingUp size={14} />
+            </div>
+          </div>
+          <h3 className={`text-lg font-bold tracking-tight ${
+            netCashFlow >= 0 ? (isHighContrast ? 'text-indigo-600' : 'text-indigo-400') : 'text-rose-500'
+          }`}>
+            {formatCurrency(netCashFlow)}
+          </h3>
+          <p className="text-[9px] text-zinc-500 mt-1">Inflows operacionais líquidos</p>
+        </div>
+
+        <div 
+          className="p-5 rounded-2xl border shadow-sm relative overflow-hidden transition-all duration-300 text-white border-indigo-500/30"
+          style={{ backgroundColor: '#4f39f6' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span 
+              className="text-[10px] font-bold uppercase tracking-wider text-white/90"
+              style={{ color: '#f9f9f9' }}
+            >
+              Saldo em Contas
+            </span>
+            <div 
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border"
+              style={{ backgroundColor: '#4f39f6', borderColor: '#ffffff', color: '#ffffff' }}
+            >
+              <Wallet size={14} style={{ color: '#ffffff' }} />
+            </div>
+          </div>
+          <h3 
+            className="text-lg font-bold tracking-tight text-white"
+            style={{ color: '#ffffff' }}
+          >
+            {formatCurrency(totalBankBalance)}
+          </h3>
+          <p 
+            className="text-[9px] mt-1 text-white/80"
+            style={{ color: '#f7f7f7' }}
+          >
+            Total de saldos de bancos
+          </p>
+        </div>
+      </div>
+
+      {/* --- WORKSPACE SUBTAB PANELS --- */}
+      <div className={`rounded-2xl border shadow-sm overflow-hidden ${
+        isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-900'
+      }`}>
+
+        {/* 1. FINANCIAL DASHBOARD SCREEN */}
+        {activeSubTab === 'dashboard' && (
+          <div className="p-5 space-y-6">
+            {/* REGISTERED BANK ACCOUNTS CARDS */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2.5">
+                  <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                    Nossas Contas Bancárias Cadastradas
+                  </h4>
+                  {accounts.length > 5 && (
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                      {accounts.length} contas
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {accounts.length > 5 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setAccountsViewMode('horizontal')}
+                        className={`p-1.5 px-2.5 rounded-lg border text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                          accountsViewMode === 'horizontal'
+                            ? 'bg-indigo-600 border-indigo-500 text-white font-bold shadow-sm'
+                            : isHighContrast
+                              ? 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-zinc-900'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                        }`}
+                        title="Visualização na Horizontal (Carrossel)"
+                      >
+                        <ArrowRightLeft size={12} />
+                        <span className="text-[10px] font-medium hidden sm:inline">Horizontal</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAccountsViewMode('grid')}
+                        className={`p-1.5 px-2.5 rounded-lg border text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                          accountsViewMode === 'grid'
+                            ? 'bg-indigo-600 border-indigo-500 text-white font-bold shadow-sm'
+                            : isHighContrast
+                              ? 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-zinc-900'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                        }`}
+                        title="Visualização em Grade"
+                      >
+                        <LayoutGrid size={12} />
+                        <span className="text-[10px] font-medium hidden sm:inline">Grade</span>
+                      </button>
+                    </div>
+                  )}
+                  <span className="text-[10px] text-zinc-500 font-medium">Saldos atuais</span>
+                </div>
+              </div>
+
+              {accounts.length === 0 ? (
+                <div className={`col-span-full p-4 text-center rounded-xl border text-xs text-zinc-500 ${
+                  isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/10 border-zinc-850'
+                }`}>
+                  Nenhuma conta bancária cadastrada. Vá na aba "Contas Bancárias" para cadastrar.
+                </div>
+              ) : accounts.length > 5 && accountsViewMode === 'horizontal' ? (
+                /* HORIZONTAL VIEW WITH ICON BUTTONS (MATCHES USER IMAGE) */
+                <div className="relative group/accounts">
+                  {/* Left circular navigation button */}
+                  {canScrollAccountsLeft && (
+                    <div className="absolute left-1 top-1/2 -translate-y-1/2 z-20">
+                      <button
+                        type="button"
+                        onClick={() => scrollAccounts('left')}
+                        title="Visualizar contas anteriores"
+                        className={`w-9 h-9 rounded-full border shadow-lg flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 ${
+                          isHighContrast
+                            ? 'bg-white border-zinc-200 text-zinc-600 hover:text-indigo-600 hover:border-indigo-300 shadow-zinc-300/60'
+                            : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 hover:bg-zinc-800 shadow-black/80'
+                        }`}
+                      >
+                        <ChevronLeft size={18} className="-translate-x-0.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Horizontal Scroll Track */}
+                  <div
+                    ref={accountsScrollRef}
+                    onScroll={checkAccountsScroll}
+                    className="flex gap-4 overflow-x-auto scroll-smooth no-scrollbar py-1 px-1"
+                  >
+                    {accounts.map((acc) => (
+                      <div 
+                        key={acc.id} 
+                        className={`w-[275px] sm:w-[290px] shrink-0 p-4 rounded-xl border flex flex-col justify-between transition-all duration-300 ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200 shadow-sm' : 'bg-zinc-900/20 border-zinc-800 hover:border-zinc-700'
+                        }`}
+                        style={{
+                          backgroundColor: isHighContrast ? '#ffffff' : '#191919'
+                        }}
+                      >
+                        <div className="flex justify-between items-start gap-3">
+                          <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={36} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h5 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</h5>
+                              <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                                {getAccountTypeLabel(acc.accountType)}
+                              </span>
+                            </div>
+                            <p className="text-[9px] text-zinc-500 font-medium truncate mt-0.5">{acc.bankName}</p>
+                          </div>
+                          <button
+                            onClick={() => handleEditAccount(acc)}
+                            className="p-1 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/10 transition-colors cursor-pointer shrink-0"
+                            title="Editar Conta Bancária"
+                          >
+                            <Edit3 size={12} />
+                          </button>
+                        </div>
+                        
+                        <div className="mt-4 pt-3 border-t border-dashed border-zinc-800/60 flex justify-between items-end text-xs">
+                          <div className="min-w-0">
+                            <p className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">
+                              {acc.accountType === 'caixa_fisico' ? 'Identificação' : 'Ag / Conta'}
+                            </p>
+                            <p className="font-mono text-[9px] text-zinc-400 mt-0.5 truncate">
+                              {acc.accountType === 'caixa_fisico' ? `Nº ${acc.accountNumber}` : `Ag ${acc.agency} | CC ${acc.accountNumber}`}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Saldo</p>
+                            <p className={`font-bold text-xs mt-0.5 ${acc.currentBalance >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                              {formatCurrency(acc.currentBalance)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Right circular navigation button (Matches image.png) */}
+                  {canScrollAccountsRight && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20">
+                      <button
+                        type="button"
+                        onClick={() => scrollAccounts('right')}
+                        title="Visualizar mais contas na horizontal"
+                        className={`w-9 h-9 rounded-full border shadow-lg flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95 ${
+                          isHighContrast
+                            ? 'bg-white border-zinc-200 text-zinc-600 hover:text-indigo-600 hover:border-indigo-300 shadow-zinc-300/60'
+                            : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 hover:bg-zinc-800 shadow-black/80'
+                        }`}
+                      >
+                        <ChevronRight size={18} className="translate-x-0.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* STANDARD GRID (When <= 5 accounts or when Grade is selected) */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {accounts.map((acc, idx) => (
+                    <div 
+                      key={acc.id} 
+                      className={`p-4 rounded-xl border flex flex-col justify-between transition-all duration-300 ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 shadow-sm' : 'bg-zinc-900/20 border-zinc-800 hover:border-zinc-700'
+                      }`}
+                      style={{
+                        backgroundColor: isHighContrast ? '#ffffff' : '#191919'
+                      }}
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={36} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h5 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</h5>
+                            <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                              {getAccountTypeLabel(acc.accountType)}
+                            </span>
+                          </div>
+                          <p className="text-[9px] text-zinc-500 font-medium truncate mt-0.5">{acc.bankName}</p>
+                        </div>
+                        <button
+                          onClick={() => handleEditAccount(acc)}
+                          className="p-1 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/10 transition-colors cursor-pointer shrink-0"
+                          title="Editar Conta Bancária"
+                        >
+                          <Edit3 size={12} />
+                        </button>
+                      </div>
+                      
+                      <div className="mt-4 pt-3 border-t border-dashed border-zinc-800/60 flex justify-between items-end text-xs">
+                        <div className="min-w-0">
+                          <p className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">
+                            {acc.accountType === 'caixa_fisico' ? 'Identificação' : 'Ag / Conta'}
+                          </p>
+                          <p className="font-mono text-[9px] text-zinc-400 mt-0.5 truncate">
+                            {acc.accountType === 'caixa_fisico' ? `Nº ${acc.accountNumber}` : `Ag ${acc.agency} | CC ${acc.accountNumber}`}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Saldo</p>
+                          <p className={`font-bold text-xs mt-0.5 ${acc.currentBalance >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                            {formatCurrency(acc.currentBalance)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* FLOW MAPPING MINDMAP DIAGRAM */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                  Mapeamento Estrutural Financeiro (Distribuição de Fluxos)
+                </h4>
+              </div>
+              <div 
+                className={`w-full border rounded-2xl overflow-x-auto scrollbar-thin ${
+                  isHighContrast ? 'bg-white border-zinc-200' : 'bg-black border-zinc-900/60'
+                }`}
+                style={{
+                  backgroundColor: isHighContrast ? '#ffffff' : '#000000',
+                  borderColor: isHighContrast ? '#ffffff' : '#18181b'
+                }}
+              >
+                {(() => {
+                  const dynamicFixItems = categories
+                    .filter(c => c.mainCategory === 'Despesas Fixas')
+                    .flatMap(c => (c.subcategories || []).map(sub => ({ name: sub, catId: c.id })));
+                  
+                  const finalFixItems = dynamicFixItems.length > 0 
+                    ? dynamicFixItems.slice(0, 8) 
+                    : [
+                        { name: 'Aluguel / Templo', catId: '' },
+                        { name: 'Salários / Encargos', catId: '' },
+                        { name: 'Zeladoria', catId: '' },
+                        { name: 'Sede Principal', catId: '' },
+                        { name: 'Estacionamento', catId: '' }
+                      ];
+
+                  const fixSubVals = finalFixItems.map((item) => {
+                    const realVal = filteredDashboardTxs
+                      .filter(t => {
+                        if (item.catId) {
+                          return t.categoryId === item.catId && t.subcategory?.toLowerCase() === item.name.toLowerCase();
+                        }
+                        return t.subcategory?.toLowerCase() === item.name.toLowerCase() || t.description?.toLowerCase().includes(item.name.toLowerCase());
+                      })
+                      .reduce((sum, t) => sum + t.value, 0);
+                    return { item, realVal };
+                  });
+
+                  const sumFixSubItems = fixSubVals.reduce((acc, f) => acc + f.realVal, 0);
+
+                  const fixSubItems = fixSubVals.map((v, i) => {
+                    const realVal = v.realVal;
+                    const pct = sumFixSubItems > 0 ? Math.round((realVal / sumFixSubItems) * 100) : 0;
+                    // Spread from 100 to 260 degrees to focus on the left side
+                    const startAngle = 100;
+                    const endAngle = 260;
+                    const totalItems = finalFixItems.length;
+                    const angle = totalItems > 1 
+                      ? startAngle + (i * (endAngle - startAngle) / (totalItems - 1))
+                      : (startAngle + endAngle) / 2;
+                    const rad = (angle * Math.PI) / 180;
+                    const dist = 110;
+                    const x = 160 + Math.cos(rad) * dist;
+                    const y = 140 + Math.sin(rad) * dist;
+                    return { name: v.item.name, pct, x, y, val: realVal };
+                  });
+
+                  const dynamicRecItems = categories
+                    .filter(c => c.mainCategory === 'Receitas')
+                    .flatMap(c => (c.subcategories || []).map(sub => ({ name: sub, catId: c.id })));
+                  
+                  const finalRecItems = dynamicRecItems.length > 0 
+                    ? dynamicRecItems.slice(0, 8) 
+                    : [
+                        { name: 'Dízimos', catId: '' },
+                        { name: 'Ofertas Regulares', catId: '' },
+                        { name: 'Culto de Domingo', catId: '' },
+                        { name: 'Visitantes', catId: '' },
+                        { name: 'Membros', catId: '' }
+                      ];
+
+                  const recSubVals = finalRecItems.map((item) => {
+                    const realVal = filteredDashboardTxs
+                      .filter(t => {
+                        if (item.catId) {
+                          return t.categoryId === item.catId && t.subcategory?.toLowerCase() === item.name.toLowerCase();
+                        }
+                        return t.subcategory?.toLowerCase() === item.name.toLowerCase() || t.description?.toLowerCase().includes(item.name.toLowerCase());
+                      })
+                      .reduce((sum, t) => sum + t.value, 0);
+                    return { item, realVal };
+                  });
+
+                  const sumRecSubItems = recSubVals.reduce((acc, r) => acc + r.realVal, 0);
+
+                  const recSubItems = recSubVals.map((v, i) => {
+                    const realVal = v.realVal;
+                    const pct = sumRecSubItems > 0 ? Math.round((realVal / sumRecSubItems) * 100) : 0;
+                    // Spread from 100 to 260 degrees to focus on the left side
+                    const startAngle = 100;
+                    const endAngle = 260;
+                    const totalItems = finalRecItems.length;
+                    const angle = totalItems > 1 
+                      ? startAngle + (i * (endAngle - startAngle) / (totalItems - 1))
+                      : (startAngle + endAngle) / 2;
+                    const rad = (angle * Math.PI) / 180;
+                    const dist = 110;
+                    const x = 160 + Math.cos(rad) * dist;
+                    const y = 330 + Math.sin(rad) * dist;
+                    return { name: v.item.name, pct, x, y, val: realVal };
+                  });
+
+                  const dynamicVarItems = categories
+                    .filter(c => c.mainCategory === 'Despesas Variáveis')
+                    .flatMap(c => (c.subcategories || []).map(sub => ({ name: sub, catId: c.id })));
+                  
+                  const finalVarItems = dynamicVarItems.length > 0 
+                    ? dynamicVarItems.slice(0, 10) 
+                    : [
+                        { name: 'Supermercado', catId: '' },
+                        { name: 'Energia Elétrica', catId: '' },
+                        { name: 'Saneamento Água', catId: '' },
+                        { name: 'Cestas Básicas', catId: '' },
+                        { name: 'Medicamentos', catId: '' },
+                        { name: 'Ajuda de Custo', catId: '' }
+                      ];
+
+                  const varSubVals = finalVarItems.map((item) => {
+                    const realVal = filteredDashboardTxs
+                      .filter(t => {
+                        if (item.catId) {
+                          return t.categoryId === item.catId && t.subcategory?.toLowerCase() === item.name.toLowerCase();
+                        }
+                        return t.subcategory?.toLowerCase() === item.name.toLowerCase() || t.description?.toLowerCase().includes(item.name.toLowerCase());
+                      })
+                      .reduce((sum, t) => sum + t.value, 0);
+                    return { item, realVal };
+                  });
+
+                  const sumVarSubItems = varSubVals.reduce((acc, v) => acc + v.realVal, 0);
+
+                  const varSubItems = varSubVals.map((v, i) => {
+                    const realVal = v.realVal;
+                    const pct = sumVarSubItems > 0 ? Math.round((realVal / sumVarSubItems) * 100) : 0;
+                    // Spread dynamically to focus on the right side and avoid overlapping with the left
+                    const startAngle = -80;
+                    const endAngle = 80;
+                    const totalItems = finalVarItems.length;
+                    const angle = totalItems > 1 
+                      ? startAngle + (i * (endAngle - startAngle) / (totalItems - 1))
+                      : (startAngle + endAngle) / 2;
+                    const rad = (angle * Math.PI) / 180;
+                    const dist = 110;
+                    const x = 720 + Math.cos(rad) * dist;
+                    const y = 140 + Math.sin(rad) * dist;
+                    return { name: v.item.name, pct, x, y, val: realVal };
+                  });
+
+                  const dynamicInvItems = categories
+                    .filter(c => c.mainCategory === 'Investimentos')
+                    .flatMap(c => (c.subcategories || []).map(sub => ({ name: sub, catId: c.id })));
+                  
+                  const finalInvItems = dynamicInvItems.length > 0
+                    ? dynamicInvItems.slice(0, 8)
+                    : [
+                        { name: 'Caixinha Nubank', catId: '' },
+                        { name: 'CDB', catId: '' },
+                        { name: 'Tesouro SELIC', catId: '' },
+                        { name: 'Ações', catId: '' },
+                        { name: 'Fundos Imobiliários', catId: '' }
+                      ];
+
+                  const invSubVals = finalInvItems.map((item) => {
+                    const realVal = filteredDashboardTxs
+                      .filter(t => {
+                        if (item.catId) {
+                          return t.categoryId === item.catId && t.subcategory?.toLowerCase() === item.name.toLowerCase();
+                        }
+                        return t.subcategory?.toLowerCase() === item.name.toLowerCase() || t.description?.toLowerCase().includes(item.name.toLowerCase());
+                      })
+                      .reduce((sum, t) => sum + t.value, 0);
+                    return { item, realVal };
+                  });
+
+                  const sumInvSubItems = invSubVals.reduce((acc, f) => acc + f.realVal, 0);
+
+                  const invSubItems = invSubVals.map((v, i) => {
+                    const realVal = v.realVal;
+                    const pct = sumInvSubItems > 0 ? Math.round((realVal / sumInvSubItems) * 100) : 0;
+                    // Spread dynamically to focus on the right side and avoid overlapping with the left
+                    const startAngle = -80;
+                    const endAngle = 80;
+                    const totalItems = finalInvItems.length;
+                    const angle = totalItems > 1 
+                      ? startAngle + (i * (endAngle - startAngle) / (totalItems - 1))
+                      : (startAngle + endAngle) / 2;
+                    const rad = (angle * Math.PI) / 180;
+                    const dist = 110;
+                    const x = 720 + Math.cos(rad) * dist;
+                    const y = 330 + Math.sin(rad) * dist;
+                    return { name: v.item.name, pct, x, y, val: realVal };
+                  });
+
+                  return (
+                    <div className="w-[880px] h-[470px] mx-auto relative overflow-hidden">
+                      {/* SVG lines */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                        <defs>
+                          <radialGradient id="glow-center" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                          </radialGradient>
+                        </defs>
+                        
+                        {/* Ambient Center Glow */}
+                        <circle cx="440" cy="235" r="150" fill="url(#glow-center)" />
+                        
+                        {/* Concentric Dashed Rings around center */}
+                        <circle cx="440" cy="235" r="82" stroke="#4f46e5" strokeWidth="1" strokeDasharray="4 4" fill="transparent" opacity="0.4" />
+                        <circle cx="440" cy="235" r="92" stroke="#ec4899" strokeWidth="1" strokeDasharray="8 8" fill="transparent" opacity="0.2" />
+
+                        {/* Main connection lines from Center to 4 Spheres */}
+                        {/* Center to Despesa Fixa */}
+                        <line x1="440" y1="235" x2="300" y2="140" stroke="#4f46e5" strokeWidth="1.5" opacity="0.6" />
+                        {/* Center to Receitas */}
+                        <line x1="440" y1="235" x2="300" y2="330" stroke="#6366f1" strokeWidth="1.5" opacity="0.6" />
+                        {/* Center to Despesa Variavel */}
+                        <line x1="440" y1="235" x2="580" y2="140" stroke="#db2777" strokeWidth="1.5" opacity="0.6" />
+                        {/* Center to Investimento */}
+                        <line x1="440" y1="235" x2="580" y2="330" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6" />
+
+                        {/* Sphere to Hub connections */}
+                        {/* Despesa Fixa to Hub */}
+                        <line x1="300" y1="140" x2="160" y2="140" stroke="#4f46e5" strokeWidth="1.2" strokeDasharray="2 2" opacity="0.8" />
+                        {/* Receitas to Hub */}
+                        <line x1="300" y1="330" x2="160" y2="330" stroke="#6366f1" strokeWidth="1.2" strokeDasharray="2 2" opacity="0.8" />
+                        {/* Despesa Variável to Hub */}
+                        <line x1="580" y1="140" x2="720" y2="140" stroke="#db2777" strokeWidth="1.2" strokeDasharray="2 2" opacity="0.8" />
+                        {/* Investimento to Hub */}
+                        <line x1="580" y1="330" x2="720" y2="330" stroke="#06b6d4" strokeWidth="1.2" strokeDasharray="2 2" opacity="0.8" />
+
+                        {/* Radial Lines from Despesa Fixa Hub to subcategories */}
+                        {fixSubItems.map((item, idx) => (
+                          <line 
+                            key={`line-fix-${idx}`} 
+                            x1="160" y1="140" x2={item.x} y2={item.y} stroke="#4f46e5" 
+                            strokeWidth="1" 
+                            opacity="0.45" 
+                          />
+                        ))}
+
+                        {/* Radial Lines from Receitas Hub to subcategories */}
+                        {recSubItems.map((item, idx) => (
+                          <line 
+                            key={`line-rec-${idx}`} 
+                            x1="160" y1="330" x2={item.x} y2={item.y} stroke="#6366f1" 
+                            strokeWidth="1" 
+                            opacity="0.45" 
+                          />
+                        ))}
+
+                        {/* Radial Lines from Despesa Variavel Hub to subcategories */}
+                        {varSubItems.map((item, idx) => (
+                          <line 
+                            key={`line-var-${idx}`} 
+                            x1="720" y1="140" x2={item.x} y2={item.y} stroke="#db2777" 
+                            strokeWidth="1" 
+                            opacity="0.45" 
+                          />
+                        ))}
+
+                        {/* Radial Lines from Investimento Hub to subcategories */}
+                        {invSubItems.map((item, idx) => (
+                          <line 
+                            key={`line-inv-${idx}`} 
+                            x1="720" y1="330" x2={item.x} y2={item.y} stroke="#06b6d4" 
+                            strokeWidth="1" 
+                            opacity="0.45" 
+                          />
+                        ))}
+                      </svg>
+
+                      {/* Center Node: Receita Comprometida */}
+                      <div className="absolute left-[440px] top-[235px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center text-center z-10">
+                        <div className={`w-28 h-28 rounded-full border-2 flex flex-col items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 ${
+                          isHighContrast 
+                            ? 'bg-white border-indigo-500 shadow-indigo-100 text-indigo-700' 
+                            : 'bg-zinc-950/95 border-indigo-500/80 shadow-indigo-500/10 text-indigo-300'
+                        }`}>
+                          <span className="text-2xl font-black tracking-tight">{receitaComprometidaPct}%</span>
+                          <span className="text-[7.5px] font-black uppercase tracking-wider mt-0.5 leading-tight">Receita<br />Comprometida</span>
+                        </div>
+                      </div>
+
+                      {/* Sphere: Despesa Fixa */}
+                      <div className="absolute left-[300px] top-[140px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10">
+                        <div className="w-18 h-18 rounded-full bg-gradient-to-br from-indigo-400 via-indigo-600 to-indigo-800 shadow-[0_0_20px_rgba(99,102,241,0.6)] flex flex-col items-center justify-center text-center font-bold text-white transition-all duration-300 hover:scale-110 p-1">
+                          <span className="text-[9px] font-extrabold tracking-tight">
+                            {sumFixSubItems > 0 ? formatCurrency(sumFixSubItems) : '—'}
+                          </span>
+                          <span className="text-[9px] text-zinc-200/90 font-black">
+                            {totalInflow > 0 ? Math.round((sumFixSubItems / totalInflow) * 100) : 0}%
+                          </span>
+                        </div>
+                        <span className={`text-[8.5px] font-black uppercase tracking-wider mt-2 ${
+                          isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                        }`}>Despesa Fixa</span>
+                      </div>
+
+                      {/* Hub: Despesa Fixa Percentage */}
+                      <div className="absolute left-[160px] top-[140px] -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div 
+                          className="w-10 h-10 rounded-full border border-cyan-400 bg-zinc-950/90 shadow-md flex items-center justify-center text-center font-black text-cyan-400 text-[10px]"
+                          style={{
+                            backgroundColor: isHighContrast ? '#ffffff' : '#09090c',
+                            borderColor: isHighContrast ? '#4f39f6' : '#a3b3ff',
+                            color: isHighContrast ? '#4f39f6' : '#a3b3ff'
+                          }}
+                        >
+                          {totalInflow > 0 ? Math.round((sumFixSubItems / totalInflow) * 100) : 0}%
+                        </div>
+                      </div>
+
+                      {/* Sphere: Receitas */}
+                      <div className="absolute left-[300px] top-[330px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10">
+                        <div className="w-18 h-18 rounded-full bg-gradient-to-br from-violet-400 via-violet-600 to-violet-800 shadow-[0_0_20px_rgba(124,58,237,0.6)] flex flex-col items-center justify-center text-center font-bold text-white transition-all duration-300 hover:scale-110 p-1">
+                          <span className="text-[9px] font-extrabold tracking-tight">
+                            {sumRecSubItems > 0 ? formatCurrency(sumRecSubItems) : '—'}
+                          </span>
+                          <span className="text-[9px] text-zinc-200/90 font-black">
+                            {totalInflow > 0 ? Math.round((sumRecSubItems / totalInflow) * 100) : 0}%
+                          </span>
+                        </div>
+                        <span className={`text-[8.5px] font-black uppercase tracking-wider mt-2 ${
+                          isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                        }`}>Receitas</span>
+                      </div>
+
+                      {/* Hub: Receitas Percentage */}
+                      <div className="absolute left-[160px] top-[330px] -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div 
+                          className="w-10 h-10 rounded-full border border-cyan-400 bg-zinc-950/90 shadow-md flex items-center justify-center text-center font-black text-cyan-400 text-[10px]"
+                          style={{
+                            backgroundColor: isHighContrast ? '#ffffff' : '#09090c',
+                            borderColor: isHighContrast ? '#4f39f6' : '#a3b3ff',
+                            color: isHighContrast ? '#4f39f6' : '#a3b3ff'
+                          }}
+                        >
+                          {totalInflow > 0 ? Math.round((sumRecSubItems / totalInflow) * 100) : 0}%
+                        </div>
+                      </div>
+
+                      {/* Sphere: Despesa Variável */}
+                      <div className="absolute left-[580px] top-[140px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10">
+                        <div 
+                          className="w-18 h-18 rounded-full bg-gradient-to-br from-pink-400 via-pink-600 to-pink-800 shadow-[0_0_20px_rgba(219,39,119,0.6)] flex flex-col items-center justify-center text-center font-bold text-white transition-all duration-300 hover:scale-110 p-1"
+                          style={{
+                            backgroundColor: '#4f39f6',
+                            backgroundImage: 'none'
+                          }}
+                        >
+                          <span className="text-[9px] font-extrabold tracking-tight">
+                            {sumVarSubItems > 0 ? formatCurrency(sumVarSubItems) : '—'}
+                          </span>
+                          <span className="text-[9px] text-zinc-200/90 font-black">
+                            {totalInflow > 0 ? Math.round((sumVarSubItems / totalInflow) * 100) : 0}%
+                          </span>
+                        </div>
+                        <span className={`text-[8.5px] font-black uppercase tracking-wider mt-2 ${
+                          isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                        }`}>Despesa Variável</span>
+                      </div>
+
+                      {/* Hub: Despesa Variável Percentage */}
+                      <div className="absolute left-[720px] top-[140px] -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div 
+                          className="w-10 h-10 rounded-full border border-cyan-400 bg-zinc-950/90 shadow-md flex items-center justify-center text-center font-black text-cyan-400 text-[10px]"
+                          style={{
+                            backgroundColor: isHighContrast ? '#ffffff' : '#09090c',
+                            color: isHighContrast ? '#4f39f6' : '#a3b3ff',
+                            borderColor: isHighContrast ? '#4f39f6' : '#a3b3ff'
+                          }}
+                        >
+                          {totalInflow > 0 ? Math.round((sumVarSubItems / totalInflow) * 100) : 0}%
+                        </div>
+                      </div>
+
+                      {/* Sphere: Investimento */}
+                      <div className="absolute left-[580px] top-[330px] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10">
+                        <div 
+                          className="w-18 h-18 rounded-full bg-gradient-to-br from-cyan-400 via-cyan-600 to-cyan-800 shadow-[0_0_20px_rgba(6,182,212,0.6)] flex flex-col items-center justify-center text-center font-bold text-white transition-all duration-300 hover:scale-110 p-1"
+                          style={{
+                            backgroundColor: '#cf0acf',
+                            backgroundImage: 'none'
+                          }}
+                        >
+                          <span className="text-[9px] font-extrabold tracking-tight">
+                            {sumInvSubItems > 0 ? formatCurrency(sumInvSubItems) : '—'}
+                          </span>
+                          <span className="text-[9px] text-zinc-200/90 font-black">
+                            {totalInflow > 0 ? Math.round((sumInvSubItems / totalInflow) * 100) : 0}%
+                          </span>
+                        </div>
+                        <span className={`text-[8.5px] font-black uppercase tracking-wider mt-2 ${
+                          isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                        }`}>Investimento</span>
+                      </div>
+
+                      {/* Hub: Investimento Percentage */}
+                      <div className="absolute left-[720px] top-[330px] -translate-x-1/2 -translate-y-1/2 z-10">
+                        <div 
+                          className="w-10 h-10 rounded-full border border-cyan-400 bg-zinc-950/90 shadow-md flex items-center justify-center text-center font-black text-cyan-400 text-[10px]"
+                          style={{
+                            backgroundColor: isHighContrast ? '#ffffff' : '#09090c',
+                            borderColor: isHighContrast ? '#4f39f6' : '#a3b3ff',
+                            color: isHighContrast ? '#4f39f6' : '#a3b3ff'
+                          }}
+                        >
+                          {totalInflow > 0 ? Math.round((sumInvSubItems / totalInflow) * 100) : 0}%
+                        </div>
+                      </div>
+
+                      {/* Fixed Sub-nodes styled as concentric circles on Left Side */}
+                      {fixSubItems.map((item, idx) => {
+                        const labelAbove = item.y < 140;
+                        return (
+                          <div 
+                            key={`f-node-${idx}`}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center gap-1 z-20 transition-all duration-200 pointer-events-auto"
+                            style={{ left: item.x, top: item.y }}
+                          >
+                            {labelAbove ? (
+                              <>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Revenue Sub-nodes styled as concentric circles on Left Side */}
+                      {recSubItems.map((item, idx) => {
+                        const labelAbove = item.y < 330;
+                        return (
+                          <div 
+                            key={`r-node-${idx}`}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center gap-1 z-20 transition-all duration-200 pointer-events-auto"
+                            style={{ left: item.x, top: item.y }}
+                          >
+                            {labelAbove ? (
+                              <>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Variable Sub-nodes styled as concentric circles on Right Side */}
+                      {varSubItems.map((item, idx) => {
+                        const labelAbove = item.y < 140;
+                        return (
+                          <div 
+                            key={`v-node-${idx}`}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center gap-1 z-20 transition-all duration-200 pointer-events-auto"
+                            style={{ left: item.x, top: item.y }}
+                          >
+                            {labelAbove ? (
+                              <>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Investment Sub-nodes styled as concentric circles on Right Side */}
+                      {invSubItems.map((item, idx) => {
+                        const labelAbove = item.y < 330;
+                        return (
+                          <div 
+                            key={`i-node-${idx}`}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center gap-1 z-20 transition-all duration-200 pointer-events-auto"
+                            style={{ left: item.x, top: item.y }}
+                          >
+                            {labelAbove ? (
+                              <>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] shadow-lg transition-all duration-300 hover:scale-110 ${
+                                  isHighContrast 
+                                    ? 'bg-zinc-200 text-zinc-950 border border-zinc-300' 
+                                    : 'bg-[#1a202c] text-white border border-slate-800'
+                                }`}>
+                                  {item.pct}%
+                                </div>
+                                <div className="flex flex-col items-center text-center leading-tight">
+                                  <span className={`text-[9px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-100'} truncate max-w-[95px]`}>
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[8px] text-zinc-500 font-medium leading-none">
+                                    {item.val > 0 ? formatCurrency(item.val) : '—'}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* SVG Dynamic Charts */}
+              <div className="lg:col-span-2 space-y-3">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                  Histórico de Lançamentos Mensais (Últimos 12 meses)
+                </h4>
+                
+                {/* Visual Pill Bar Chart */}
+                <div className={`p-5 rounded-2xl border flex flex-col justify-between h-full min-h-[300px] relative overflow-hidden ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#121214]/60 border-zinc-800/80'}`}>
+                  {/* Background grid lines */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none p-5 pt-11 pb-16 opacity-10">
+                    <div className="w-full border-b border-dashed border-zinc-500 h-0" />
+                    <div className="w-full border-b border-dashed border-zinc-500 h-0" />
+                    <div className="w-full border-b border-dashed border-zinc-500 h-0" />
+                    <div className="w-full border-b border-dashed border-zinc-500 h-0" />
+                  </div>
+
+                  <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                    <div className="min-w-[650px] md:min-w-0 h-[235px] flex items-end justify-between gap-1 pt-6 relative z-10">
+                      {chartData.map((d, idx) => {
+                        const inPercent = maxChartVal > 0 ? (d.inflows / maxChartVal) * 85 : 0; // Scale to max 85% height
+                        const outPercent = maxChartVal > 0 ? (d.outflows / maxChartVal) * 85 : 0;
+                        return (
+                          <div key={idx} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer h-full justify-end">
+                            <div className="w-full flex items-end justify-center gap-1.5 h-full relative">
+                              {/* Inflow Pill Bar (Purple Gradient) */}
+                              <div 
+                                className={`w-2 md:w-3.5 h-full rounded-full relative overflow-hidden group/bar transition-colors ${
+                                  isHighContrast ? 'border border-zinc-200 shadow-sm' : 'bg-zinc-800/20 dark:bg-zinc-950/40'
+                                }`}
+                                style={isHighContrast ? { 
+                                  backgroundColor: '#fafafa',
+                                  borderColor: idx === 11 ? '#fafafa' : undefined
+                                } : undefined}
+                              >
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0 rounded-full bg-gradient-to-t from-violet-600 via-indigo-500 to-purple-400 transition-all duration-500"
+                                  style={{ 
+                                    height: `${Math.max(inPercent, 3)}%`,
+                                    ...(isHighContrast ? { backgroundColor: '#4f39f6', backgroundImage: 'none' } : {})
+                                  }}
+                                />
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/bar:block bg-zinc-950 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap z-30">
+                                  Receitas: {formatCurrency(d.inflows)}
+                                </div>
+                              </div>
+                              {/* Outflow Pill Bar (Yellow Gradient) */}
+                              <div 
+                                className={`w-2 md:w-3.5 h-full rounded-full relative overflow-hidden group/bar transition-colors ${
+                                  isHighContrast ? 'border border-zinc-200 shadow-sm' : 'bg-zinc-800/20 dark:bg-zinc-950/40'
+                                }`}
+                                style={isHighContrast ? { 
+                                  backgroundColor: '#fafafa',
+                                  borderColor: idx === 11 ? '#fafafa' : undefined,
+                                  borderStyle: idx === 11 ? 'none' : undefined
+                                } : undefined}
+                              >
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0 rounded-full bg-gradient-to-t from-amber-600 via-amber-500 to-yellow-300 transition-all duration-500"
+                                  style={{ 
+                                    height: `${Math.max(outPercent, 3)}%`,
+                                    ...(idx === 11 ? { backgroundColor: '#cf0acf', backgroundImage: 'none' } : {})
+                                  }}
+                                />
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/bar:block bg-zinc-950 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap z-30">
+                                  Despesas: {formatCurrency(d.outflows)}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-medium text-zinc-500 font-mono italic">{d.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-dashed border-zinc-800/60 justify-center text-[10px] font-semibold text-zinc-500">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 bg-gradient-to-br from-violet-500 to-purple-400 rounded-full shadow" />
+                      <span>Receitas (Dízimos & Ofertas)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 bg-gradient-to-br from-amber-500 to-yellow-300 rounded-full shadow" />
+                      <span>Despesas</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Analytics - Custom Donut Chart */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                    Analytics
+                  </h4>
+                  <div className={`flex gap-1 p-0.5 rounded-lg text-[9px] font-bold ${
+                    isHighContrast ? 'bg-zinc-100 border border-zinc-200' : 'bg-zinc-950/80 border border-zinc-900'
+                  }`}>
+                    <button
+                      onClick={() => setAnalyticsFilter('entrada')}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        analyticsFilter === 'entrada'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Receita
+                    </button>
+                    <button
+                      onClick={() => setAnalyticsFilter('saida')}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        analyticsFilter === 'saida'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Saída
+                    </button>
+                    <button
+                      onClick={() => setAnalyticsFilter('saldo')}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        analyticsFilter === 'saldo'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Saldo
+                    </button>
+                  </div>
+                </div>
+                <div 
+                  className={`p-5 rounded-2xl border flex flex-col justify-between h-full min-h-[300px] ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#121214]/60 border-zinc-800'
+                  }`}
+                  style={isHighContrast ? { borderColor: '#000000' } : undefined}
+                >
+                  {/* Donut graphic container */}
+                  <div className="flex flex-col items-center justify-center flex-1 py-4 relative">
+                    <svg width="150" height="150" viewBox="0 0 100 100" className="transform -rotate-90 select-none">
+                      {/* Gray track background */}
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r={donutR} 
+                        fill="transparent" 
+                        stroke={isHighContrast ? "#e4e4e7" : "#1f1f23"} 
+                        strokeWidth="15" 
+                      />
+                      
+                      {/* Segment 3 (Mint Green) */}
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r={donutR} 
+                        fill="transparent" 
+                        stroke={d3.color} 
+                        strokeWidth="15" 
+                        strokeDasharray={`${s3Width} ${donutC}`}
+                        strokeDashoffset={s3Offset}
+                        strokeLinecap="round"
+                      />
+
+                      {/* Segment 2 (Peach) */}
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r={donutR} 
+                        fill="transparent" 
+                        stroke={d2.color} 
+                        strokeWidth="15" 
+                        strokeDasharray={`${s2Width} ${donutC}`}
+                        strokeDashoffset={s2Offset}
+                        strokeLinecap="round"
+                      />
+
+                      {/* Segment 1 (Lavender/Purple) */}
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r={donutR} 
+                        fill="transparent" 
+                        stroke={d1.color} 
+                        strokeWidth="15" 
+                        strokeDasharray={`${s1Width} ${donutC}`}
+                        strokeDashoffset={s1Offset}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+
+                    {/* Centered text */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 pt-4">
+                      <span className={`text-2xl font-black tracking-tight ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                        {centerPercent}%
+                      </span>
+                      <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mt-0.5">
+                        {centerLabel}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Legends */}
+                  <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-zinc-800/10 dark:border-zinc-800/60 text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                        <div className="w-2 h-2 rounded-full bg-[#C084FC]" />
+                        <span className={`text-[9px] font-black uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>{d1.value}%</span>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 font-medium truncate max-w-[80px]">{d1.name}</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                        <div className="w-2 h-2 rounded-full bg-[#FDBA74]" />
+                        <span className={`text-[9px] font-black uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>{d2.value}%</span>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 font-medium truncate max-w-[80px]">{d2.name}</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                        <div className="w-2 h-2 rounded-full bg-[#86EFAC]" />
+                        <span className={`text-[9px] font-black uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>{d3.value}%</span>
+                      </div>
+                      <span className="text-[9px] text-zinc-500 font-medium truncate max-w-[80px]">{d3.name}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* RECENTS LIST (Atalhos Rápidos removed per user request) */}
+            <div className="pt-2">
+              {/* Recent Activity List */}
+              <div className="space-y-3">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                  Últimos Lançamentos
+                </h4>
+                <div className="overflow-x-auto scrollbar-thin">
+                  <div className={`min-w-[700px] rounded-xl border divide-y overflow-hidden ${
+                    isHighContrast ? 'border-zinc-200 divide-zinc-200' : 'border-zinc-900 divide-zinc-900'
+                  }`}>
+                    {/* Header Row */}
+                    <div className={`grid grid-cols-12 gap-3 px-4 py-2 text-[9px] font-black uppercase tracking-wider border-b select-none ${
+                      isHighContrast ? 'text-zinc-500 bg-zinc-50/50 border-zinc-200' : 'text-zinc-400 bg-zinc-950/25 border-zinc-900'
+                    }`}>
+                      <div className="col-span-3">Descrição</div>
+                      <div className="col-span-2">Categoria</div>
+                      <div className="col-span-3">Conta Bancária</div>
+                      <div className="col-span-2">Data</div>
+                      <div className="col-span-2 text-right">Valor</div>
+                    </div>
+
+                    {transactions.slice(0, 8).map(t => {
+                      const category = categories.find(c => c.id === t.categoryId);
+                      const account = accounts.find(a => a.id === t.accountId);
+                      const formattedDate = t.date.split('-').reverse().join('/');
+                      return (
+                        <div key={t.id} className={`p-4 grid grid-cols-12 gap-3 items-center text-xs transition-colors ${
+                          isHighContrast ? 'hover:bg-zinc-100 bg-white' : 'hover:bg-zinc-900/20 bg-zinc-950/10'
+                        }`}>
+                          {/* Descrição */}
+                          <div className="col-span-3 min-w-0">
+                            <span className={`font-bold truncate block ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                              {t.description}
+                            </span>
+                          </div>
+
+                          {/* Categoria */}
+                          <div className="col-span-2 min-w-0">
+                            <span className="text-[10px] md:text-xs text-zinc-500 font-semibold truncate block">
+                              {category?.name || '—'} {t.subcategory && `• ${t.subcategory}`}
+                            </span>
+                          </div>
+
+                          {/* Conta with Logo */}
+                          <div className="col-span-3 flex items-center gap-2 min-w-0">
+                            {account ? (
+                              <>
+                                <BankLogo bankName={account.bankName} imageUrl={account.image} size={20} />
+                                <span className="text-[10px] md:text-xs text-indigo-400 font-semibold truncate block">
+                                  {account.name}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-zinc-500">—</span>
+                            )}
+                          </div>
+
+                          {/* Data */}
+                          <div className="col-span-2 text-zinc-400 font-medium font-mono text-[10px] md:text-xs">
+                            {formattedDate}
+                          </div>
+
+                          {/* Valor */}
+                          <div className="col-span-2 text-right shrink-0">
+                            <span className={`font-bold text-xs md:text-sm ${
+                              t.type === 'entrada' ? 'text-emerald-500' : 'text-red-500'
+                            }`}>
+                              {t.type === 'entrada' ? '+' : '-'} {formatCurrency(t.value)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. TRANSACTIONS SCREEN */}
+        {activeSubTab === 'transactions' && (
+          <div>
+            {/* Bank account cards in transactions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
+              {accounts.map(acc => {
+                // Determine the date range based on the filters
+                let startDate = '';
+                let endDate = '';
+
+                if (txSelectedPeriod === '7d') {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 7);
+                  startDate = d.toISOString().split('T')[0];
+                  endDate = new Date().toISOString().split('T')[0];
+                } else if (txSelectedPeriod === '30d') {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 30);
+                  startDate = d.toISOString().split('T')[0];
+                  endDate = new Date().toISOString().split('T')[0];
+                } else if (txSelectedPeriod === '90d') {
+                  const d = new Date();
+                  d.setDate(d.getDate() - 90);
+                  startDate = d.toISOString().split('T')[0];
+                  endDate = new Date().toISOString().split('T')[0];
+                } else if (txSelectedPeriod === 'custom') {
+                  startDate = txStartDateFilter || '1970-01-01';
+                  endDate = txEndDateFilter || '9999-12-31';
+                } else {
+                  // Year and Month
+                  const year = txSelectedYear !== 'all' ? txSelectedYear : '';
+                  const month = txSelectedMonth !== 'all' ? txSelectedMonth : '';
+                  if (year && month) {
+                    startDate = `${year}-${month}-01`;
+                    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+                    endDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+                  } else if (year) {
+                    startDate = `${year}-01-01`;
+                    endDate = `${year}-12-31`;
+                  } else if (month) {
+                    const curYear = new Date().getFullYear().toString();
+                    startDate = `${curYear}-${month}-01`;
+                    const lastDay = new Date(parseInt(curYear), parseInt(month), 0).getDate();
+                    endDate = `${curYear}-${month}-${lastDay.toString().padStart(2, '0')}`;
+                  }
+                }
+
+                const hasActiveRange = !!(startDate || endDate);
+
+                let initialBalanceForPeriod = Number(acc.initialBalance);
+                let periodInflows = 0;
+                let periodOutflows = 0;
+                let periodTransfersIn = 0;
+                let periodTransfersOut = 0;
+
+                transactions.forEach(tx => {
+                  if (tx.accountId === acc.id) {
+                    if (hasActiveRange) {
+                      if (tx.date < startDate) {
+                        if (tx.type === 'entrada') initialBalanceForPeriod += tx.value;
+                        else initialBalanceForPeriod -= tx.value;
+                      } else if (tx.date >= startDate && tx.date <= endDate) {
+                        if (tx.type === 'entrada') periodInflows += tx.value;
+                        else periodOutflows += tx.value;
+                      }
+                    } else {
+                      if (tx.type === 'entrada') periodInflows += tx.value;
+                      else periodOutflows += tx.value;
+                    }
+                  }
+                });
+
+                transfers.forEach(tf => {
+                  if (hasActiveRange) {
+                    if (tf.date < startDate) {
+                      if (tf.sourceAccountId === acc.id) initialBalanceForPeriod -= tf.value;
+                      if (tf.destinationAccountId === acc.id) initialBalanceForPeriod += tf.value;
+                    } else if (tf.date >= startDate && tf.date <= endDate) {
+                      if (tf.sourceAccountId === acc.id) periodTransfersOut += tf.value;
+                      if (tf.destinationAccountId === acc.id) periodTransfersIn += tf.value;
+                    }
+                  } else {
+                    if (tf.sourceAccountId === acc.id) periodTransfersOut += tf.value;
+                    if (tf.destinationAccountId === acc.id) periodTransfersIn += tf.value;
+                  }
+                });
+
+                const totalEntradas = periodInflows + periodTransfersIn;
+                const totalSaidas = periodOutflows + periodTransfersOut;
+                const diff = totalEntradas - totalSaidas;
+                const finalBalanceForPeriod = initialBalanceForPeriod + diff;
+
+                // Format period/month description label
+                let referenceLabel = 'Geral (Todo o Período)';
+                if (txSelectedPeriod === '7d') {
+                  referenceLabel = 'Últimos 7 dias';
+                } else if (txSelectedPeriod === '30d') {
+                  referenceLabel = 'Últimos 30 dias';
+                } else if (txSelectedPeriod === '90d') {
+                  referenceLabel = 'Últimos 90 dias';
+                } else if (txSelectedPeriod === 'custom') {
+                  const startFmt = txStartDateFilter ? txStartDateFilter.split('-').reverse().join('/') : 'Início';
+                  const endFmt = txEndDateFilter ? txEndDateFilter.split('-').reverse().join('/') : 'Fim';
+                  referenceLabel = `${startFmt} a ${endFmt}`;
+                } else {
+                  const year = txSelectedYear !== 'all' ? txSelectedYear : '';
+                  const month = txSelectedMonth !== 'all' ? txSelectedMonth : '';
+                  if (year && month) {
+                    const monthObj = monthsList.find(m => m.value === month);
+                    referenceLabel = `${monthObj?.label || month} de ${year}`;
+                  } else if (year) {
+                    referenceLabel = `Ano de ${year}`;
+                  } else if (month) {
+                    const monthObj = monthsList.find(m => m.value === month);
+                    referenceLabel = `${monthObj?.label || month}`;
+                  }
+                }
+
+                const isSelected = txSelectedAccountId === acc.id;
+
+                return (
+                  <div 
+                    key={`tx-acc-${acc.id}`} 
+                    onClick={() => setTxSelectedAccountId(isSelected ? 'all' : acc.id)}
+                    className={`p-5 rounded-xl border flex flex-col justify-between relative cursor-pointer transition-all duration-300 select-none hover:scale-[1.01] ${
+                      isSelected
+                        ? isHighContrast
+                          ? 'bg-indigo-50 border-indigo-600 ring-2 ring-indigo-600/20 shadow-md'
+                          : 'bg-indigo-950/25 border-indigo-500 ring-2 ring-indigo-500/25 shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+                        : isHighContrast
+                          ? 'bg-zinc-50 border-zinc-200 hover:border-zinc-300 shadow-sm'
+                          : 'bg-zinc-900/10 border-[#27272a] hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex gap-3 items-center min-w-0 flex-1">
+                        <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={36} />
+                        <div className="min-w-0">
+                          <h4 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</h4>
+                          <p className="text-[10px] text-zinc-500 font-semibold truncate">
+                            {acc.bankName} • Ag {acc.agency} | CC {acc.accountNumber}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isSelected && (
+                          <span className="flex items-center gap-1 text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
+                            Filtrado
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-dashed border-zinc-800/60 grid grid-cols-2 gap-y-3 text-xs">
+                      <div>
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Mês de Referência</p>
+                        <p className={`font-semibold mt-0.5 ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>{referenceLabel}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Diferença</p>
+                        <p className={`font-mono font-bold mt-0.5 ${diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                        </p>
+                      </div>
+
+                      <div className={`p-2 rounded-lg border ${
+                        isHighContrast ? 'bg-emerald-50/60 border-emerald-200' : 'bg-emerald-950/20 border-emerald-800/30'
+                      }`}>
+                        <p className="text-[8px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Entradas
+                        </p>
+                        <p className="font-mono font-bold text-xs text-emerald-500 mt-0.5">
+                          +{formatCurrency(totalEntradas)}
+                        </p>
+                      </div>
+                      <div className={`p-2 rounded-lg border text-right ${
+                        isHighContrast ? 'bg-rose-50/60 border-rose-200' : 'bg-rose-950/20 border-rose-800/30'
+                      }`}>
+                        <p className="text-[8px] text-rose-600 dark:text-rose-400 uppercase tracking-widest font-bold flex items-center justify-end gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Saídas
+                        </p>
+                        <p className="font-mono font-bold text-xs text-rose-500 mt-0.5">
+                          -{formatCurrency(totalSaidas)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Saldo Inicial</p>
+                        <p className="font-mono text-zinc-400 mt-0.5">{formatCurrency(initialBalanceForPeriod)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Saldo Atual</p>
+                        <p className={`font-mono font-bold text-sm mt-0.5 ${finalBalanceForPeriod >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                          {formatCurrency(finalBalanceForPeriod)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Toolbar section */}
+            <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
+              isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950 border-zinc-900'
+            }`}>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() => setTxFilterType('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    txFilterType === 'all' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setTxFilterType('entrada')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    txFilterType === 'entrada' ? 'bg-emerald-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                  }`}
+                >
+                  Receitas
+                </button>
+                <button
+                  onClick={() => setTxFilterType('saida')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    txFilterType === 'saida' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                  }`}
+                >
+                  Despesas
+                </button>
+                <button
+                  onClick={() => setTxFilterType('transfer')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    txFilterType === 'transfer' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                  }`}
+                >
+                  Transferências entre Contas
+                </button>
+              </div>
+
+              {/* Action buttons inside transaction tab */}
+              <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto items-center">
+                {/* Botão de Exportar Arquivo (PDF ou Excel) */}
+                <div className="relative flex-1 sm:flex-initial">
+                  <button
+                    type="button"
+                    onClick={() => setShowExportMenu(prev => !prev)}
+                    className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer shadow-sm ${
+                      isHighContrast
+                        ? 'bg-white hover:bg-zinc-100 text-zinc-800 border-zinc-300'
+                        : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-500'
+                    }`}
+                    title="Exportar arquivo em PDF ou Excel"
+                  >
+                    <Download size={12} className="text-indigo-400" />
+                    <span>Exportar</span>
+                    <ChevronDown size={11} className={`text-zinc-400 transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showExportMenu && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setShowExportMenu(false)} 
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                          transition={{ duration: 0.15 }}
+                          className={`absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-56 rounded-xl border shadow-2xl z-50 p-1.5 backdrop-blur-md ${
+                            isHighContrast
+                              ? 'bg-white border-zinc-200 text-zinc-800 shadow-zinc-300/60'
+                              : 'bg-zinc-900 border-zinc-800 text-zinc-100 shadow-black/80'
+                          }`}
+                        >
+                          <div className="px-2.5 py-1.5 border-b border-zinc-700/20 text-[9px] font-bold uppercase tracking-wider text-zinc-400">
+                            Exportar Lançamentos
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              setShowPrintReportModal(true);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                              isHighContrast
+                                ? 'hover:bg-rose-50 text-zinc-800 hover:text-rose-700'
+                                : 'hover:bg-rose-500/10 text-zinc-200 hover:text-rose-300'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-md bg-rose-500/15 text-rose-500 shrink-0">
+                              <FileText size={14} />
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                              <p className="font-bold text-[11px] leading-tight">Exportar em PDF</p>
+                              <p className="text-[9px] text-zinc-500 truncate">Relatório formatado (.pdf / impressão)</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              handleExportExcel();
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                              isHighContrast
+                                ? 'hover:bg-emerald-50 text-zinc-800 hover:text-emerald-700'
+                                : 'hover:bg-emerald-500/10 text-zinc-200 hover:text-emerald-300'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-md bg-emerald-500/15 text-emerald-500 shrink-0">
+                              <FileSpreadsheet size={14} />
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                              <p className="font-bold text-[11px] leading-tight">Exportar em Excel</p>
+                              <p className="text-[9px] text-zinc-500 truncate">Planilha detalhada (.xlsx)</p>
+                            </div>
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <button
+                  onClick={() => { setEditingTx(null); setTxType('entrada'); setShowTxModal(true); }}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg cursor-pointer uppercase tracking-wider"
+                >
+                  <Plus size={12} /> Receita
+                </button>
+                <button
+                  onClick={() => { setEditingTx(null); setTxType('saida'); setShowTxModal(true); }}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold rounded-lg cursor-pointer uppercase tracking-wider"
+                >
+                  <Plus size={12} /> Despesa
+                </button>
+                <button
+                  onClick={() => setShowTransferModal(true)}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-lg cursor-pointer uppercase tracking-wider"
+                >
+                  <RefreshCw size={12} /> Transferência
+                </button>
+              </div>
+            </div>
+
+              {/* Secondary filters: Year, Month, Period, Bank Account, Category, Status */}
+            <div className={`px-5 py-3.5 border-b flex flex-wrap items-center gap-4 select-none ${
+              isHighContrast ? 'bg-zinc-100/60 border-zinc-200' : 'bg-zinc-950/30 border-zinc-900/80'
+            }`}>
+              {/* Filter by Bank Account */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Conta:</span>
+                <select
+                  value={txSelectedAccountId}
+                  onChange={(e) => setTxSelectedAccountId(e.target.value)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <option value="all">Todas as Contas</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.bankName})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Category */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Categoria:</span>
+                <select
+                  value={txSelectedCategoryId}
+                  onChange={(e) => setTxSelectedCategoryId(e.target.value)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <option value="all">Todas as Categorias</option>
+                  {categories
+                    .filter(c => txFilterType === 'all' ? true : (txFilterType === 'entrada' ? (c.type === 'entrada' || c.type === 'ambas') : (c.type === 'saida' || c.type === 'ambas')))
+                    .map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Filter by Status (Recebido / Pago) */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  {txFilterType === 'entrada' ? 'Recebido:' : txFilterType === 'saida' ? 'Pago:' : 'Situação:'}
+                </span>
+                <select
+                  value={txStatusFilter}
+                  onChange={(e) => setTxStatusFilter(e.target.value)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  {txFilterType === 'entrada' ? (
+                    <>
+                      <option value="all">Todos</option>
+                      <option value="recebido_sim">Recebido (Sim)</option>
+                      <option value="recebido_nao">A Receber (Não)</option>
+                    </>
+                  ) : txFilterType === 'saida' ? (
+                    <>
+                      <option value="all">Todos</option>
+                      <option value="pago_sim">Pago (Sim)</option>
+                      <option value="pago_nao">A Pagar (Não)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="all">Todos</option>
+                      <option value="recebido_sim">Recebidos (Sim)</option>
+                      <option value="recebido_nao">A Receber (Não)</option>
+                      <option value="pago_sim">Pagos (Sim)</option>
+                      <option value="pago_nao">A Pagar (Não)</option>
+                      <option value="concluido">Concluídos (Recebido / Pago)</option>
+                      <option value="pendente">Pendentes (A Receber / A Pagar)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {/* Filter by Year */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Ano:</span>
+                <select
+                  value={txSelectedYear}
+                  onChange={(e) => setTxSelectedYear(e.target.value)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <option value="all">Todos</option>
+                  {availableDashYears.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Month */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Mês:</span>
+                <select
+                  value={txSelectedMonth}
+                  onChange={(e) => setTxSelectedMonth(e.target.value)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <option value="all">Todos</option>
+                  {monthsList.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Period */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Período:</span>
+                <select
+                  value={txSelectedPeriod}
+                  onChange={(e) => setTxSelectedPeriod(e.target.value)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <option value="all">Todos os Lançamentos</option>
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="90d">Últimos 90 dias</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+
+                {txSelectedPeriod === 'custom' && (
+                  <div className="flex items-center gap-2 ml-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Início:</span>
+                    <input
+                      type="date"
+                      value={txStartDateFilter}
+                      onChange={(e) => setTxStartDateFilter(e.target.value)}
+                      className={`text-[11px] font-semibold px-2 py-1 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                        isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                      }`}
+                    />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Fim:</span>
+                    <input
+                      type="date"
+                      value={txEndDateFilter}
+                      onChange={(e) => setTxEndDateFilter(e.target.value)}
+                      className={`text-[11px] font-semibold px-2 py-1 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                        isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                      }`}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Active sort badge */}
+              {txSortOrder && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">
+                  {txSortOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                  <span>Data: {txSortOrder === 'asc' ? 'Crescente' : 'Decrescente'}</span>
+                  <button 
+                    onClick={() => setTxSortOrder(null)} 
+                    className="ml-1 text-indigo-400 hover:text-indigo-200 cursor-pointer"
+                    title="Remover ordenação por data"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+
+              {/* Clean filters button if any active */}
+              {(txSelectedYear !== 'all' || txSelectedMonth !== 'all' || txSelectedPeriod !== 'all' || txSelectedAccountId !== 'all' || txSelectedCategoryId !== 'all' || txStatusFilter !== 'all' || txStartDateFilter || txEndDateFilter || txSortOrder !== null) && (
+                <button
+                  onClick={() => {
+                    setTxSelectedYear('all');
+                    setTxSelectedMonth('all');
+                    setTxSelectedPeriod('all');
+                    setTxStartDateFilter('');
+                    setTxEndDateFilter('');
+                    setTxSelectedAccountId('all');
+                    setTxSelectedCategoryId('all');
+                    setTxStatusFilter('all');
+                    setTxSortOrder(null);
+                  }}
+                  className="text-[10px] font-black text-red-500 hover:text-red-400 uppercase tracking-wider underline cursor-pointer ml-auto"
+                >
+                  Limpar Filtros
+                </button>
+              )}
+            </div>
+
+            {/* Table data renderer */}
+            {txFilterType !== 'transfer' ? (
+              displayTransactions.length === 0 ? (
+                <div className="p-16 text-center space-y-3">
+                  <DollarSign size={24} className="mx-auto text-zinc-500" />
+                  <p className="text-xs font-bold text-zinc-400">Nenhum lançamento de caixa localizado</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto scrollbar-thin">
+                  <table className="w-full border-collapse text-left min-w-[1050px]">
+                    <thead>
+                      <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/20 border-zinc-900'
+                      }`}>
+                        <th 
+                          onClick={() => setTxSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                          className="py-3.5 px-3 cursor-pointer select-none group transition-colors hover:text-indigo-400"
+                          title="Clique para ordenar por data (crescente / decrescente)"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>
+                              {txFilterType === 'entrada' ? 'Data de Recebido' : txFilterType === 'saida' ? 'Data de Lançamento' : 'Data'}
+                            </span>
+                            {txSortOrder === 'asc' ? (
+                              <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem crescente">
+                                <ArrowUp size={11} className="shrink-0" />
+                              </span>
+                            ) : txSortOrder === 'desc' ? (
+                              <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem decrescente">
+                                <ArrowDown size={11} className="shrink-0" />
+                              </span>
+                            ) : (
+                              <ArrowUpDown size={11} className="text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
+                            )}
+                          </div>
+                        </th>
+                        <th className="py-3.5 px-4 min-w-[150px]">Descrição</th>
+                        <th className="py-3.5 px-3">Valor</th>
+                        <th className="py-3.5 px-3">Tipo</th>
+                        <th className="py-3.5 px-3">Categoria</th>
+                        <th className="py-3.5 px-3">Conta Bancária</th>
+                        <th className="py-3.5 px-3">
+                          {txFilterType === 'entrada' ? 'Recebido' : txFilterType === 'saida' ? 'Pago' : 'Recebido / Pago'}
+                        </th>
+                        <th className="py-3.5 px-3">
+                          {txFilterType === 'entrada' ? 'Recebido de' : txFilterType === 'saida' ? 'Pagar quem' : 'Recebido de / Pagar quem'}
+                        </th>
+                        <th className="py-3.5 px-3">Forma de Pagamento</th>
+                        <th className="py-3.5 px-3">Parcelamento</th>
+                        <th className="py-3.5 px-3">Observações</th>
+                        <th className="py-3.5 px-4 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y text-xs font-medium ${isHighContrast ? 'divide-zinc-200 text-zinc-800' : 'divide-zinc-900 text-zinc-300'}`}>
+                      {displayTransactions.map(tx => {
+                        const category = categories.find(c => c.id === tx.categoryId);
+                        const account = accounts.find(a => a.id === tx.accountId);
+                        const isEntrada = tx.type === 'entrada';
+                        const dateValue = isEntrada 
+                          ? (tx.dataRecebido || tx.date) 
+                          : (tx.dataLancamento || tx.date);
+                        const isDone = isEntrada 
+                          ? (tx.recebido !== 'nao') 
+                          : (tx.pago !== 'nao');
+                        const personEntity = isEntrada 
+                          ? (tx.recebidoDe || '—') 
+                          : (tx.vaiPagarQuem || '—');
+
+                        return (
+                          <tr key={tx.id} className={`hover:bg-zinc-50/10 transition-colors ${isHighContrast ? 'hover:bg-zinc-50' : ''}`}>
+                            {/* 1. Data de recebido / Data de lançamento */}
+                            <td className="py-3.5 px-3 font-mono text-[11px] text-zinc-500 whitespace-nowrap">
+                              {dateValue ? dateValue.split('-').reverse().join('/') : '—'}
+                            </td>
+
+                            {/* 2. Descrição */}
+                            <td className="py-3.5 px-4 font-semibold min-w-[150px]">
+                              <div className="flex items-center gap-2">
+                                <span className={isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}>{tx.description}</span>
+                                {tx.receiptImage && (
+                                  <button
+                                    onClick={() => setSelectedReceiptImage(tx.receiptImage || null)}
+                                    className={`px-1.5 py-0.5 rounded flex items-center gap-1 text-[9px] font-bold border transition-colors cursor-pointer shrink-0 ${
+                                      isHighContrast 
+                                        ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700' 
+                                        : 'bg-zinc-800/60 hover:bg-zinc-750 border-zinc-750 text-zinc-300'
+                                    }`}
+                                    title="Visualizar Recibo Anexo"
+                                  >
+                                    <FileText size={10} className="text-indigo-400" />
+                                    <span>Recibo</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* 3. Valor */}
+                            <td className={`py-3.5 px-3 font-bold whitespace-nowrap font-mono ${isEntrada ? 'text-emerald-500' : 'text-red-500'}`}>
+                              {isEntrada ? '+' : '-'} {formatCurrency(tx.value)}
+                            </td>
+
+                            {/* 4. Tipo */}
+                            <td className="py-3.5 px-3 uppercase text-[9px] font-bold whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded-full ${isEntrada ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500'}`}>
+                                {isEntrada ? 'Receita' : 'Despesa'}
+                              </span>
+                            </td>
+
+                            {/* 5. Categoria */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-medium border ${category?.color || 'bg-zinc-500/10'}`}>
+                                {category?.name || 'Não classificado'}{tx.subcategory ? ` • ${tx.subcategory}` : ''}
+                              </span>
+                            </td>
+
+                            {/* 6. Conta bancária */}
+                            <td className="py-3.5 px-3 font-semibold whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                {account ? (
+                                  <>
+                                    <BankLogo bankName={account.bankName} imageUrl={account.image} size={18} />
+                                    <span className={isHighContrast ? 'text-zinc-700' : 'text-indigo-400 font-semibold text-xs'}>{account.name}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-zinc-500">—</span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* 7. Recebido / Pago */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                isDone 
+                                  ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20' 
+                                  : 'bg-amber-500/15 text-amber-500 border-amber-500/20'
+                              }`}>
+                                {isDone ? 'Sim' : 'Não'}
+                              </span>
+                            </td>
+
+                            {/* 8. Recebido de / Pagar quem */}
+                            <td className="py-3.5 px-3 text-xs text-zinc-400 whitespace-nowrap">
+                              {personEntity}
+                            </td>
+
+                            {/* 9. Forma de pagamento */}
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              {tx.formaPagamento ? (
+                                <span className={`uppercase text-[9px] font-bold px-2 py-0.5 rounded border ${
+                                  isHighContrast ? 'bg-zinc-100 text-zinc-700 border-zinc-200' : 'bg-zinc-800/60 text-zinc-300 border-zinc-700/60'
+                                }`}>
+                                  {tx.formaPagamento}
+                                </span>
+                              ) : (
+                                <span className="text-zinc-500">—</span>
+                              )}
+                            </td>
+
+                            {/* 10. Parcelamento */}
+                            <td className="py-3.5 px-3 whitespace-nowrap text-xs">
+                              {tx.parcelamento === 'sim' ? (
+                                <span className="font-semibold text-indigo-400">
+                                  {tx.numeroParcelas || 1}x {tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}
+                                </span>
+                              ) : tx.parcelamento === 'recorrente' ? (
+                                <span className="font-semibold text-purple-400">Recorrente</span>
+                              ) : (
+                                <span className="text-zinc-500">À Vista</span>
+                              )}
+                            </td>
+
+                            {/* 11. Observações */}
+                            <td className="py-3.5 px-3 max-w-[200px] truncate text-[11px] text-zinc-400" title={tx.observation || ''}>
+                              {tx.observation || '—'}
+                            </td>
+
+                            {/* 12. Ações */}
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="flex justify-end gap-1.5 items-center">
+                                <button
+                                  onClick={() => {
+                                    setEditingTx(tx);
+                                    setTxDescription(tx.description);
+                                    setTxValue(tx.value.toString());
+                                    setTxType(tx.type);
+                                    setTxCategoryId(tx.categoryId);
+                                    setTxSubcategory(tx.subcategory || '');
+                                    setTxAccountId(tx.accountId);
+                                    setTxDate(tx.date);
+                                    setTxObservation(tx.observation || '');
+                                    
+                                    // Populate new fields or default if undefined
+                                    setTxRecebido(tx.recebido || 'sim');
+                                    setTxRecebidoDe(tx.recebidoDe || '');
+                                    setTxDataRecebido(tx.dataRecebido || tx.date);
+                                    setTxDataLancamento(tx.dataLancamento || tx.date);
+                                    setTxParcelamento(tx.parcelamento || 'nao');
+                                    setTxFrequenciaParcelas(tx.frequenciaParcelas || 'mensal');
+                                    setTxNumeroParcelas(tx.numeroParcelas ? tx.numeroParcelas.toString() : '1');
+                                    setTxFormaPagamento(tx.formaPagamento || 'pix');
+                                    setTxPago(tx.pago || 'sim');
+                                    setTxVaiPagarQuem(tx.vaiPagarQuem || '');
+                                    setTxDataVencimento(tx.dataVencimento || tx.date);
+                                    setTxReceiptImage(tx.receiptImage || null);
+                                    
+                                    setShowTxModal(true);
+                                  }}
+                                  className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                    isHighContrast ? 'text-zinc-500 hover:text-indigo-600 hover:bg-zinc-100' : 'text-zinc-500 hover:text-indigo-400 hover:bg-zinc-800/40'
+                                  }`}
+                                  title="Editar Lançamento"
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTx(tx.id)}
+                                  className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                    isHighContrast ? 'text-zinc-500 hover:text-red-600 hover:bg-zinc-100' : 'text-zinc-500 hover:text-red-500 hover:bg-red-500/5'
+                                  }`}
+                                  title="Excluir Lançamento"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : (
+              displayTransfers.length === 0 ? (
+                <div className="p-16 text-center space-y-3">
+                  <RefreshCw size={24} className="mx-auto text-zinc-500" />
+                  <p className="text-xs font-bold text-zinc-400">Nenhuma transferência localizada</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto scrollbar-thin">
+                  <table className="w-full border-collapse text-left min-w-[700px]">
+                    <thead>
+                      <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/20 border-zinc-900'
+                      }`}>
+                        <th 
+                          onClick={() => setTxSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                          className="py-4 px-4 cursor-pointer select-none group transition-colors hover:text-indigo-400"
+                          title="Clique para ordenar por data (crescente / decrescente)"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Data</span>
+                            {txSortOrder === 'asc' ? (
+                              <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem crescente">
+                                <ArrowUp size={11} className="shrink-0" />
+                              </span>
+                            ) : txSortOrder === 'desc' ? (
+                              <span className="inline-flex items-center gap-0.5 text-indigo-400 bg-indigo-500/15 px-1 py-0.5 rounded font-bold text-[9px]" title="Ordem decrescente">
+                                <ArrowDown size={11} className="shrink-0" />
+                              </span>
+                            ) : (
+                              <ArrowUpDown size={11} className="text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
+                            )}
+                          </div>
+                        </th>
+                        <th className="py-4 px-6">Origem</th>
+                        <th className="py-4 px-4">Destino</th>
+                        <th className="py-4 px-4">Valor</th>
+                        <th className="py-4 px-4">Histórico / Observações</th>
+                        <th className="py-4 px-6 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y text-xs font-medium ${isHighContrast ? 'divide-zinc-200 text-zinc-800' : 'divide-zinc-900 text-zinc-300'}`}>
+                      {displayTransfers.map(tf => {
+                        const src = accounts.find(a => a.id === tf.sourceAccountId);
+                        const dest = accounts.find(a => a.id === tf.destinationAccountId);
+                        return (
+                          <tr key={tf.id} className="hover:bg-zinc-50/10">
+                            {/* 1. Data */}
+                            <td className="py-4 px-4 font-mono text-[11px] text-zinc-500 whitespace-nowrap">
+                              {tf.date.split('-').reverse().join('/')}
+                            </td>
+
+                            {/* 2. Origem */}
+                            <td className="py-4 px-6 font-semibold text-red-500 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                {src && <BankLogo bankName={src.bankName} imageUrl={src.image} size={18} />}
+                                <span>{src?.name || '—'}</span>
+                              </div>
+                            </td>
+
+                            {/* 3. Destino */}
+                            <td className="py-4 px-4 font-semibold text-emerald-500 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                {dest && <BankLogo bankName={dest.bankName} imageUrl={dest.image} size={18} />}
+                                <span>{dest?.name || '—'}</span>
+                              </div>
+                            </td>
+
+                            {/* 4. Valor */}
+                            <td className="py-4 px-4 font-bold font-mono whitespace-nowrap">{formatCurrency(tf.value)}</td>
+
+                            {/* 5. Histórico / Observações */}
+                            <td className="py-4 px-4 text-zinc-400 max-w-xs truncate text-xs">{tf.observation || '—'}</td>
+
+                            {/* 6. Ações */}
+                            <td className="py-4 px-6 text-right whitespace-nowrap">
+                              <button
+                                onClick={() => handleDeleteTransfer(tf.id)}
+                                className="p-1.5 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/10 cursor-pointer transition-colors"
+                                title="Excluir Transferência"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {/* 3. BANK ACCOUNTS LIST SCREEN */}
+        {activeSubTab === 'accounts' && (
+          <div>
+            <div className={`p-4 border-b flex justify-between items-center ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-900'}`}>
+              <h3 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                Saldos e Contas de Bancos
+              </h3>
+              <button
+                onClick={() => {
+                  setEditingAccount(null);
+                  setAccName('');
+                  setAccBankName('');
+                  setAccAgency('');
+                  setAccNumber('');
+                  setAccInitialBalance('');
+                  setAccImage('');
+                  setAccType('conta_corrente');
+                  setAccInitialBalanceDate(new Date().toISOString().split('T')[0]);
+                  setShowAccountModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer uppercase tracking-wider"
+              >
+                <Plus size={12} /> Nova Conta Bancária
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
+              {accounts.map(acc => {
+                const diff = acc.currentBalance - acc.initialBalance;
+                return (
+                  <div key={acc.id} className={`p-5 rounded-xl border flex flex-col justify-between relative group ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/10 border-zinc-800 hover:border-zinc-700'
+                  }`}>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex gap-3 items-center min-w-0 flex-1">
+                        <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={36} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</h4>
+                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                              {getAccountTypeLabel(acc.accountType)}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-zinc-500 font-semibold truncate mt-0.5">
+                            {acc.bankName} • Ag {acc.agency} | {acc.accountType === 'caixa_fisico' ? 'Nº' : 'CC'} {acc.accountNumber}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          onClick={() => handleEditAccount(acc)}
+                          className="p-1.5 text-zinc-500 hover:text-indigo-400 rounded-lg hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                          title="Editar Conta Bancária"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAccount(acc.id)}
+                          className="p-1.5 text-zinc-500 hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
+                          title="Excluir Conta Bancária"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-dashed border-zinc-800/60 grid grid-cols-2 gap-y-3 text-xs">
+                      <div>
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Tipo de Conta</p>
+                        <p className={`font-semibold mt-0.5 ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                          {getAccountTypeLabel(acc.accountType)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Diferença</p>
+                        <p className={`font-mono font-bold mt-0.5 ${diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">
+                          Saldo Inicial {acc.initialBalanceDate ? `(${acc.initialBalanceDate.split('-').reverse().join('/')})` : ''}
+                        </p>
+                        <p className="font-mono text-zinc-400 mt-0.5">{formatCurrency(acc.initialBalance)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Saldo Atual</p>
+                        <p className={`font-mono font-bold text-sm mt-0.5 ${acc.currentBalance >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                          {formatCurrency(acc.currentBalance)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 4. TRANSACTION CATEGORIES SCREEN (WITH SUBCATEGORIES) */}
+        {activeSubTab === 'categories' && (
+          <div>
+            <div className={`p-4 border-b flex justify-between items-center ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-900'}`}>
+              <h3 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                Categorias e Subcategorias Financeiras
+              </h3>
+              
+              <div className="flex items-center gap-4">
+                {/* Segmented View Mode Toggle */}
+                <div className={`flex items-center rounded-lg p-0.5 border ${isHighContrast ? 'bg-zinc-100 border-zinc-250' : 'bg-zinc-900 border-zinc-800'}`}>
+                  <button
+                    onClick={() => setCategoryViewMode('grid')}
+                    className={`p-1.5 rounded-md flex items-center gap-1 text-[10px] font-extrabold cursor-pointer transition-all ${
+                      categoryViewMode === 'grid'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : isHighContrast ? 'text-zinc-500 hover:text-zinc-800' : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                    title="Visualização em Grade"
+                  >
+                    <LayoutGrid size={11} />
+                    <span className="sr-only sm:not-sr-only">Grade</span>
+                  </button>
+                  <button
+                    onClick={() => setCategoryViewMode('list')}
+                    className={`p-1.5 rounded-md flex items-center gap-1 text-[10px] font-extrabold cursor-pointer transition-all ${
+                      categoryViewMode === 'list'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : isHighContrast ? 'text-zinc-500 hover:text-zinc-800' : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                    title="Visualização em Lista"
+                  >
+                    <List size={11} />
+                    <span className="sr-only sm:not-sr-only">Lista</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleOpenCategoryModal()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer uppercase tracking-wider animate-in fade-in zoom-in-95 duration-150"
+                >
+                  <Plus size={12} /> Nova Categoria Pai
+                </button>
+              </div>
+            </div>
+
+            {categoryViewMode === 'grid' ? (
+              <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categories.map(cat => (
+                  <div key={cat.id} className={`p-5 rounded-xl border flex flex-col justify-between gap-4 ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/10 border-[#27272a]'
+                  }`}>
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold border ${cat.color}`}>
+                          {cat.name}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenCategoryModal(cat)}
+                            className="p-1 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/5 cursor-pointer"
+                            title="Editar Categoria"
+                          >
+                            <Edit3 size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/5 cursor-pointer"
+                            title="Excluir Categoria"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-zinc-500 mt-1 capitalize">Uso: {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Apenas receitas' : 'Apenas despesas'}</p>
+                      {cat.mainCategory && (
+                        <p className={`text-[9px] font-bold mt-1 ${isHighContrast ? 'text-indigo-600' : 'text-indigo-400'}`}>
+                          Categoria Principal: {cat.mainCategory}
+                        </p>
+                      )}
+
+                      {/* Subcategories list */}
+                      <div className="mt-4 space-y-2">
+                        <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Subcategorias</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(cat.subcategories || []).length === 0 ? (
+                            <span className="text-[10px] text-zinc-500 italic">Nenhuma subcategoria cadastrada</span>
+                          ) : (
+                            (cat.subcategories || []).map(sub => (
+                              <span 
+                                key={sub} 
+                                className={`inline-flex items-center gap-1.5 text-[10px] font-semibold border px-2 py-0.5 rounded-md transition-colors ${
+                                  isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-300'
+                                }`}
+                              >
+                                <span>{sub}</span>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleDeleteSubcategory(cat.id, sub)}
+                                  className="p-0.5 text-zinc-400 hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                  title={`Excluir subcategoria "${sub}"`}
+                                >
+                                  <X size={11} />
+                                </button>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Add Inline Subcategory form */}
+                    <div className="border-t border-dashed border-zinc-800/60 pt-3 flex gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Nova sub..."
+                        value={newSubcategoryName[cat.id] || ''}
+                        onChange={(e) => setNewSubcategoryName({
+                          ...newSubcategoryName,
+                          [cat.id]: e.target.value
+                        })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddSubcategory(cat.id);
+                          }
+                        }}
+                        className={`text-[10px] font-medium px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1 ${
+                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                        }`}
+                      />
+                      <button
+                        onClick={() => handleAddSubcategory(cat.id)}
+                        className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // --- LIST VIEW WITH HIGH POLISH AND USER CONTROLS ---
+              <div className="p-5">
+                <div className={`border rounded-xl overflow-x-auto scrollbar-thin ${isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'}`}>
+                  <table className="w-full text-left border-collapse min-w-[700px]">
+                    <thead>
+                      <tr className={`border-b text-[9px] font-bold uppercase tracking-wider ${isHighContrast ? 'bg-zinc-50 text-zinc-500 border-zinc-200' : 'bg-zinc-900/40 text-zinc-400 border-zinc-800'}`}>
+                        <th className="p-4">Categoria Pai</th>
+                        <th className="p-4">Tipo / Fluxo</th>
+                        <th className="p-4">Grupo Principal</th>
+                        <th className="p-4">Subcategorias</th>
+                        <th className="p-4">Adicionar Inline</th>
+                        <th className="p-4 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/40">
+                      {categories.map(cat => (
+                        <tr 
+                          key={cat.id} 
+                          className={`hover:bg-zinc-500/5 transition-colors text-xs ${
+                            isHighContrast ? 'text-zinc-800' : 'text-zinc-200'
+                          }`}
+                        >
+                          {/* Categoria Pai Badge */}
+                          <td className="p-4 font-semibold">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
+                              {cat.name}
+                            </span>
+                          </td>
+
+                          {/* Tipo / Fluxo */}
+                          <td className="p-4 capitalize font-mono text-[10px] text-zinc-400">
+                            {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receitas' : 'Despesas'}
+                          </td>
+
+                          {/* Grupo Principal */}
+                          <td className="p-4">
+                            {cat.mainCategory ? (
+                              <span className={`text-[10px] font-bold ${isHighContrast ? 'text-indigo-600' : 'text-indigo-400'}`}>
+                                {cat.mainCategory}
+                              </span>
+                            ) : (
+                              <span className="text-zinc-500 italic">—</span>
+                            )}
+                          </td>
+
+                          {/* Subcategorias List */}
+                          <td className="p-4">
+                            <div className="flex flex-wrap gap-1 max-w-sm">
+                              {(cat.subcategories || []).length === 0 ? (
+                                <span className="text-[10px] text-zinc-500 italic">Nenhuma subcategoria</span>
+                              ) : (
+                                (cat.subcategories || []).map(sub => (
+                                  <span 
+                                    key={sub} 
+                                    className={`inline-flex items-center gap-1.5 text-[10px] font-semibold border px-2 py-0.5 rounded-md transition-colors ${
+                                      isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-300'
+                                    }`}
+                                  >
+                                    <span>{sub}</span>
+                                    <button 
+                                      type="button"
+                                      onClick={() => handleDeleteSubcategory(cat.id, sub)}
+                                      className="p-0.5 text-zinc-400 hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                      title={`Excluir subcategoria "${sub}"`}
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Inline Subcategory Adder */}
+                          <td className="p-4">
+                            <div className="flex gap-1 items-center max-w-[160px]">
+                              <input
+                                type="text"
+                                placeholder="Nova sub..."
+                                value={newSubcategoryName[cat.id] || ''}
+                                onChange={(e) => setNewSubcategoryName({
+                                  ...newSubcategoryName,
+                                  [cat.id]: e.target.value
+                                })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddSubcategory(cat.id);
+                                  }
+                                }}
+                                className={`text-[10px] font-medium px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 w-24 ${
+                                  isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                                }`}
+                              />
+                              <button
+                                onClick={() => handleAddSubcategory(cat.id)}
+                                className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleOpenCategoryModal(cat)}
+                                className={`p-1.5 rounded transition-colors ${
+                                  isHighContrast ? 'hover:bg-zinc-100 text-zinc-600' : 'hover:bg-zinc-800 text-zinc-400'
+                                }`}
+                                title="Editar Categoria"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                className={`p-1.5 rounded transition-colors ${
+                                  isHighContrast ? 'hover:bg-red-50 text-zinc-600 hover:text-red-600' : 'hover:bg-red-950/20 text-zinc-400 hover:text-red-400'
+                                }`}
+                                title="Excluir Categoria"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5. REPORTS SCREEN (DEMONSTRATIVO & BALANCETE) */}
+        {activeSubTab === 'reports' && (
+          <div className="p-6 space-y-6">
+            {/* Report sub-tabs */}
+            <div className={`flex flex-wrap justify-between items-center gap-3 border-b pb-3 no-print ${
+              isHighContrast ? 'border-zinc-200' : 'border-zinc-800'
+            }`}>
+              <div className={`flex flex-wrap gap-1 p-1 rounded-xl ${
+                isHighContrast ? 'bg-zinc-100 border border-zinc-200/80' : 'bg-zinc-900'
+              }`}>
+                <button
+                  onClick={() => setReportType('demonstrativo')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                    reportType === 'demonstrativo' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : (isHighContrast ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60' : 'text-zinc-400 hover:text-zinc-200')
+                  }`}
+                >
+                  Demonstrativo (DRE / Fluxo de Caixa)
+                </button>
+                <button
+                  onClick={() => setReportType('balanco_patrimonial')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                    reportType === 'balanco_patrimonial' 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : (isHighContrast ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60' : 'text-zinc-400 hover:text-zinc-200')
+                  }`}
+                >
+                  <Scale size={13} />
+                  Balanço Patrimonial
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {reportType === 'demonstrativo' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleExportDREExcel}
+                      className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm"
+                      title="Exportar Demonstrativo DRE e Fluxo de Caixa Mês a Mês para Excel (.xlsx)"
+                    >
+                      <FileSpreadsheet size={13} /> Exportar Excel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm active:scale-95"
+                      title="Imprimir Demonstrativo Operacional"
+                    >
+                      <Printer size={13} /> Imprimir Demonstrativo Operacional
+                    </button>
+                  </>
+                )}
+
+                {reportType === 'balanco_patrimonial' && (
+                  <>
+                    <button
+                      onClick={() => handleOpenAddAssetModal()}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${
+                        isHighContrast
+                          ? 'bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-300 shadow-sm'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                      }`}
+                      title="Cadastrar novo bem patrimonial imobilizado"
+                    >
+                      <Plus size={13} /> Novo Bem / Ativo
+                    </button>
+                    <button
+                      onClick={handleExportBalancoExcel}
+                      className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm"
+                      title="Exportar Balanço Patrimonial e Comparativo para Excel (.xlsx)"
+                    >
+                      <FileSpreadsheet size={13} /> Exportar Excel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePrintBalanco}
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-colors shadow-sm active:scale-95"
+                      title="Imprimir Relatório Oficial"
+                    >
+                      <Printer size={13} /> Imprimir Relatório
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* PRINTABLE AREA CONTAINING REPORT */}
+            <div id="printable-report-area" className="p-2 space-y-6 bg-transparent rounded-2xl no-print">
+              
+              {/* Header Title for Printout */}
+              <div className={`border-b-2 pb-4 text-center space-y-1 ${
+                isHighContrast ? 'border-zinc-200' : 'border-zinc-800/80'
+              }`}>
+                {reportType === 'balanco_patrimonial' ? (
+                  <div className="space-y-1">
+                    <h3 className={`text-sm font-bold uppercase tracking-widest ${
+                      isHighContrast ? 'text-indigo-700' : 'text-indigo-500'
+                    }`}>
+                      MINISTÉRIO NOVA VIDA
+                    </h3>
+                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${
+                      isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                    }`}>
+                      AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
+                    </p>
+                    <p className={`text-[10px] font-mono font-medium ${
+                      isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                    }`}>
+                      CNPJ: 62.471.271-0001-82
+                    </p>
+                    <div className="pt-2">
+                      <h4 className={`text-xs font-bold uppercase tracking-wider ${
+                        isHighContrast ? 'text-zinc-900' : 'text-zinc-200'
+                      }`}>
+                        BALANÇO PATRIMONIAL DO EXERCÍCIO ENCERRADO EM 31 DE DEZEMBRO DE {balancoBaseYear}
+                      </h4>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-500">
+                      MINISTÉRIO NOVA VIDA
+                    </h3>
+                    <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
+                    </p>
+                    <p className="text-[10px] font-mono text-zinc-400 font-medium">
+                      CNPJ: 62.471.271-0001-82
+                    </p>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-200 pt-1">
+                      DEMONSTRATIVO DE RESULTADO (DRE) E FLUXO DE CAIXA MÊS A MÊS - EXERCÍCIO DE {dreSelectedYear}
+                    </h4>
+                    <p className="text-[10px] font-mono text-zinc-400 uppercase">
+                      VISUALIZAÇÃO ANUAL CONSOLIDADA DE 01 DE JANEIRO A 31 DE DEZEMBRO DE {dreSelectedYear}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* REPORT TYPE A: DEMONSTRATIVO COMPLETO (DRE / FLUXO DE CAIXA MÊS A MÊS) */}
+              {reportType === 'demonstrativo' && (() => {
+                const {
+                  DRE_MONTHS_LIST: DRE_MONTHS,
+                  yearInitialCash,
+                  monthlyInflow,
+                  monthlyOutflow,
+                  monthlyResult,
+                  monthlyStartCash,
+                  monthlyEndCash,
+                  totalInflowYear,
+                  totalOutflowYear,
+                  totalResultYear,
+                  endCashYear,
+                  incomeCategories,
+                  expenseCategories
+                } = dreCalculations;
+
+                const toggleCategory = (catId: string) => {
+                  setDreExpandedCategories(prev => ({
+                    ...prev,
+                    [catId]: prev[catId] !== undefined ? !prev[catId] : !dreExpandAll
+                  }));
+                };
+
+                const isCatExpanded = (catId: string) => {
+                  if (dreExpandedCategories[catId] !== undefined) {
+                    return dreExpandedCategories[catId];
+                  }
+                  return dreExpandAll;
+                };
+
+                return (
+                  <div className="space-y-6 text-xs text-left">
+                    {/* BARRA DE CONTROLE: SELETOR DE ANO E EXPANSÃO (NO-PRINT) */}
+                    <div className={`no-print p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-4 transition-colors ${
+                      isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900/60 border-zinc-800/80'
+                    }`}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} className="text-indigo-400" />
+                          <span className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>Ano do Exercício:</span>
+                        </div>
+                        <div className={`flex items-center gap-1 p-1 rounded-xl border ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-300' : 'bg-zinc-950 border-zinc-800'
+                        }`}>
+                          {balancoAvailableYears.map(yr => (
+                            <button
+                              key={yr}
+                              type="button"
+                              onClick={() => setDreSelectedYear(yr)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                                dreSelectedYear === yr
+                                  ? 'bg-indigo-600 text-white shadow-sm'
+                                  : (isHighContrast ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-zinc-200')
+                              }`}
+                            >
+                              {yr}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !dreExpandAll;
+                            setDreExpandAll(next);
+                            const newMap: Record<string, boolean> = {};
+                            [...incomeCategories, ...expenseCategories].forEach(c => {
+                              newMap[c.id] = next;
+                            });
+                            setDreExpandedCategories(newMap);
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                            isHighContrast 
+                              ? 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border-zinc-300' 
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
+                          }`}
+                        >
+                          {dreExpandAll ? (
+                            <>
+                              <ChevronUp size={13} /> Recolher Subcategorias
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown size={13} /> Expandir Todas Subcategorias
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* TOP EXECUTIVE METRIC CARDS (ANUAL SUMMARY) */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {/* 1. Saldo Inicial */}
+                      <div className={`p-3.5 rounded-xl border space-y-1 ${
+                        isHighContrast ? 'bg-amber-50/50 border-amber-200' : 'bg-zinc-900/70 border-zinc-800'
+                      }`}>
+                        <div className="flex items-center justify-between text-zinc-400">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-700' : 'text-zinc-400'}`}>Saldo Inicial (01/Jan)</span>
+                          <Wallet size={13} className="text-amber-500" />
+                        </div>
+                        <p className={`text-base font-bold tracking-tight font-mono ${isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}`}>
+                          {formatCurrency(yearInitialCash)}
+                        </p>
+                        <p className="text-[9px] text-zinc-500">Disponibilidade no início do ano</p>
+                      </div>
+
+                      {/* 2. Total Receitas */}
+                      <div className={`p-3.5 rounded-xl border space-y-1 ${
+                        isHighContrast ? 'bg-emerald-50 border-emerald-200' : 'bg-emerald-950/10 border-emerald-500/20'
+                      }`}>
+                        <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Receitas Totais (+)</span>
+                          <ArrowUpRight size={13} />
+                        </div>
+                        <p className="text-base font-bold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+                          {formatCurrency(totalInflowYear)}
+                        </p>
+                        <p className="text-[9px] text-emerald-700 dark:text-emerald-500/80">Entradas acumuladas ({dreSelectedYear})</p>
+                      </div>
+
+                      {/* 3. Total Despesas */}
+                      <div className={`p-3.5 rounded-xl border space-y-1 ${
+                        isHighContrast ? 'bg-red-50 border-red-200' : 'bg-red-950/10 border-red-500/20'
+                      }`}>
+                        <div className="flex items-center justify-between text-red-600 dark:text-red-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Despesas Totais (-)</span>
+                          <ArrowDownRight size={13} />
+                        </div>
+                        <p className="text-base font-bold tracking-tight text-red-600 dark:text-red-400 font-mono">
+                          {formatCurrency(totalOutflowYear)}
+                        </p>
+                        <p className="text-[9px] text-red-700 dark:text-red-500/80">Saídas operacionais ({dreSelectedYear})</p>
+                      </div>
+
+                      {/* 4. Resultado Operacional */}
+                      <div className={`p-3.5 rounded-xl border space-y-1 ${
+                        totalResultYear >= 0 
+                          ? (isHighContrast ? 'bg-emerald-50 border-emerald-300' : 'bg-emerald-950/20 border-emerald-500/30') 
+                          : (isHighContrast ? 'bg-red-50 border-red-300' : 'bg-red-950/20 border-red-500/30')
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>Resultado Final</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            totalResultYear >= 0 
+                              ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                              : 'bg-red-500/20 text-red-600 dark:text-red-400'
+                          }`}>
+                            {totalResultYear >= 0 ? 'SUPERÁVIT' : 'DÉFICIT'}
+                          </span>
+                        </div>
+                        <p className={`text-base font-bold tracking-tight font-mono ${
+                          totalResultYear >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {formatCurrency(totalResultYear)}
+                        </p>
+                        <p className="text-[9px] text-zinc-500">Receitas (-) Despesas</p>
+                      </div>
+
+                      {/* 5. Saldo Final */}
+                      <div className={`p-3.5 rounded-xl border space-y-1 col-span-2 md:col-span-1 ${
+                        isHighContrast ? 'bg-indigo-50 border-indigo-200' : 'bg-indigo-950/20 border-indigo-500/30'
+                      }`}>
+                        <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400">
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Saldo Final (31/Dez)</span>
+                          <Building2 size={13} />
+                        </div>
+                        <p className={`text-base font-bold tracking-tight font-mono ${
+                          isHighContrast ? 'text-indigo-950' : 'text-indigo-300'
+                        }`}>
+                          {formatCurrency(endCashYear)}
+                        </p>
+                        <p className="text-[9px] text-indigo-600 dark:text-indigo-400/80">Disponibilidade final em caixa</p>
+                      </div>
+                    </div>
+
+                    {/* TABELA CONSOLIDADA MÊS A MÊS DO ANO SELECIONADO */}
+                    <div className={`rounded-2xl border overflow-hidden shadow-xl ${
+                      isHighContrast ? 'border-zinc-200 bg-white' : 'border-zinc-800 bg-zinc-950/60'
+                    }`}>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-left border-collapse">
+                          <thead>
+                            <tr className={`border-b text-[10px] font-bold uppercase tracking-wider ${
+                              isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700' : 'bg-zinc-900/90 border-zinc-800 text-zinc-400'
+                            }`}>
+                              <th className={`py-3 px-4 min-w-[260px] sticky left-0 z-10 border-r ${
+                                isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-900 border-zinc-800/80'
+                              }`}>
+                                Estrutura / Conta / Categoria
+                              </th>
+                              {DRE_MONTHS.map(m => (
+                                <th key={m.key} className="py-3 px-3 min-w-[95px] text-right font-mono">
+                                  {m.label}
+                                </th>
+                              ))}
+                              <th className={`py-3 px-4 min-w-[125px] text-right font-bold border-l font-mono ${
+                                isHighContrast ? 'bg-zinc-100 text-zinc-900 border-zinc-200' : 'bg-zinc-900 text-zinc-200 border-zinc-800'
+                              }`}>
+                                Total {dreSelectedYear}
+                              </th>
+                            </tr>
+                          </thead>
+
+                          <tbody className="divide-y divide-zinc-800/60 font-mono">
+                            {/* LINHA: SALDO INICIAL DE CAIXA */}
+                            <tr className={`${isHighContrast ? 'bg-amber-50/70 hover:bg-amber-50' : 'bg-amber-950/10 hover:bg-amber-950/20'} transition-colors`}>
+                              <td className={`py-3 px-4 font-bold sticky left-0 z-10 border-r font-sans flex items-center gap-2 ${
+                                isHighContrast ? 'bg-amber-50 text-amber-900 border-zinc-200' : 'bg-zinc-900/95 text-amber-300 border-zinc-800/80'
+                              }`}>
+                                <Wallet size={13} className="text-amber-500 shrink-0" />
+                                <span>SALDO INICIAL DE CAIXA</span>
+                              </td>
+                              {monthlyStartCash.map((val, idx) => (
+                                <td key={idx} className={`py-3 px-3 text-right ${isHighContrast ? 'text-amber-900' : 'text-amber-200/90'}`}>
+                                  {formatCurrency(val)}
+                                </td>
+                              ))}
+                              <td className={`py-3 px-4 text-right font-bold border-l ${
+                                isHighContrast ? 'text-amber-900 bg-amber-100/50 border-zinc-200' : 'text-amber-300 bg-amber-950/20 border-zinc-800'
+                              }`}>
+                                {formatCurrency(yearInitialCash)}
+                              </td>
+                            </tr>
+
+                            {/* SEÇÃO: 1. RECEITAS OPERACIONAIS (+) */}
+                            <tr className={`${isHighContrast ? 'bg-emerald-50 text-emerald-900 border-t-2 border-emerald-300' : 'bg-emerald-950/20 text-emerald-400 border-t-2 border-emerald-500/30'} font-sans font-bold`}>
+                              <td colSpan={14} className={`py-2.5 px-4 text-[11px] uppercase tracking-wider sticky left-0 z-10 ${
+                                isHighContrast ? 'bg-emerald-100/70 text-emerald-900' : 'bg-emerald-950/30 text-emerald-400'
+                              }`}>
+                                1. RECEITAS OPERACIONAIS (+)
+                              </td>
+                            </tr>
+
+                            {incomeCategories.length === 0 ? (
+                              <tr>
+                                <td colSpan={14} className="py-4 px-4 text-center text-zinc-500 italic font-sans">
+                                  Nenhuma receita registrada no exercício de {dreSelectedYear}.
+                                </td>
+                              </tr>
+                            ) : (
+                              incomeCategories.map(cat => {
+                                const expanded = isCatExpanded(cat.id);
+                                const hasSubs = cat.subcategoriesList.length > 0;
+
+                                return (
+                                  <React.Fragment key={cat.id}>
+                                    {/* Linha Categoria */}
+                                    <tr className={`transition-colors group ${
+                                      isHighContrast ? 'hover:bg-zinc-50' : 'hover:bg-zinc-900/50'
+                                    }`}>
+                                      <td className={`py-2.5 px-4 font-sans font-semibold sticky left-0 z-10 border-r ${
+                                        isHighContrast ? 'bg-white text-zinc-900 border-zinc-200' : 'bg-zinc-950/95 text-zinc-200 border-zinc-800/80'
+                                      }`}>
+                                        <div className="flex items-center gap-2">
+                                          {hasSubs ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleCategory(cat.id)}
+                                              className="p-0.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                                            >
+                                              {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                            </button>
+                                          ) : (
+                                            <div className="w-3.5" />
+                                          )}
+                                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#10b981' }} />
+                                          <span className="truncate">{cat.name}</span>
+                                          {hasSubs && (
+                                            <span className="text-[9px] text-zinc-500 font-mono">
+                                              ({cat.subcategoriesList.length})
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      {cat.months.map((val, idx) => (
+                                        <td key={idx} className={`py-2.5 px-3 text-right ${val > 0 ? (isHighContrast ? 'text-zinc-900' : 'text-zinc-200') : (isHighContrast ? 'text-zinc-300' : 'text-zinc-600')}`}>
+                                          {val > 0 ? formatCurrency(val) : '—'}
+                                        </td>
+                                      ))}
+                                      <td className={`py-2.5 px-4 text-right font-bold border-l ${
+                                        isHighContrast ? 'text-emerald-700 bg-zinc-50 border-zinc-200' : 'text-emerald-400 bg-zinc-900/40 border-zinc-800'
+                                      }`}>
+                                        {formatCurrency(cat.total)}
+                                      </td>
+                                    </tr>
+
+                                    {/* Linhas Subcategorias */}
+                                    {expanded && cat.subcategoriesList.map(sub => (
+                                      <tr key={sub.name} className={`transition-colors text-[11px] ${
+                                        isHighContrast ? 'bg-zinc-50/60 hover:bg-zinc-100/50' : 'bg-zinc-900/20 hover:bg-zinc-900/40'
+                                      }`}>
+                                        <td className={`py-1.5 pl-11 pr-4 font-sans sticky left-0 z-10 border-r ${
+                                          isHighContrast ? 'bg-zinc-50/90 text-zinc-600 border-zinc-200' : 'bg-zinc-950/95 text-zinc-400 border-zinc-800/80'
+                                        }`}>
+                                          <span className="text-zinc-500 mr-1.5">•</span>
+                                          <span>{sub.name}</span>
+                                        </td>
+                                        {sub.months.map((val, idx) => (
+                                          <td key={idx} className={`py-1.5 px-3 text-right ${val > 0 ? (isHighContrast ? 'text-zinc-800' : 'text-zinc-300') : (isHighContrast ? 'text-zinc-300' : 'text-zinc-700')}`}>
+                                            {val > 0 ? formatCurrency(val) : '—'}
+                                          </td>
+                                        ))}
+                                        <td className={`py-1.5 px-4 text-right font-semibold border-l ${
+                                          isHighContrast ? 'text-zinc-700 bg-zinc-100/60 border-zinc-200' : 'text-zinc-300 bg-zinc-900/30 border-zinc-800'
+                                        }`}>
+                                          {formatCurrency(sub.total)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </React.Fragment>
+                                );
+                              })
+                            )}
+
+                            {/* TOTAL DAS RECEITAS */}
+                            <tr className={`border-t border-b font-bold ${
+                              isHighContrast 
+                                ? 'bg-emerald-100/60 border-emerald-300 text-emerald-900' 
+                                : 'bg-emerald-950/30 border-emerald-500/40 text-emerald-400'
+                            }`}>
+                              <td className={`py-3 px-4 font-sans sticky left-0 z-10 border-r ${
+                                isHighContrast ? 'bg-emerald-100 text-emerald-900 border-zinc-200' : 'bg-emerald-950/80 text-emerald-400 border-zinc-800/80'
+                              }`}>
+                                TOTAL DAS RECEITAS
+                              </td>
+                              {monthlyInflow.map((val, idx) => (
+                                <td key={idx} className={`py-3 px-3 text-right ${isHighContrast ? 'text-emerald-950' : 'text-emerald-300'}`}>
+                                  {formatCurrency(val)}
+                                </td>
+                              ))}
+                              <td className={`py-3 px-4 text-right text-sm border-l ${
+                                isHighContrast 
+                                  ? 'text-emerald-950 bg-emerald-200/50 border-zinc-200' 
+                                  : 'text-emerald-300 bg-emerald-950/50 border-zinc-800'
+                              }`}>
+                                {formatCurrency(totalInflowYear)}
+                              </td>
+                            </tr>
+
+                            {/* SEÇÃO: 2. DESPESAS OPERACIONAIS (-) */}
+                            <tr className={`${isHighContrast ? 'bg-red-50 text-red-900 border-t-2 border-red-300' : 'bg-red-950/20 text-red-400 border-t-2 border-red-500/30'} font-sans font-bold`}>
+                              <td colSpan={14} className={`py-2.5 px-4 text-[11px] uppercase tracking-wider sticky left-0 z-10 ${
+                                isHighContrast ? 'bg-red-100/70 text-red-900' : 'bg-red-950/30 text-red-400'
+                              }`}>
+                                2. DESPESAS OPERACIONAIS (-)
+                              </td>
+                            </tr>
+
+                            {expenseCategories.length === 0 ? (
+                              <tr>
+                                <td colSpan={14} className="py-4 px-4 text-center text-zinc-500 italic font-sans">
+                                  Nenhuma despesa registrada no exercício de {dreSelectedYear}.
+                                </td>
+                              </tr>
+                            ) : (
+                              expenseCategories.map(cat => {
+                                const expanded = isCatExpanded(cat.id);
+                                const hasSubs = cat.subcategoriesList.length > 0;
+
+                                return (
+                                  <React.Fragment key={cat.id}>
+                                    {/* Linha Categoria */}
+                                    <tr className={`transition-colors group ${
+                                      isHighContrast ? 'hover:bg-zinc-50' : 'hover:bg-zinc-900/50'
+                                    }`}>
+                                      <td className={`py-2.5 px-4 font-sans font-semibold sticky left-0 z-10 border-r ${
+                                        isHighContrast ? 'bg-white text-zinc-900 border-zinc-200' : 'bg-zinc-950/95 text-zinc-200 border-zinc-800/80'
+                                      }`}>
+                                        <div className="flex items-center gap-2">
+                                          {hasSubs ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleCategory(cat.id)}
+                                              className="p-0.5 rounded text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                                            >
+                                              {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                            </button>
+                                          ) : (
+                                            <div className="w-3.5" />
+                                          )}
+                                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#ef4444' }} />
+                                          <span className="truncate">{cat.name}</span>
+                                          {hasSubs && (
+                                            <span className="text-[9px] text-zinc-500 font-mono">
+                                              ({cat.subcategoriesList.length})
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      {cat.months.map((val, idx) => (
+                                        <td key={idx} className={`py-2.5 px-3 text-right ${val > 0 ? (isHighContrast ? 'text-zinc-900' : 'text-zinc-200') : (isHighContrast ? 'text-zinc-300' : 'text-zinc-600')}`}>
+                                          {val > 0 ? formatCurrency(val) : '—'}
+                                        </td>
+                                      ))}
+                                      <td className={`py-2.5 px-4 text-right font-bold border-l ${
+                                        isHighContrast ? 'text-red-700 bg-zinc-50 border-zinc-200' : 'text-red-400 bg-zinc-900/40 border-zinc-800'
+                                      }`}>
+                                        {formatCurrency(cat.total)}
+                                      </td>
+                                    </tr>
+
+                                    {/* Linhas Subcategorias */}
+                                    {expanded && cat.subcategoriesList.map(sub => (
+                                      <tr key={sub.name} className={`transition-colors text-[11px] ${
+                                        isHighContrast ? 'bg-zinc-50/60 hover:bg-zinc-100/50' : 'bg-zinc-900/20 hover:bg-zinc-900/40'
+                                      }`}>
+                                        <td className={`py-1.5 pl-11 pr-4 font-sans sticky left-0 z-10 border-r ${
+                                          isHighContrast ? 'bg-zinc-50/90 text-zinc-600 border-zinc-200' : 'bg-zinc-950/95 text-zinc-400 border-zinc-800/80'
+                                        }`}>
+                                          <span className="text-zinc-500 mr-1.5">•</span>
+                                          <span>{sub.name}</span>
+                                        </td>
+                                        {sub.months.map((val, idx) => (
+                                          <td key={idx} className={`py-1.5 px-3 text-right ${val > 0 ? (isHighContrast ? 'text-zinc-800' : 'text-zinc-300') : (isHighContrast ? 'text-zinc-300' : 'text-zinc-700')}`}>
+                                            {val > 0 ? formatCurrency(val) : '—'}
+                                          </td>
+                                        ))}
+                                        <td className={`py-1.5 px-4 text-right font-semibold border-l ${
+                                          isHighContrast ? 'text-zinc-700 bg-zinc-100/60 border-zinc-200' : 'text-zinc-300 bg-zinc-900/30 border-zinc-800'
+                                        }`}>
+                                          {formatCurrency(sub.total)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </React.Fragment>
+                                );
+                              })
+                            )}
+
+                            {/* TOTAL DAS DESPESAS */}
+                            <tr className={`border-t border-b font-bold ${
+                              isHighContrast 
+                                ? 'bg-red-100/60 border-red-300 text-red-900' 
+                                : 'bg-red-950/30 border-red-500/40 text-red-400'
+                            }`}>
+                              <td className={`py-3 px-4 font-sans sticky left-0 z-10 border-r ${
+                                isHighContrast ? 'bg-red-100 text-red-900 border-zinc-200' : 'bg-red-950/80 text-red-400 border-zinc-800/80'
+                              }`}>
+                                TOTAL DAS DESPESAS
+                              </td>
+                              {monthlyOutflow.map((val, idx) => (
+                                <td key={idx} className={`py-3 px-3 text-right ${isHighContrast ? 'text-red-950' : 'text-red-300'}`}>
+                                  {formatCurrency(val)}
+                                </td>
+                              ))}
+                              <td className={`py-3 px-4 text-right text-sm border-l ${
+                                isHighContrast 
+                                  ? 'text-red-950 bg-red-200/50 border-zinc-200' 
+                                  : 'text-red-300 bg-red-950/50 border-zinc-800'
+                              }`}>
+                                {formatCurrency(totalOutflowYear)}
+                              </td>
+                            </tr>
+
+                            {/* 3. RESULTADO DO EXERCÍCIO / RESULTADO FINAL */}
+                            <tr className={`border-t-2 border-b-2 font-bold text-sm ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 border-indigo-400' 
+                                : 'bg-zinc-900/95 border-indigo-500/50'
+                            }`}>
+                              <td className={`py-3.5 px-4 font-sans sticky left-0 z-10 border-r flex items-center justify-between ${
+                                isHighContrast ? 'bg-zinc-100 text-zinc-900 border-zinc-200' : 'bg-zinc-900 text-zinc-100 border-zinc-800/80'
+                              }`}>
+                                <span>RESULTADO FINAL (SUPERÁVIT / DÉFICIT)</span>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+                                  totalResultYear >= 0 
+                                    ? (isHighContrast ? 'bg-emerald-200 text-emerald-900' : 'bg-emerald-500/20 text-emerald-400') 
+                                    : (isHighContrast ? 'bg-red-200 text-red-900' : 'bg-red-500/20 text-red-400')
+                                }`}>
+                                  {totalResultYear >= 0 ? 'SUPERÁVIT' : 'DÉFICIT'}
+                                </span>
+                              </td>
+                              {monthlyResult.map((val, idx) => (
+                                <td key={idx} className={`py-3.5 px-3 text-right ${val >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {formatCurrency(val)}
+                                </td>
+                              ))}
+                              <td className={`py-3.5 px-4 text-right font-black text-sm border-l ${
+                                isHighContrast ? 'bg-zinc-200 border-zinc-300' : 'bg-zinc-900 border-zinc-800'
+                              } ${totalResultYear >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {formatCurrency(totalResultYear)}
+                              </td>
+                            </tr>
+
+                            {/* 4. SALDO FINAL DE CAIXA E EQUIVALENTES */}
+                            <tr className={`transition-colors font-bold ${
+                              isHighContrast ? 'bg-indigo-50/70 hover:bg-indigo-50' : 'bg-indigo-950/20 hover:bg-indigo-950/30'
+                            }`}>
+                              <td className={`py-3 px-4 font-sans sticky left-0 z-10 border-r flex items-center gap-2 ${
+                                isHighContrast 
+                                  ? 'bg-indigo-100/80 text-indigo-950 border-zinc-200' 
+                                  : 'bg-indigo-950/80 text-indigo-300 border-zinc-800/80'
+                              }`}>
+                                <Building2 size={13} className="text-indigo-500 shrink-0" />
+                                <span>SALDO FINAL DE CAIXA (DISPONIBILIDADES)</span>
+                              </td>
+                              {monthlyEndCash.map((val, idx) => (
+                                <td key={idx} className={`py-3 px-3 text-right ${
+                                  isHighContrast ? 'text-indigo-950' : 'text-indigo-200'
+                                }`}>
+                                  {formatCurrency(val)}
+                                </td>
+                              ))}
+                              <td className={`py-3 px-4 text-right text-sm border-l ${
+                                isHighContrast 
+                                  ? 'text-indigo-950 bg-indigo-200/50 border-zinc-200' 
+                                  : 'text-indigo-300 bg-indigo-950/60 border-zinc-800'
+                              }`}>
+                                {formatCurrency(endCashYear)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* REPORT TYPE B: BALANÇO PATRIMONIAL & COMPARATIVO ANUAL */}
+              {reportType === 'balanco_patrimonial' && (() => {
+                const rangeBase = getBalancoPeriodDateRange(balancoBaseYear, balancoPeriodScope);
+                const rangeComp = getBalancoPeriodDateRange(balancoCompYear, balancoPeriodScope);
+
+                // Helper for variation
+                const calcVar = (base: number, comp: number) => {
+                  const diff = base - comp;
+                  const pct = comp !== 0 ? ((base - comp) / Math.abs(comp)) * 100 : (base > 0 ? 100 : 0);
+                  return { diff, pct };
+                };
+
+                const renderBadge = (diff: number, pct: number, isExpense = false) => {
+                  if (!balancoCompareEnabled) return null;
+                  if (diff === 0) {
+                    return (
+                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                        isHighContrast
+                          ? 'bg-zinc-100 text-zinc-600 border-zinc-200'
+                          : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                      }`}>
+                        0.0%
+                      </span>
+                    );
+                  }
+                  const isPositive = diff > 0;
+                  const isGood = isExpense ? !isPositive : isPositive;
+                  const colorClass = isGood 
+                    ? (isHighContrast ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20')
+                    : (isHighContrast ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-rose-500/10 text-rose-500 border-rose-500/20');
+
+                  return (
+                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${colorClass}`}>
+                      {isPositive ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+                      <span>{isPositive ? '+' : ''}{pct.toFixed(1)}%</span>
+                      <span className="opacity-75 text-[9px]">({diff > 0 ? '+' : ''}{formatCurrency(diff)})</span>
+                    </span>
+                  );
+                };
+
+                // 1. ATIVO CIRCULANTE (Disponibilidades / Bancos e Caixa)
+                let totalCirculanteBase = 0;
+                let totalCirculanteComp = 0;
+                const accountsData = accounts.map(acc => {
+                  const baseBal = getAccountBalanceAtDate(acc.id, rangeBase.end);
+                  const compBal = balancoCompareEnabled ? getAccountBalanceAtDate(acc.id, rangeComp.end) : 0;
+                  totalCirculanteBase += baseBal;
+                  totalCirculanteComp += compBal;
+                  const v = calcVar(baseBal, compBal);
+                  return { acc, baseBal, compBal, v };
+                });
+                const circVar = calcVar(totalCirculanteBase, totalCirculanteComp);
+
+                // 2. ATIVO NÃO CIRCULANTE (Imobilizado / Bens Patrimoniais)
+                let totalImobilizadoBase = 0;
+                let totalImobilizadoComp = 0;
+                const assetsData = fixedAssets.map(fa => {
+                  const inBase = fa.acquisitionDate <= rangeBase.end;
+                  const inComp = fa.acquisitionDate <= rangeComp.end;
+                  const baseVal = inBase ? (fa.currentValue || fa.acquisitionValue) : 0;
+                  const compVal = inComp ? fa.acquisitionValue : 0;
+                  totalImobilizadoBase += baseVal;
+                  totalImobilizadoComp += compVal;
+                  const v = calcVar(baseVal, compVal);
+                  return { fa, inBase, inComp, baseVal, compVal, v };
+                });
+                const imobVar = calcVar(totalImobilizadoBase, totalImobilizadoComp);
+
+                // Total Ativo Geral
+                const totalAtivoBase = totalCirculanteBase + totalImobilizadoBase;
+                const totalAtivoComp = totalCirculanteComp + totalImobilizadoComp;
+                const totalAtivoVar = calcVar(totalAtivoBase, totalAtivoComp);
+
+                // 3. RECEITAS DO EXERCÍCIO
+                const baseInflowTxs = transactions.filter(t => {
+                  const d = t.dataRecebido || t.dataLancamento || t.date;
+                  return t.type === 'entrada' && d >= rangeBase.start && d <= rangeBase.end;
+                });
+                const compInflowTxs = transactions.filter(t => {
+                  const d = t.dataRecebido || t.dataLancamento || t.date;
+                  return t.type === 'entrada' && d >= rangeComp.start && d <= rangeComp.end;
+                });
+
+                const revCategories = categories.filter(c => c.type === 'entrada' || c.type === 'ambas').map(cat => {
+                  const bSum = baseInflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0);
+                  const cSum = balancoCompareEnabled ? compInflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0) : 0;
+                  const v = calcVar(bSum, cSum);
+                  const subcats = (cat.subcategories || []).map(sub => {
+                    const subBase = baseInflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0);
+                    const subComp = balancoCompareEnabled ? compInflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0) : 0;
+                    return { sub, subBase, subComp, v: calcVar(subBase, subComp) };
+                  }).filter(s => s.subBase > 0 || s.subComp > 0);
+
+                  return { cat, bSum, cSum, v, subcats };
+                }).filter(c => c.bSum > 0 || c.cSum > 0);
+
+                const totalReceitasBase = baseInflowTxs.reduce((sum, t) => sum + t.value, 0);
+                const totalReceitasComp = compInflowTxs.reduce((sum, t) => sum + t.value, 0);
+                const receitasVar = calcVar(totalReceitasBase, totalReceitasComp);
+
+                // 4. DESPESAS DO EXERCÍCIO
+                const baseOutflowTxs = transactions.filter(t => {
+                  const d = t.dataRecebido || t.dataLancamento || t.date;
+                  return t.type === 'saida' && d >= rangeBase.start && d <= rangeBase.end;
+                });
+                const compOutflowTxs = transactions.filter(t => {
+                  const d = t.dataRecebido || t.dataLancamento || t.date;
+                  return t.type === 'saida' && d >= rangeComp.start && d <= rangeComp.end;
+                });
+
+                const expCategories = categories.filter(c => c.type === 'saida' || c.type === 'ambas').map(cat => {
+                  const bSum = baseOutflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0);
+                  const cSum = balancoCompareEnabled ? compOutflowTxs.filter(t => t.categoryId === cat.id).reduce((sum, t) => sum + t.value, 0) : 0;
+                  const v = calcVar(bSum, cSum);
+                  const subcats = (cat.subcategories || []).map(sub => {
+                    const subBase = baseOutflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0);
+                    const subComp = balancoCompareEnabled ? compOutflowTxs.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((sum, t) => sum + t.value, 0) : 0;
+                    return { sub, subBase, subComp, v: calcVar(subBase, subComp) };
+                  }).filter(s => s.subBase > 0 || s.subComp > 0);
+
+                  return { cat, bSum, cSum, v, subcats };
+                }).filter(c => c.bSum > 0 || c.cSum > 0);
+
+                const totalDespesasBase = baseOutflowTxs.reduce((sum, t) => sum + t.value, 0);
+                const totalDespesasComp = compOutflowTxs.reduce((sum, t) => sum + t.value, 0);
+                const despesasVar = calcVar(totalDespesasBase, totalDespesasComp);
+
+                // 5. SUPERÁVIT / RESULTADO LÍQUIDO
+                const superavitBase = totalReceitasBase - totalDespesasBase;
+                const superavitComp = totalReceitasComp - totalDespesasComp;
+                const superavitVar = calcVar(superavitBase, superavitComp);
+
+                // Patrimônio Líquido Consolidado (Ativo Total + Resultado do Período)
+                const patrimonioLiquidoBase = totalAtivoBase + superavitBase;
+                const patrimonioLiquidoComp = totalAtivoComp + superavitComp;
+                const patrimonioVar = calcVar(patrimonioLiquidoBase, patrimonioLiquidoComp);
+
+                return (
+                  <div className="space-y-6 text-xs text-left">
+                    {/* CABEÇALHO INSTITUCIONAL DO MINISTÉRIO NOVA VIDA */}
+                    <div className={`p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors ${
+                      isHighContrast 
+                        ? 'bg-white border-zinc-200 text-zinc-900 shadow-sm' 
+                        : 'bg-gradient-to-r from-zinc-900 via-zinc-900 to-indigo-950/40 border-zinc-800 text-white shadow-lg'
+                    }`}>
+                      <div className="flex items-center gap-4 text-center sm:text-left">
+                        <MNVLogo size={52} />
+                        <div>
+                          <h2 className={`text-base sm:text-lg font-bold uppercase tracking-tight ${
+                            isHighContrast ? 'text-zinc-900' : 'text-white'
+                          }`}>
+                            MINISTÉRIO NOVA VIDA
+                          </h2>
+                          <p className={`text-xs uppercase tracking-wide font-medium ${
+                            isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                          }`}>
+                            AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
+                          </p>
+                          <p className={`text-xs font-mono font-medium ${
+                            isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                          }`}>
+                            CNPJ: 62.471.271-0001-82
+                          </p>
+                          <p className={`text-xs font-bold uppercase tracking-wider mt-1 ${
+                            isHighContrast ? 'text-indigo-600' : 'text-indigo-400'
+                          }`}>
+                            BALANÇO PATRIMONIAL DO EXERCÍCIO ENCERRADO EM 31 DE DEZEMBRO DE {balancoBaseYear}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BARRA DE CONTROLE: FILTRO POR PERÍODO E COMPARAÇÃO DE ANOS (NO-PRINT) */}
+                    <div className={`no-print p-4 rounded-2xl border space-y-4 transition-colors ${
+                      isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/60 border-zinc-800'
+                    }`}>
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className={`flex items-center gap-1.5 font-bold text-xs ${
+                            isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                          }`}>
+                            <Calendar size={14} className={isHighContrast ? 'text-indigo-600' : 'text-indigo-500'} />
+                            <span>Período & Comparativo:</span>
+                          </div>
+
+                          {/* Ano Base */}
+                          <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                            isHighContrast ? 'bg-zinc-50 border-zinc-200 hover:border-zinc-300' : 'bg-zinc-950 border-zinc-800'
+                          }`}>
+                            <span className={`text-[10px] uppercase font-bold ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                            }`}>Ano Base:</span>
+                            <select
+                              value={balancoBaseYear}
+                              onChange={(e) => setBalancoBaseYear(e.target.value)}
+                              className={`text-xs bg-transparent font-bold focus:outline-none cursor-pointer ${
+                                isHighContrast ? 'text-zinc-900' : 'text-white'
+                              }`}
+                            >
+                              {balancoAvailableYears.map(y => (
+                                <option key={y} value={y} className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>{y}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Escopo do Período */}
+                          <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                            isHighContrast ? 'bg-zinc-50 border-zinc-200 hover:border-zinc-300' : 'bg-zinc-950 border-zinc-800'
+                          }`}>
+                            <span className={`text-[10px] uppercase font-bold ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                            }`}>Escopo:</span>
+                            <select
+                              value={balancoPeriodScope}
+                              onChange={(e) => setBalancoPeriodScope(e.target.value)}
+                              className={`text-xs bg-transparent font-bold focus:outline-none cursor-pointer ${
+                                isHighContrast ? 'text-zinc-900' : 'text-white'
+                              }`}
+                            >
+                              <option value="all" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Exercício Completo (Ano Todo)</option>
+                              <option value="1s" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>1º Semestre (Jan - Jun)</option>
+                              <option value="2s" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>2º Semestre (Jul - Dez)</option>
+                              <option value="1t" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>1º Trimestre (Jan - Mar)</option>
+                              <option value="2t" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>2º Trimestre (Abr - Jun)</option>
+                              <option value="3t" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>3º Trimestre (Jul - Set)</option>
+                              <option value="4t" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>4º Trimestre (Out - Dez)</option>
+                              <option value="01" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Janeiro</option>
+                              <option value="02" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Fevereiro</option>
+                              <option value="03" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Março</option>
+                              <option value="04" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Abril</option>
+                              <option value="05" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Maio</option>
+                              <option value="06" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Junho</option>
+                              <option value="07" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Julho</option>
+                              <option value="08" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Agosto</option>
+                              <option value="09" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Setembro</option>
+                              <option value="10" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Outubro</option>
+                              <option value="11" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Novembro</option>
+                              <option value="12" className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>Dezembro</option>
+                            </select>
+                          </div>
+
+                          {/* Toggle Comparar com outro ano */}
+                          <label className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                            isHighContrast 
+                              ? 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:border-zinc-300' 
+                              : 'bg-zinc-950 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={balancoCompareEnabled}
+                              onChange={(e) => setBalancoCompareEnabled(e.target.checked)}
+                              className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 bg-white border-zinc-300 cursor-pointer"
+                            />
+                            <span>Comparar Anos</span>
+                          </label>
+
+                          {/* Ano Comparativo */}
+                          {balancoCompareEnabled && (
+                            <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border animate-fadeIn transition-colors ${
+                              isHighContrast 
+                                ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900' 
+                                : 'bg-zinc-950 border-indigo-500/40 text-indigo-300'
+                            }`}>
+                              <span className={`text-[10px] uppercase font-bold ${
+                                isHighContrast ? 'text-indigo-700' : 'text-zinc-400'
+                              }`}>vs Ano:</span>
+                              <select
+                                value={balancoCompYear}
+                                onChange={(e) => setBalancoCompYear(e.target.value)}
+                                className={`text-xs bg-transparent font-bold focus:outline-none cursor-pointer ${
+                                  isHighContrast ? 'text-indigo-900' : 'text-indigo-300'
+                                }`}
+                              >
+                                {balancoAvailableYears.filter(y => y !== balancoBaseYear).map(y => (
+                                  <option key={y} value={y} className={isHighContrast ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}>{y}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Banner Informativo do Período */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className={`text-[11px] px-3 py-1.5 rounded-xl border font-medium ${
+                            isHighContrast 
+                              ? 'bg-zinc-50 text-zinc-600 border-zinc-200' 
+                              : 'text-zinc-400 bg-zinc-950/80 border-zinc-800/80'
+                          }`}>
+                            <span className={isHighContrast ? 'text-indigo-600 font-bold' : 'text-indigo-400 font-bold'}>{rangeBase.label}</span>
+                            {balancoCompareEnabled && (
+                              <span> em confronto com <span className={isHighContrast ? 'text-amber-600 font-bold' : 'text-amber-400 font-bold'}>{rangeComp.label}</span></span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TOP SUMMARY CARDS (KPIS COMPARATIVOS) */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      {/* Ativo Circulante */}
+                      <div className={`p-3.5 rounded-2xl border space-y-1 transition-all ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm hover:border-zinc-300' : 'bg-zinc-900/40 border-zinc-800/80'
+                      }`}>
+                        <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                          isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                        }`}>
+                          <span>Ativo Circulante</span>
+                          <Wallet size={12} className={isHighContrast ? 'text-indigo-600' : 'text-indigo-500'} />
+                        </div>
+                        <p className={`text-sm font-black font-mono ${
+                          isHighContrast ? 'text-zinc-900' : 'text-zinc-100'
+                        }`}>{formatCurrency(totalCirculanteBase)}</p>
+                        {balancoCompareEnabled && (
+                          <div className="pt-1 flex flex-col gap-0.5">
+                            <span className={`text-[9px] font-mono ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-500'
+                            }`}>Em {balancoCompYear}: {formatCurrency(totalCirculanteComp)}</span>
+                            {renderBadge(circVar.diff, circVar.pct)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ativo Imobilizado */}
+                      <div className={`p-3.5 rounded-2xl border space-y-1 transition-all ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm hover:border-zinc-300' : 'bg-zinc-900/40 border-zinc-800/80'
+                      }`}>
+                        <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                          isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                        }`}>
+                          <span>Ativo Imobilizado</span>
+                          <Building2 size={12} className={isHighContrast ? 'text-amber-600' : 'text-amber-500'} />
+                        </div>
+                        <p className={`text-sm font-black font-mono ${
+                          isHighContrast ? 'text-zinc-900' : 'text-zinc-100'
+                        }`}>{formatCurrency(totalImobilizadoBase)}</p>
+                        {balancoCompareEnabled && (
+                          <div className="pt-1 flex flex-col gap-0.5">
+                            <span className={`text-[9px] font-mono ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-500'
+                            }`}>Em {balancoCompYear}: {formatCurrency(totalImobilizadoComp)}</span>
+                            {renderBadge(imobVar.diff, imobVar.pct)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total Geral do Ativo */}
+                      <div className={`p-3.5 rounded-2xl border space-y-1 transition-all ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm hover:border-zinc-300' : 'bg-indigo-950/20 border-indigo-500/30'
+                      }`}>
+                        <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                          isHighContrast ? 'text-zinc-500' : 'text-indigo-400'
+                        }`}>
+                          <span>Total do Ativo</span>
+                          <Landmark size={12} className={isHighContrast ? 'text-indigo-600' : 'text-indigo-400'} />
+                        </div>
+                        <p className={`text-sm font-black font-mono ${
+                          isHighContrast ? 'text-indigo-600' : 'text-indigo-300'
+                        }`}>{formatCurrency(totalAtivoBase)}</p>
+                        {balancoCompareEnabled && (
+                          <div className="pt-1 flex flex-col gap-0.5">
+                            <span className={`text-[9px] font-mono ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-500'
+                            }`}>Em {balancoCompYear}: {formatCurrency(totalAtivoComp)}</span>
+                            {renderBadge(totalAtivoVar.diff, totalAtivoVar.pct)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total Receitas */}
+                      <div className={`p-3.5 rounded-2xl border space-y-1 transition-all ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm hover:border-zinc-300' : 'bg-emerald-950/20 border-emerald-500/30'
+                      }`}>
+                        <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                          isHighContrast ? 'text-zinc-500' : 'text-emerald-400'
+                        }`}>
+                          <span>Total Receitas</span>
+                          <TrendingUp size={12} className={isHighContrast ? 'text-emerald-600' : 'text-emerald-400'} />
+                        </div>
+                        <p className={`text-sm font-black font-mono ${
+                          isHighContrast ? 'text-emerald-600' : 'text-emerald-400'
+                        }`}>+{formatCurrency(totalReceitasBase)}</p>
+                        {balancoCompareEnabled && (
+                          <div className="pt-1 flex flex-col gap-0.5">
+                            <span className={`text-[9px] font-mono ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-500'
+                            }`}>Em {balancoCompYear}: +{formatCurrency(totalReceitasComp)}</span>
+                            {renderBadge(receitasVar.diff, receitasVar.pct)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total Despesas */}
+                      <div className={`p-3.5 rounded-2xl border space-y-1 transition-all ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm hover:border-zinc-300' : 'bg-rose-950/20 border-rose-500/30'
+                      }`}>
+                        <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                          isHighContrast ? 'text-zinc-500' : 'text-rose-400'
+                        }`}>
+                          <span>Total Despesas</span>
+                          <ArrowUpRight size={12} className={isHighContrast ? 'text-rose-600' : 'text-rose-400'} />
+                        </div>
+                        <p className={`text-sm font-black font-mono ${
+                          isHighContrast ? 'text-rose-600' : 'text-rose-400'
+                        }`}>-{formatCurrency(totalDespesasBase)}</p>
+                        {balancoCompareEnabled && (
+                          <div className="pt-1 flex flex-col gap-0.5">
+                            <span className={`text-[9px] font-mono ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-500'
+                            }`}>Em {balancoCompYear}: -{formatCurrency(totalDespesasComp)}</span>
+                            {renderBadge(despesasVar.diff, despesasVar.pct, true)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Superávit Líquido */}
+                      <div className={`p-3.5 rounded-2xl border space-y-1 transition-all ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm hover:border-zinc-300' : 'bg-zinc-900/40 border-zinc-800/80'
+                      }`}>
+                        <div className={`flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                          isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                        }`}>
+                          <span>Superávit Líquido</span>
+                          <Scale size={12} className={isHighContrast ? 'text-indigo-600' : 'text-indigo-500'} />
+                        </div>
+                        <p className={`text-sm font-black font-mono ${
+                          superavitBase >= 0 
+                            ? (isHighContrast ? 'text-emerald-600' : 'text-emerald-400') 
+                            : (isHighContrast ? 'text-rose-600' : 'text-rose-400')
+                        }`}>
+                          {formatCurrency(superavitBase)}
+                        </p>
+                        {balancoCompareEnabled && (
+                          <div className="pt-1 flex flex-col gap-0.5">
+                            <span className={`text-[9px] font-mono ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-500'
+                            }`}>Em {balancoCompYear}: {formatCurrency(superavitComp)}</span>
+                            {renderBadge(superavitVar.diff, superavitVar.pct)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ============================================================== */}
+                    {/* QUADRO 1: TODOS OS ATIVOS (CIRCULANTE & NÃO CIRCULANTE/IMOBILIZADO) */}
+                    {/* ============================================================== */}
+                    <div className="space-y-4">
+                      <div className={`flex items-center justify-between border-b pb-2 ${
+                        isHighContrast ? 'border-zinc-200' : 'border-zinc-800'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <Landmark className={`w-4 h-4 ${isHighContrast ? 'text-indigo-600' : 'text-indigo-400'}`} />
+                          <h4 className={`font-bold uppercase tracking-wider text-xs ${
+                            isHighContrast ? 'text-zinc-900 font-bold' : 'text-indigo-400'
+                          }`}>
+                            1. ATIVOS DA ORGANIZAÇÃO (CIRCULANTE & NÃO CIRCULANTE)
+                          </h4>
+                        </div>
+                        <span className={`text-[11px] font-mono ${
+                          isHighContrast ? 'text-zinc-500' : 'text-zinc-400 font-bold'
+                        }`}>
+                          Total do Ativo: <span className={isHighContrast ? 'text-zinc-900 font-bold' : 'text-zinc-100'}>{formatCurrency(totalAtivoBase)}</span>
+                        </span>
+                      </div>
+
+                      {/* 1.1 ATIVO CIRCULANTE (Bancos & Caixa) */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className={`font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 ${
+                            isHighContrast ? 'text-zinc-800' : 'text-zinc-300'
+                          }`}>
+                            <Wallet size={12} className={isHighContrast ? 'text-indigo-600' : 'text-indigo-400'} />
+                            1.1 Ativo Circulante (Disponibilidades: Bancos e Caixa)
+                          </h5>
+                          <span className={`text-[10px] font-mono font-semibold ${
+                            isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                          }`}>
+                            Subtotal: {formatCurrency(totalCirculanteBase)}
+                          </span>
+                        </div>
+
+                        <div className={`border rounded-xl overflow-hidden overflow-x-auto scrollbar-thin ${
+                          isHighContrast ? 'border-zinc-200 bg-white shadow-sm' : 'border-zinc-800'
+                        }`}>
+                          <table className="w-full text-left border-collapse min-w-[650px]">
+                            <thead>
+                              <tr className={`border-b text-[9px] uppercase font-bold ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-500 tracking-wider' : 'bg-zinc-950/60 border-zinc-800 text-zinc-400'
+                              }`}>
+                                <th className="py-2.5 px-3">Conta / Instituição</th>
+                                <th className="py-2.5 px-3">Tipo da Conta</th>
+                                <th className="py-2.5 px-3 text-right">Saldo em {balancoBaseYear}</th>
+                                {balancoCompareEnabled && (
+                                  <>
+                                    <th className={`py-2.5 px-3 text-right ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>Saldo em {balancoCompYear}</th>
+                                    <th className="py-2.5 px-3 text-right">Variação (R$)</th>
+                                    <th className="py-2.5 px-3 text-right">Variação (%)</th>
+                                  </>
+                                )}
+                              </tr>
+                            </thead>
+                            <tbody className={`divide-y ${
+                              isHighContrast ? 'divide-zinc-200 bg-white text-zinc-800' : 'divide-zinc-900 text-zinc-300'
+                            }`}>
+                              {accountsData.map(({ acc, baseBal, compBal, v }) => (
+                                <tr key={acc.id} className={`transition-colors ${
+                                  isHighContrast ? 'hover:bg-zinc-50/80' : 'hover:bg-zinc-500/5'
+                                }`}>
+                                  <td className={`py-2.5 px-3 font-semibold ${isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}`}>
+                                    <div className="flex items-center gap-2">
+                                      <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={24} />
+                                      <div>
+                                        <span>{acc.name}</span>
+                                        <span className={`block text-[9px] font-normal ${isHighContrast ? 'text-zinc-500' : 'text-zinc-500'}`}>{acc.bankName}</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold ${
+                                      isHighContrast ? 'bg-zinc-100 text-zinc-600 border border-zinc-200' : 'bg-zinc-800 text-zinc-300'
+                                    }`}>
+                                      {getAccountTypeLabel(acc.type)}
+                                    </span>
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                    isHighContrast ? 'text-zinc-900' : 'text-zinc-100'
+                                  }`}>
+                                    {formatCurrency(baseBal)}
+                                  </td>
+                                  {balancoCompareEnabled && (
+                                    <>
+                                      <td className={`py-2.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                        {formatCurrency(compBal)}
+                                      </td>
+                                      <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                        v.diff > 0 
+                                          ? (isHighContrast ? 'text-emerald-600' : 'text-emerald-500') 
+                                          : v.diff < 0 
+                                          ? (isHighContrast ? 'text-rose-600' : 'text-rose-500') 
+                                          : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                      }`}>
+                                        {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                      </td>
+                                      <td className="py-2.5 px-3 text-right">
+                                        {renderBadge(v.diff, v.pct)}
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className={`border-t font-bold ${
+                                isHighContrast ? 'bg-zinc-50/90 border-zinc-200 text-zinc-900' : 'border-zinc-800 bg-zinc-950/80 text-zinc-200'
+                              }`}>
+                                <td colSpan={2} className={`py-2.5 px-3 uppercase text-[10px] tracking-wider ${
+                                  isHighContrast ? 'text-zinc-700 font-bold' : 'text-indigo-400'
+                                }`}>
+                                  Subtotal do Ativo Circulante
+                                </td>
+                                <td className={`py-2.5 px-3 text-right font-mono ${
+                                  isHighContrast ? 'text-indigo-600 font-black' : 'text-indigo-300'
+                                }`}>
+                                  {formatCurrency(totalCirculanteBase)}
+                                </td>
+                                {balancoCompareEnabled && (
+                                  <>
+                                    <td className={`py-2.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                      {formatCurrency(totalCirculanteComp)}
+                                    </td>
+                                    <td className={`py-2.5 px-3 text-right font-mono ${
+                                      circVar.diff > 0 
+                                        ? (isHighContrast ? 'text-emerald-600 font-bold' : 'text-emerald-500') 
+                                        : circVar.diff < 0 
+                                        ? (isHighContrast ? 'text-rose-600 font-bold' : 'text-rose-500') 
+                                        : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                    }`}>
+                                      {circVar.diff > 0 ? '+' : ''}{formatCurrency(circVar.diff)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right">
+                                      {renderBadge(circVar.diff, circVar.pct)}
+                                    </td>
+                                  </>
+                                )}
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* 1.2 ATIVO NÃO CIRCULANTE (Bens Patrimoniais / Imobilizado) */}
+                      <div className="space-y-2 pt-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className={`font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 ${
+                            isHighContrast ? 'text-zinc-800' : 'text-zinc-300'
+                          }`}>
+                            <Building2 size={12} className={isHighContrast ? 'text-amber-600' : 'text-amber-400'} />
+                            1.2 Ativo Não Circulante (Imobilizado / Bens Móveis, Imóveis e Equipamentos)
+                          </h5>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-mono font-semibold ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                            }`}>
+                              Subtotal: {formatCurrency(totalImobilizadoBase)}
+                            </span>
+                            <button
+                              onClick={() => handleOpenAddAssetModal()}
+                              className={`no-print text-[10px] font-bold flex items-center gap-0.5 cursor-pointer ${
+                                isHighContrast ? 'text-indigo-600 hover:text-indigo-800' : 'text-indigo-400 hover:text-indigo-300'
+                              }`}
+                            >
+                              <Plus size={11} /> Adicionar Bem
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={`border rounded-xl overflow-hidden overflow-x-auto scrollbar-thin ${
+                          isHighContrast ? 'border-zinc-200 bg-white shadow-sm' : 'border-zinc-800'
+                        }`}>
+                          <table className="w-full text-left border-collapse min-w-[750px]">
+                            <thead>
+                              <tr className={`border-b text-[9px] uppercase font-bold ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-500 tracking-wider' : 'bg-zinc-950/60 border-zinc-800 text-zinc-400'
+                              }`}>
+                                <th className="py-2.5 px-3">Bem Patrimonial</th>
+                                <th className="py-2.5 px-3">Categoria</th>
+                                <th className="py-2.5 px-3">Aquisição</th>
+                                <th className="py-2.5 px-3 text-right">Valor em {balancoBaseYear}</th>
+                                {balancoCompareEnabled && (
+                                  <>
+                                    <th className={`py-2.5 px-3 text-right ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>Valor em {balancoCompYear}</th>
+                                    <th className="py-2.5 px-3 text-right">Variação (R$)</th>
+                                    <th className="py-2.5 px-3 text-right">Variação (%)</th>
+                                  </>
+                                )}
+                                <th className="py-2.5 px-3 text-center no-print w-16">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody className={`divide-y ${
+                              isHighContrast ? 'divide-zinc-200 bg-white text-zinc-800' : 'divide-zinc-900 text-zinc-300'
+                            }`}>
+                              {assetsData.map(({ fa, inBase, inComp, baseVal, compVal, v }) => (
+                                <tr key={fa.id} className={`transition-colors ${
+                                  isHighContrast ? 'hover:bg-zinc-50/80' : 'hover:bg-zinc-500/5'
+                                }`}>
+                                  <td className={`py-2.5 px-3 font-semibold ${isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}`}>
+                                    <div>
+                                      <span>{fa.name}</span>
+                                      {fa.description && (
+                                        <span className={`block text-[9px] font-normal ${isHighContrast ? 'text-zinc-500' : 'text-zinc-500'}`}>{fa.description}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold border ${
+                                      isHighContrast 
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    }`}>
+                                      {fa.category}
+                                    </span>
+                                  </td>
+                                  <td className={`py-2.5 px-3 font-mono text-[10px] ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                                    {fa.acquisitionDate ? fa.acquisitionDate.split('-').reverse().join('/') : '—'}
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}`}>
+                                    {inBase ? formatCurrency(baseVal) : <span className={isHighContrast ? 'text-zinc-400 italic' : 'text-zinc-600 italic'}>Não existia</span>}
+                                  </td>
+                                  {balancoCompareEnabled && (
+                                    <>
+                                      <td className={`py-2.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                        {inComp ? formatCurrency(compVal) : <span className={isHighContrast ? 'text-zinc-400 italic' : 'text-zinc-600 italic'}>Não existia</span>}
+                                      </td>
+                                      <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                        v.diff > 0 
+                                          ? (isHighContrast ? 'text-emerald-600' : 'text-emerald-500') 
+                                          : v.diff < 0 
+                                          ? (isHighContrast ? 'text-rose-600' : 'text-rose-500') 
+                                          : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                      }`}>
+                                        {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                      </td>
+                                      <td className="py-2.5 px-3 text-right">
+                                        {renderBadge(v.diff, v.pct)}
+                                      </td>
+                                    </>
+                                  )}
+                                  <td className="py-2.5 px-3 text-center no-print">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        onClick={() => handleOpenAddAssetModal(fa)}
+                                        className={`p-1 rounded cursor-pointer transition-colors ${
+                                          isHighContrast ? 'text-zinc-500 hover:text-indigo-600 hover:bg-zinc-100' : 'text-zinc-400 hover:text-indigo-400 hover:bg-zinc-800'
+                                        }`}
+                                        title="Editar bem"
+                                      >
+                                        <Edit3 size={11} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteAsset(fa.id, fa.name)}
+                                        className={`p-1 rounded cursor-pointer transition-colors ${
+                                          isHighContrast ? 'text-zinc-500 hover:text-rose-600 hover:bg-zinc-100' : 'text-zinc-400 hover:text-rose-400 hover:bg-zinc-800'
+                                        }`}
+                                        title="Excluir bem"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className={`border-t font-bold ${
+                                isHighContrast ? 'bg-zinc-50/90 border-zinc-200 text-zinc-900' : 'border-zinc-800 bg-zinc-950/80 text-zinc-200'
+                              }`}>
+                                <td colSpan={3} className={`py-2.5 px-3 uppercase text-[10px] tracking-wider ${
+                                  isHighContrast ? 'text-zinc-700 font-bold' : 'text-amber-400'
+                                }`}>
+                                  Subtotal do Ativo Imobilizado
+                                </td>
+                                <td className={`py-2.5 px-3 text-right font-mono ${
+                                  isHighContrast ? 'text-amber-700 font-black' : 'text-amber-300'
+                                }`}>
+                                  {formatCurrency(totalImobilizadoBase)}
+                                </td>
+                                {balancoCompareEnabled && (
+                                  <>
+                                    <td className={`py-2.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                      {formatCurrency(totalImobilizadoComp)}
+                                    </td>
+                                    <td className={`py-2.5 px-3 text-right font-mono ${
+                                      imobVar.diff > 0 
+                                        ? (isHighContrast ? 'text-emerald-600 font-bold' : 'text-emerald-500') 
+                                        : imobVar.diff < 0 
+                                        ? (isHighContrast ? 'text-rose-600 font-bold' : 'text-rose-500') 
+                                        : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                    }`}>
+                                      {imobVar.diff > 0 ? '+' : ''}{formatCurrency(imobVar.diff)}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right">
+                                      {renderBadge(imobVar.diff, imobVar.pct)}
+                                    </td>
+                                  </>
+                                )}
+                                <td className="no-print"></td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* TOTAL GERAL DO ATIVO (CONSOLIDADO) */}
+                      <div className={`p-3.5 rounded-xl border flex flex-wrap justify-between items-center gap-3 transition-colors ${
+                        isHighContrast 
+                          ? 'bg-indigo-50/60 border-indigo-200 text-indigo-950 shadow-sm' 
+                          : 'border-indigo-500/30 bg-indigo-950/15'
+                      }`}>
+                        <div>
+                          <p className={`text-xs font-bold uppercase tracking-wider ${
+                            isHighContrast ? 'text-indigo-900 font-bold' : 'text-indigo-400'
+                          }`}>TOTAL GERAL DO ATIVO (CIRCULANTE + NÃO CIRCULANTE)</p>
+                          <p className={`text-[10px] ${isHighContrast ? 'text-zinc-500 font-medium' : 'text-zinc-400'}`}>
+                            Patrimônio bruto total registrado no encerramento do período selecionado
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4 text-right">
+                          <div>
+                            <span className={`block text-[10px] uppercase font-mono font-bold ${
+                              isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                            }`}>Em {balancoBaseYear}:</span>
+                            <span className={`text-base font-black font-mono ${
+                              isHighContrast ? 'text-indigo-700' : 'text-indigo-300'
+                            }`}>{formatCurrency(totalAtivoBase)}</span>
+                          </div>
+                          {balancoCompareEnabled && (
+                            <>
+                              <div className={`border-l pl-4 ${isHighContrast ? 'border-indigo-200' : 'border-zinc-800'}`}>
+                                <span className={`block text-[10px] uppercase font-mono font-bold ${
+                                  isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                                }`}>Em {balancoCompYear}:</span>
+                                <span className={`text-base font-black font-mono ${
+                                  isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                                }`}>{formatCurrency(totalAtivoComp)}</span>
+                              </div>
+                              <div className={`border-l pl-4 flex flex-col items-end ${isHighContrast ? 'border-indigo-200' : 'border-zinc-800'}`}>
+                                <span className={`block text-[10px] uppercase font-mono font-bold ${
+                                  isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                                }`}>Variação Total:</span>
+                                {renderBadge(totalAtivoVar.diff, totalAtivoVar.pct)}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ============================================================== */}
+                    {/* QUADRO 2: TODAS AS RECEITAS (DEMONSTRAÇÃO COMPARATIVA) */}
+                    {/* ============================================================== */}
+                    <div className="space-y-3 pt-2">
+                      <div className={`flex items-center justify-between border-b pb-2 ${
+                        isHighContrast ? 'border-zinc-200' : 'border-zinc-800'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className={`w-4 h-4 ${isHighContrast ? 'text-emerald-600' : 'text-emerald-400'}`} />
+                          <h4 className={`font-bold uppercase tracking-wider text-xs ${
+                            isHighContrast ? 'text-zinc-900 font-bold' : 'text-emerald-400'
+                          }`}>
+                            2. RECEITAS DO EXERCÍCIO (+)
+                          </h4>
+                        </div>
+                        <span className={`text-[11px] font-mono ${
+                          isHighContrast ? 'text-zinc-500' : 'text-zinc-400 font-bold'
+                        }`}>
+                          Total de Entradas: <span className={isHighContrast ? 'text-emerald-600 font-bold' : 'text-emerald-400 font-black'}>+{formatCurrency(totalReceitasBase)}</span>
+                        </span>
+                      </div>
+
+                      <div className={`border rounded-xl overflow-hidden overflow-x-auto scrollbar-thin ${
+                        isHighContrast ? 'border-zinc-200 bg-white shadow-sm' : 'border-zinc-800'
+                      }`}>
+                        <table className="w-full text-left border-collapse min-w-[650px]">
+                          <thead>
+                            <tr className={`border-b text-[9px] uppercase font-bold ${
+                              isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-500 tracking-wider' : 'bg-zinc-950/60 border-zinc-800 text-zinc-400'
+                            }`}>
+                              <th className="py-2.5 px-3">Categoria de Receita</th>
+                              <th className="py-2.5 px-3">Grupo Principal</th>
+                              <th className="py-2.5 px-3 text-right">Exercício {balancoBaseYear}</th>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <th className={`py-2.5 px-3 text-right ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>Exercício {balancoCompYear}</th>
+                                  <th className="py-2.5 px-3 text-right">Variação (R$)</th>
+                                  <th className="py-2.5 px-3 text-right">Variação (%)</th>
+                                </>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${
+                            isHighContrast ? 'divide-zinc-200 bg-white text-zinc-800' : 'divide-zinc-900 text-zinc-300'
+                          }`}>
+                            {revCategories.map(({ cat, bSum, cSum, v, subcats }) => (
+                              <React.Fragment key={cat.id}>
+                                <tr className={`transition-colors font-semibold ${
+                                  isHighContrast ? 'hover:bg-zinc-50/80' : 'hover:bg-zinc-500/5'
+                                }`}>
+                                  <td className={`py-2.5 px-3 ${isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}`}>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                      isHighContrast ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : cat.color
+                                    }`}>
+                                      {cat.name}
+                                    </span>
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-[10px] ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                                    {cat.mainCategory || 'Receitas Gerais'}
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                    isHighContrast ? 'text-emerald-600' : 'text-emerald-400'
+                                  }`}>
+                                    +{formatCurrency(bSum)}
+                                  </td>
+                                  {balancoCompareEnabled && (
+                                    <>
+                                      <td className={`py-2.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                        +{formatCurrency(cSum)}
+                                      </td>
+                                      <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                        v.diff > 0 
+                                          ? (isHighContrast ? 'text-emerald-600' : 'text-emerald-500') 
+                                          : v.diff < 0 
+                                          ? (isHighContrast ? 'text-rose-600' : 'text-rose-500') 
+                                          : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                      }`}>
+                                        {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                      </td>
+                                      <td className="py-2.5 px-3 text-right">
+                                        {renderBadge(v.diff, v.pct)}
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                                {/* Subcategories breakdown rows */}
+                                {subcats.map(({ sub, subBase, subComp, v: subV }) => (
+                                  <tr key={sub} className={`text-[10px] ${
+                                    isHighContrast ? 'bg-zinc-50/50 text-zinc-600' : 'bg-zinc-950/30 text-zinc-400'
+                                  }`}>
+                                    <td className="py-1.5 px-3 pl-8">
+                                      <span className={isHighContrast ? 'text-zinc-400 mr-1.5' : 'text-zinc-500 mr-1.5'}>•</span>
+                                      <span className={isHighContrast ? 'font-medium text-zinc-800' : ''}>{sub}</span>
+                                    </td>
+                                    <td className={`py-1.5 px-3 italic ${isHighContrast ? 'text-zinc-500' : 'text-zinc-500'}`}>Subcategoria</td>
+                                    <td className={`py-1.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-900 font-medium' : 'text-zinc-300'}`}>
+                                      {formatCurrency(subBase)}
+                                    </td>
+                                    {balancoCompareEnabled && (
+                                      <>
+                                        <td className={`py-1.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                                          {formatCurrency(subComp)}
+                                        </td>
+                                        <td className={`py-1.5 px-3 text-right font-mono ${
+                                          subV.diff > 0 
+                                            ? (isHighContrast ? 'text-emerald-600 font-medium' : 'text-emerald-500/80') 
+                                            : subV.diff < 0 
+                                            ? (isHighContrast ? 'text-rose-600 font-medium' : 'text-rose-500/80') 
+                                            : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                        }`}>
+                                          {subV.diff > 0 ? '+' : ''}{formatCurrency(subV.diff)}
+                                        </td>
+                                        <td className="py-1.5 px-3 text-right">
+                                          <span className={`text-[9px] font-mono ${isHighContrast ? 'text-zinc-500 font-medium' : 'opacity-80'}`}>
+                                            {subV.pct >= 0 ? '+' : ''}{subV.pct.toFixed(1)}%
+                                          </span>
+                                        </td>
+                                      </>
+                                    )}
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className={`border-t font-bold ${
+                              isHighContrast ? 'bg-emerald-50/60 border-emerald-200 text-zinc-900' : 'border-zinc-800 bg-zinc-950/80 text-zinc-200'
+                            }`}>
+                              <td colSpan={2} className={`py-2.5 px-3 uppercase text-[10px] tracking-wider ${
+                                isHighContrast ? 'text-emerald-950 font-bold' : 'text-emerald-400'
+                              }`}>
+                                TOTAL GERAL DAS RECEITAS
+                              </td>
+                              <td className={`py-2.5 px-3 text-right font-mono text-sm ${
+                                isHighContrast ? 'text-emerald-600 font-black' : 'text-emerald-400'
+                              }`}>
+                                +{formatCurrency(totalReceitasBase)}
+                              </td>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <td className={`py-2.5 px-3 text-right font-mono text-sm ${isHighContrast ? 'text-zinc-600 font-bold' : 'text-zinc-400'}`}>
+                                    +{formatCurrency(totalReceitasComp)}
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono text-sm ${
+                                    receitasVar.diff > 0 
+                                      ? (isHighContrast ? 'text-emerald-600 font-bold' : 'text-emerald-500') 
+                                      : receitasVar.diff < 0 
+                                      ? (isHighContrast ? 'text-rose-600 font-bold' : 'text-rose-500') 
+                                      : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                  }`}>
+                                    {receitasVar.diff > 0 ? '+' : ''}{formatCurrency(receitasVar.diff)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    {renderBadge(receitasVar.diff, receitasVar.pct)}
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* ============================================================== */}
+                    {/* QUADRO 3: TODAS AS DESPESAS (DEMONSTRAÇÃO COMPARATIVA) */}
+                    {/* ============================================================== */}
+                    <div className="space-y-3 pt-2">
+                      <div className={`flex items-center justify-between border-b pb-2 ${
+                        isHighContrast ? 'border-zinc-200' : 'border-zinc-800'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <ArrowUpRight className={`w-4 h-4 ${isHighContrast ? 'text-rose-600' : 'text-rose-400'}`} />
+                          <h4 className={`font-bold uppercase tracking-wider text-xs ${
+                            isHighContrast ? 'text-zinc-900 font-bold' : 'text-rose-400'
+                          }`}>
+                            3. DESPESAS DO EXERCÍCIO (-)
+                          </h4>
+                        </div>
+                        <span className={`text-[11px] font-mono ${
+                          isHighContrast ? 'text-zinc-500' : 'text-zinc-400 font-bold'
+                        }`}>
+                          Total de Saídas: <span className={isHighContrast ? 'text-rose-600 font-bold' : 'text-rose-400 font-black'}>-{formatCurrency(totalDespesasBase)}</span>
+                        </span>
+                      </div>
+
+                      <div className={`border rounded-xl overflow-hidden overflow-x-auto scrollbar-thin ${
+                        isHighContrast ? 'border-zinc-200 bg-white shadow-sm' : 'border-zinc-800'
+                      }`}>
+                        <table className="w-full text-left border-collapse min-w-[650px]">
+                          <thead>
+                            <tr className={`border-b text-[9px] uppercase font-bold ${
+                              isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-500 tracking-wider' : 'bg-zinc-950/60 border-zinc-800 text-zinc-400'
+                            }`}>
+                              <th className="py-2.5 px-3">Categoria de Despesa</th>
+                              <th className="py-2.5 px-3">Grupo Principal</th>
+                              <th className="py-2.5 px-3 text-right">Exercício {balancoBaseYear}</th>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <th className={`py-2.5 px-3 text-right ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>Exercício {balancoCompYear}</th>
+                                  <th className="py-2.5 px-3 text-right">Variação (R$)</th>
+                                  <th className="py-2.5 px-3 text-right">Variação (%)</th>
+                                </>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${
+                            isHighContrast ? 'divide-zinc-200 bg-white text-zinc-800' : 'divide-zinc-900 text-zinc-300'
+                          }`}>
+                            {expCategories.map(({ cat, bSum, cSum, v, subcats }) => (
+                              <React.Fragment key={cat.id}>
+                                <tr className={`transition-colors font-semibold ${
+                                  isHighContrast ? 'hover:bg-zinc-50/80' : 'hover:bg-zinc-500/5'
+                                }`}>
+                                  <td className={`py-2.5 px-3 ${isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}`}>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                      isHighContrast 
+                                        ? (cat.color.includes('amber') 
+                                            ? 'bg-amber-50 text-amber-900 border-amber-200' 
+                                            : cat.color.includes('sky') 
+                                            ? 'bg-sky-50 text-sky-800 border-sky-200' 
+                                            : 'bg-rose-50 text-rose-800 border-rose-200')
+                                        : cat.color
+                                    }`}>
+                                      {cat.name}
+                                    </span>
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-[10px] ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                                    {cat.mainCategory || 'Despesas Gerais'}
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                    isHighContrast ? 'text-rose-600' : 'text-rose-400'
+                                  }`}>
+                                    -{formatCurrency(bSum)}
+                                  </td>
+                                  {balancoCompareEnabled && (
+                                    <>
+                                      <td className={`py-2.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                        -{formatCurrency(cSum)}
+                                      </td>
+                                      <td className={`py-2.5 px-3 text-right font-mono font-bold ${
+                                        v.diff > 0 
+                                          ? (isHighContrast ? 'text-amber-700' : 'text-amber-500') 
+                                          : v.diff < 0 
+                                          ? (isHighContrast ? 'text-emerald-600' : 'text-emerald-500') 
+                                          : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                      }`}>
+                                        {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                      </td>
+                                      <td className="py-2.5 px-3 text-right">
+                                        {renderBadge(v.diff, v.pct, true)}
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                                {/* Subcategories breakdown rows */}
+                                {subcats.map(({ sub, subBase, subComp, v: subV }) => (
+                                  <tr key={sub} className={`text-[10px] ${
+                                    isHighContrast ? 'bg-zinc-50/50 text-zinc-600' : 'bg-zinc-950/30 text-zinc-400'
+                                  }`}>
+                                    <td className="py-1.5 px-3 pl-8">
+                                      <span className={isHighContrast ? 'text-zinc-400 mr-1.5' : 'text-zinc-500 mr-1.5'}>•</span>
+                                      <span className={isHighContrast ? 'font-medium text-zinc-800' : ''}>{sub}</span>
+                                    </td>
+                                    <td className={`py-1.5 px-3 italic ${isHighContrast ? 'text-zinc-500' : 'text-zinc-500'}`}>Subcategoria</td>
+                                    <td className={`py-1.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-900 font-medium' : 'text-zinc-300'}`}>
+                                      {formatCurrency(subBase)}
+                                    </td>
+                                    {balancoCompareEnabled && (
+                                      <>
+                                        <td className={`py-1.5 px-3 text-right font-mono ${isHighContrast ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                                          {formatCurrency(subComp)}
+                                        </td>
+                                        <td className={`py-1.5 px-3 text-right font-mono ${
+                                          subV.diff > 0 
+                                            ? (isHighContrast ? 'text-amber-700 font-medium' : 'text-amber-500/80') 
+                                            : subV.diff < 0 
+                                            ? (isHighContrast ? 'text-emerald-600 font-medium' : 'text-emerald-500/80') 
+                                            : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                        }`}>
+                                          {subV.diff > 0 ? '+' : ''}{formatCurrency(subV.diff)}
+                                        </td>
+                                        <td className="py-1.5 px-3 text-right">
+                                          <span className={`text-[9px] font-mono ${isHighContrast ? 'text-zinc-500 font-medium' : 'opacity-80'}`}>
+                                            {subV.pct >= 0 ? '+' : ''}{subV.pct.toFixed(1)}%
+                                          </span>
+                                        </td>
+                                      </>
+                                    )}
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className={`border-t font-bold ${
+                              isHighContrast ? 'bg-rose-50/60 border-rose-200 text-zinc-900' : 'border-zinc-800 bg-zinc-950/80 text-zinc-200'
+                            }`}>
+                              <td colSpan={2} className={`py-2.5 px-3 uppercase text-[10px] tracking-wider ${
+                                isHighContrast ? 'text-rose-950 font-bold' : 'text-rose-400'
+                              }`}>
+                                TOTAL GERAL DAS DESPESAS
+                              </td>
+                              <td className={`py-2.5 px-3 text-right font-mono text-sm ${
+                                isHighContrast ? 'text-rose-600 font-black' : 'text-rose-400'
+                              }`}>
+                                -{formatCurrency(totalDespesasBase)}
+                              </td>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <td className={`py-2.5 px-3 text-right font-mono text-sm ${isHighContrast ? 'text-zinc-600 font-bold' : 'text-zinc-400'}`}>
+                                    -{formatCurrency(totalDespesasComp)}
+                                  </td>
+                                  <td className={`py-2.5 px-3 text-right font-mono text-sm ${
+                                    despesasVar.diff > 0 
+                                      ? (isHighContrast ? 'text-amber-700 font-bold' : 'text-amber-500') 
+                                      : despesasVar.diff < 0 
+                                      ? (isHighContrast ? 'text-emerald-600 font-bold' : 'text-emerald-500') 
+                                      : (isHighContrast ? 'text-zinc-500' : 'text-zinc-500')
+                                  }`}>
+                                    {despesasVar.diff > 0 ? '+' : ''}{formatCurrency(despesasVar.diff)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    {renderBadge(despesasVar.diff, despesasVar.pct, true)}
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* ============================================================== */}
+                    {/* QUADRO 4: SÍNTESE PATRIMONIAL, RESULTADO LÍQUIDO E GRÁFICOS */}
+                    {/* ============================================================== */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {/* Resumo do Resultado e Patrimônio */}
+                      <div className={`p-4 rounded-2xl border space-y-3 transition-colors ${
+                        isHighContrast 
+                          ? 'bg-white border-zinc-200 shadow-sm' 
+                          : 'border-indigo-500/20 bg-indigo-500/5'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <Scale className={`w-4 h-4 ${isHighContrast ? 'text-indigo-600' : 'text-indigo-400'}`} />
+                          <h4 className={`font-bold text-xs uppercase tracking-wider ${
+                            isHighContrast ? 'text-zinc-900 font-bold' : 'text-indigo-300'
+                          }`}>
+                            4. Síntese do Resultado & Patrimônio Líquido
+                          </h4>
+                        </div>
+
+                        <div className="space-y-2 text-xs">
+                          <div className={`flex justify-between items-center py-1.5 border-b ${
+                            isHighContrast ? 'border-zinc-100' : 'border-zinc-800/60'
+                          }`}>
+                            <span className={isHighContrast ? 'text-zinc-600 font-medium' : 'text-zinc-400'}>Receitas Totais ({balancoBaseYear}):</span>
+                            <span className={`font-mono font-bold ${isHighContrast ? 'text-emerald-600' : 'text-emerald-400'}`}>+{formatCurrency(totalReceitasBase)}</span>
+                          </div>
+                          <div className={`flex justify-between items-center py-1.5 border-b ${
+                            isHighContrast ? 'border-zinc-100' : 'border-zinc-800/60'
+                          }`}>
+                            <span className={isHighContrast ? 'text-zinc-600 font-medium' : 'text-zinc-400'}>Despesas Totais ({balancoBaseYear}):</span>
+                            <span className={`font-mono font-bold ${isHighContrast ? 'text-rose-600' : 'text-rose-400'}`}>-{formatCurrency(totalDespesasBase)}</span>
+                          </div>
+                          <div className={`flex justify-between items-center py-1.5 border-b font-bold ${
+                            isHighContrast ? 'border-zinc-200' : 'border-zinc-800/60'
+                          }`}>
+                            <span className={isHighContrast ? 'text-zinc-900' : 'text-zinc-300'}>Superávit / Déficit Operacional:</span>
+                            <span className={`font-mono font-black ${
+                              superavitBase >= 0 
+                                ? (isHighContrast ? 'text-emerald-600' : 'text-emerald-400') 
+                                : (isHighContrast ? 'text-rose-600' : 'text-rose-400')
+                            }`}>
+                              {formatCurrency(superavitBase)}
+                            </span>
+                          </div>
+                          <div className={`flex justify-between items-center py-2 pt-3 font-bold text-sm p-2.5 rounded-xl border ${
+                            isHighContrast 
+                              ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' 
+                              : 'bg-zinc-950/40 border-indigo-500/30 text-indigo-300'
+                          }`}>
+                            <span className={`uppercase text-xs tracking-wider ${
+                              isHighContrast ? 'text-indigo-900 font-bold' : 'text-indigo-300'
+                            }`}>Patrimônio Líquido Consolidado:</span>
+                            <span className={`font-mono text-base font-black ${
+                              isHighContrast ? 'text-indigo-700' : 'text-indigo-300'
+                            }`}>{formatCurrency(patrimonioLiquidoBase)}</span>
+                          </div>
+                        </div>
+
+                        {balancoCompareEnabled && (
+                          <div className={`pt-2 border-t text-[10px] flex justify-between items-center ${
+                            isHighContrast ? 'border-zinc-200 text-zinc-500 font-medium' : 'border-zinc-800 text-zinc-400'
+                          }`}>
+                            <span className="font-medium">Variação Patrimônio vs {balancoCompYear}:</span>
+                            {renderBadge(patrimonioVar.diff, patrimonioVar.pct)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Comparativo Visual de Barras entre Anos */}
+                      <div className={`p-4 rounded-2xl border space-y-3 transition-colors ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'border-zinc-800 bg-zinc-900/40'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <h4 className={`font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 ${
+                            isHighContrast ? 'text-zinc-900 font-bold' : 'text-zinc-300'
+                          }`}>
+                            <Layers size={13} className={isHighContrast ? 'text-indigo-600' : 'text-indigo-400'} />
+                            Comparativo Visual de Exercícios
+                          </h4>
+                          <div className="flex items-center gap-3 text-[10px] font-mono">
+                            <span className="flex items-center gap-1">
+                              <span className="w-2.5 h-2.5 rounded bg-indigo-500 inline-block"></span>
+                              <span className={isHighContrast ? 'text-zinc-700 font-bold' : ''}>{balancoBaseYear}</span>
+                            </span>
+                            {balancoCompareEnabled && (
+                              <span className="flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded bg-amber-500 inline-block"></span>
+                                <span className={isHighContrast ? 'text-zinc-700 font-bold' : ''}>{balancoCompYear}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Barras de Métricas */}
+                        <div className="space-y-3 pt-1">
+                          {/* 1. Ativos Totais */}
+                          <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className={`font-semibold ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>Ativo Total</span>
+                              <span className={`font-mono font-bold ${isHighContrast ? 'text-zinc-900' : 'text-zinc-300'}`}>{formatCurrency(totalAtivoBase)}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className={`w-full rounded-full h-2 overflow-hidden ${isHighContrast ? 'bg-zinc-100 border border-zinc-200/60' : 'bg-zinc-800'}`}>
+                                <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: '100%' }}></div>
+                              </div>
+                              {balancoCompareEnabled && totalAtivoBase > 0 && (
+                                <div className={`w-full rounded-full h-2 overflow-hidden ${isHighContrast ? 'bg-zinc-100 border border-zinc-200/60' : 'bg-zinc-800'}`}>
+                                  <div
+                                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, Math.max(5, (totalAtivoComp / totalAtivoBase) * 100))}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 2. Receitas */}
+                          <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className={`font-semibold ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>Receitas do Período</span>
+                              <span className={`font-mono font-bold ${isHighContrast ? 'text-emerald-600' : 'text-emerald-400'}`}>+{formatCurrency(totalReceitasBase)}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className={`w-full rounded-full h-2 overflow-hidden ${isHighContrast ? 'bg-zinc-100 border border-zinc-200/60' : 'bg-zinc-800'}`}>
+                                <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: '100%' }}></div>
+                              </div>
+                              {balancoCompareEnabled && totalReceitasBase > 0 && (
+                                <div className={`w-full rounded-full h-2 overflow-hidden ${isHighContrast ? 'bg-zinc-100 border border-zinc-200/60' : 'bg-zinc-800'}`}>
+                                  <div
+                                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, Math.max(5, (totalReceitasComp / totalReceitasBase) * 100))}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 3. Despesas */}
+                          <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className={`font-semibold ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>Despesas do Período</span>
+                              <span className={`font-mono font-bold ${isHighContrast ? 'text-rose-600' : 'text-rose-400'}`}>-{formatCurrency(totalDespesasBase)}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <div className={`w-full rounded-full h-2 overflow-hidden ${isHighContrast ? 'bg-zinc-100 border border-zinc-200/60' : 'bg-zinc-800'}`}>
+                                <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: '100%' }}></div>
+                              </div>
+                              {balancoCompareEnabled && totalDespesasBase > 0 && (
+                                <div className={`w-full rounded-full h-2 overflow-hidden ${isHighContrast ? 'bg-zinc-100 border border-zinc-200/60' : 'bg-zinc-800'}`}>
+                                  <div
+                                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, Math.max(5, (totalDespesasComp / totalDespesasBase) * 100))}%` }}
+                                  ></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* --- FINANCIAL MODALS --- */}
+      <AnimatePresence>
+        
+        {/* Modal: New Transaction (Entry or Expense) */}
+        {showTxModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowTxModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-3xl md:max-w-4xl w-full overflow-hidden shadow-2xl text-left ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-indigo-500" />
+                  <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                    {editingTx ? 'Editar Transação' : 'Lançar Nova Transação'} ({txType === 'entrada' ? 'Receita' : 'Despesa'})
+                  </h3>
+                </div>
+                <button onClick={() => { setShowTxModal(false); setEditingTx(null); }} className="p-1 rounded text-zinc-500 hover:text-white cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddTransaction} className="p-6 space-y-4 max-h-[90vh] md:max-h-[85vh] overflow-y-auto scrollbar-thin">
+                {/* Flow indicator switch */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-950 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => { setTxType('entrada'); setTxCategoryId(''); setTxSubcategory(''); }}
+                    className={`py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                      txType === 'entrada' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-500 hover:text-zinc-700'
+                    }`}
+                  >
+                    Receita (+)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setTxType('saida'); setTxCategoryId(''); setTxSubcategory(''); }}
+                    className={`py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                      txType === 'saida' ? 'bg-red-600 text-white shadow' : 'text-zinc-500 hover:text-zinc-700'
+                    }`}
+                  >
+                    Despesa (-)
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                  {/* Left Column: Core fields & status */}
+                  <div className="space-y-4">
+                    {/* COMMON - DESCRICAO */}
+                    <div className="space-y-1 relative">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex justify-between items-center">
+                        <span>Descrição / Histórico *</span>
+                        {transactions.some(t => t.type === txType && t.description.toLowerCase().trim() === txDescription.toLowerCase().trim()) && (
+                          <span className="text-[9px] text-indigo-400 font-bold bg-indigo-500/10 px-1.5 py-0.5 rounded-full">✨ Memória Ativa</span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={txDescription}
+                        onChange={(e) => {
+                          setTxDescription(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        placeholder={txType === 'entrada' ? 'Ex: Dízimo Dominical Culto' : 'Ex: Compra de Lâmpadas para o Templo'}
+                        className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                        }`}
+                      />
+
+                      {/* Auto-fill/Suggestions Dropdown */}
+                      {showSuggestions && (
+                        (() => {
+                          const allTypeTxs = transactions.filter(t => t.type === txType);
+                          const uniqueDescs = Array.from(new Set<string>(allTypeTxs.map(t => t.description)));
+                          const term = txDescription.trim().toLowerCase();
+                          const matches = term.length > 0
+                            ? uniqueDescs.filter(desc => desc.toLowerCase().includes(term))
+                            : uniqueDescs.slice(0, 6);
+
+                          if (matches.length === 0) return null;
+
+                          return (
+                            <div className={`absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border shadow-xl backdrop-blur-md ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}>
+                              <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-800/10 flex justify-between items-center">
+                                <span>Lançamentos anteriores (Memória rápida)</span>
+                                <span className="text-[8px] text-indigo-400 font-semibold">Clique para autocompletar</span>
+                              </div>
+                              {matches.map((desc, idx) => {
+                                const match = [...transactions]
+                                  .reverse()
+                                  .find(t => t.type === txType && t.description.toLowerCase() === desc.toLowerCase());
+                                const cat = match ? categories.find(c => c.id === match.categoryId) : null;
+                                const acc = match ? accounts.find(a => a.id === match.accountId) : null;
+
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      if (match) {
+                                        setTxDescription(match.description);
+                                        setTxValue(match.value.toString());
+                                        setTxCategoryId(match.categoryId);
+                                        setTxSubcategory(match.subcategory || '');
+                                        setTxAccountId(match.accountId);
+                                        setTxFormaPagamento(match.formaPagamento || 'pix');
+                                        setTxObservation(match.observation || '');
+                                        
+                                        if (txType === 'entrada') {
+                                          setTxRecebido(match.recebido || 'sim');
+                                          setTxRecebidoDe(match.recebidoDe || '');
+                                          setTxDataRecebido(match.dataRecebido || new Date().toISOString().split('T')[0]);
+                                        } else {
+                                          setTxPago(match.pago || 'sim');
+                                          setTxVaiPagarQuem(match.vaiPagarQuem || '');
+                                          setTxDataVencimento(match.dataVencimento || new Date().toISOString().split('T')[0]);
+                                        }
+                                        
+                                        setTxParcelamento(match.parcelamento || 'nao');
+                                        setTxFrequenciaParcelas(match.frequenciaParcelas || 'mensal');
+                                        setTxNumeroParcelas(match.numeroParcelas ? match.numeroParcelas.toString() : '1');
+                                      } else {
+                                        setTxDescription(desc);
+                                      }
+                                      setShowSuggestions(false);
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 font-medium cursor-pointer flex items-center justify-between border-b last:border-0 transition-colors ${
+                                      isHighContrast ? 'border-zinc-100 text-zinc-800' : 'border-zinc-900 text-zinc-300'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1 mr-3">
+                                      <p className="font-semibold text-xs truncate">{desc}</p>
+                                      {(cat || acc) && (
+                                        <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                                          {cat?.name}{match?.subcategory ? ` › ${match.subcategory}` : ''}{acc ? ` • ${acc.name}` : ''}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="text-right shrink-0 flex items-center gap-2">
+                                      {match && (
+                                        <span className={`font-mono text-[11px] font-bold ${
+                                          txType === 'entrada' ? 'text-emerald-500' : 'text-red-500'
+                                        }`}>
+                                          {formatCurrency(match.value)}
+                                        </span>
+                                      )}
+                                      <span className="text-[9px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full font-bold">
+                                        Preencher
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()
+                      )}
+
+                      {/* Quick Memory Pills */}
+                      {(() => {
+                        const quickChips = Array.from(new Set<string>(
+                          transactions.filter(t => t.type === txType).map(t => t.description)
+                        )).slice(0, 4);
+
+                        if (quickChips.length === 0) return null;
+
+                        return (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500">Memória Rápida:</span>
+                            {quickChips.map((chip, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  const match = [...transactions].reverse().find(t => t.type === txType && t.description.toLowerCase() === chip.toLowerCase());
+                                  if (match) {
+                                    setTxDescription(match.description);
+                                    setTxValue(match.value.toString());
+                                    setTxCategoryId(match.categoryId);
+                                    setTxSubcategory(match.subcategory || '');
+                                    setTxAccountId(match.accountId);
+                                    setTxFormaPagamento(match.formaPagamento || 'pix');
+                                    setTxObservation(match.observation || '');
+                                    if (txType === 'entrada') {
+                                      setTxRecebido(match.recebido || 'sim');
+                                      setTxRecebidoDe(match.recebidoDe || '');
+                                      setTxDataRecebido(match.dataRecebido || new Date().toISOString().split('T')[0]);
+                                    } else {
+                                      setTxPago(match.pago || 'sim');
+                                      setTxVaiPagarQuem(match.vaiPagarQuem || '');
+                                      setTxDataVencimento(match.dataVencimento || new Date().toISOString().split('T')[0]);
+                                    }
+                                    setTxParcelamento(match.parcelamento || 'nao');
+                                    setTxFrequenciaParcelas(match.frequenciaParcelas || 'mensal');
+                                    setTxNumeroParcelas(match.numeroParcelas ? match.numeroParcelas.toString() : '1');
+                                  } else {
+                                    setTxDescription(chip);
+                                  }
+                                  setShowSuggestions(false);
+                                }}
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer truncate max-w-[180px] ${
+                                  isHighContrast
+                                    ? 'bg-zinc-100 hover:bg-indigo-50 hover:border-indigo-300 text-zinc-700 hover:text-indigo-600 border-zinc-200'
+                                    : 'bg-zinc-900/60 hover:bg-indigo-500/10 hover:border-indigo-500/40 text-zinc-400 hover:text-indigo-300 border-zinc-800'
+                                }`}
+                              >
+                                {chip}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Conditional fields based on Flow Type (Entrada vs Despesa) */}
+                    {txType === 'entrada' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* ENTRADA - RECEBIDO (SIM/NAO) */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recebido? *</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setTxRecebido('sim')}
+                              className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                                txRecebido === 'sim'
+                                  ? 'bg-emerald-600/15 border-emerald-500 text-emerald-500'
+                                  : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800/80 text-zinc-400'
+                              }`}
+                            >
+                              Sim
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTxRecebido('nao')}
+                              className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                                txRecebido === 'nao'
+                                  ? 'bg-rose-500/15 border-rose-500 text-rose-500'
+                                  : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800/80 text-zinc-400'
+                              }`}
+                            >
+                              Não
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* ENTRADA - RECEBIDO DE */}
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recebido de *</label>
+                          <input
+                            type="text"
+                            required
+                            value={txRecebidoDe}
+                            onChange={(e) => setTxRecebidoDe(e.target.value)}
+                            placeholder="Ex: Nome do membro, doador, ou instituição"
+                            className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                              isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* DESPESA - PAGO (SIM/NAO) */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Pago? *</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setTxPago('sim')}
+                              className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                                txPago === 'sim'
+                                  ? 'bg-emerald-600/15 border-emerald-500 text-emerald-500'
+                                  : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800/80 text-zinc-400'
+                              }`}
+                            >
+                              Sim
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTxPago('nao')}
+                              className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                                txPago === 'nao'
+                                  ? 'bg-rose-500/15 border-rose-500 text-rose-500'
+                                  : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800/80 text-zinc-400'
+                              }`}
+                            >
+                              Não
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* DESPESA - VAI PAGAR QUEM */}
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Vai pagar quem? *</label>
+                          <input
+                            type="text"
+                            required
+                            value={txVaiPagarQuem}
+                            onChange={(e) => setTxVaiPagarQuem(e.target.value)}
+                            placeholder="Ex: Fornecedor, prestador de serviço, pastor"
+                            className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                              isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* VALOR & FORMA DE PAGAMENTO */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* COMMON - VALOR */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Valor (R$) *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          min="0.01"
+                          value={txValue}
+                          onChange={(e) => setTxValue(e.target.value)}
+                          placeholder="0,00"
+                          className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                            isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                          }`}
+                        />
+                      </div>
+
+                      {/* COMMON - FORMA DE PAGAMENTO */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Forma de Pagamento *</label>
+                        <select
+                          required
+                          value={txFormaPagamento}
+                          onChange={(e: any) => setTxFormaPagamento(e.target.value)}
+                          className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                            isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                          }`}
+                        >
+                          <option value="pix">Pix</option>
+                          <option value="boleto">Boleto</option>
+                          <option value="cartão">Cartão</option>
+                          <option value="dinheiro">Dinheiro</option>
+                          <option value="débito automático">Débito Automático</option>
+                          <option value="transferência">Transferência</option>
+                          <option value="cheque">Cheque</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* COMMON - BANCO */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Banco / Conta *</label>
+                      <select
+                        required
+                        value={txAccountId}
+                        onChange={(e) => setTxAccountId(e.target.value)}
+                        className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                        }`}
+                      >
+                        <option value="">Selecione...</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name} (Saldo: {formatCurrency(acc.currentBalance)})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* COMMON - OBSERVACOES */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Observações / Detalhes</label>
+                      <textarea
+                        value={txObservation}
+                        onChange={(e) => setTxObservation(e.target.value)}
+                        placeholder="Escreva detalhes adicionais..."
+                        rows={2}
+                        className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium resize-none ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                        }`}
+                      />
+                    </div>
+
+                    {/* COMMON - DIGITALIZAR RECIBO / COMPROVANTE */}
+                    <div className="space-y-2 border-t border-zinc-800/10 pt-3 mt-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Comprovante / Recibo</label>
+                      
+                      {!txReceiptImage && !cameraActive && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-300 text-zinc-850' 
+                                : 'bg-zinc-950 hover:bg-zinc-900 border-zinc-850 text-indigo-400'
+                            }`}
+                          >
+                            <Camera size={13} />
+                            Digitalizar Recibo
+                          </button>
+                          
+                          <label
+                            className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 text-center ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-300 text-zinc-850' 
+                                : 'bg-zinc-950 hover:bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-zinc-350'
+                            }`}
+                          >
+                            <Upload size={13} />
+                            Anexar Arquivo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleReceiptUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {cameraActive && (
+                        <div className={`p-3 rounded-xl border space-y-2 flex flex-col items-center ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950 border-zinc-850'
+                        }`}>
+                          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black border border-zinc-800">
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              playsInline
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          {cameraError && (
+                            <p className="text-[10px] font-medium text-red-500 text-center">{cameraError}</p>
+                          )}
+                          <div className="flex gap-2 w-full justify-center">
+                            <button
+                              type="button"
+                              onClick={stopCamera}
+                              className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-750 text-zinc-400 rounded-lg text-[10px] cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={capturePhoto}
+                              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                            >
+                              <Camera size={11} /> Capturar Foto
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {txReceiptImage && (
+                        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950 border-zinc-850'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800 relative cursor-pointer" onClick={() => setSelectedReceiptImage(txReceiptImage)}>
+                              <img src={txReceiptImage} alt="Preview do Recibo" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-all">
+                                <Eye size={12} className="text-white" />
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-1">
+                                <Check size={11} /> Recibo Anexado
+                              </span>
+                              <p className="text-[9px] text-zinc-500">Clique na miniatura para ampliar</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReceiptImage(txReceiptImage)}
+                              className={`p-1.5 rounded transition-colors cursor-pointer border ${
+                                isHighContrast 
+                                  ? 'bg-white hover:bg-zinc-100 border-zinc-200 text-zinc-600' 
+                                  : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-400 hover:text-indigo-400'
+                              }`}
+                              title="Visualizar ampliado"
+                            >
+                              <Eye size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTxReceiptImage(null)}
+                              className={`p-1.5 rounded transition-colors cursor-pointer border ${
+                                isHighContrast 
+                                  ? 'bg-white hover:bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-red-600' 
+                                  : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-400 hover:text-red-500'
+                              }`}
+                              title="Remover recibo"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Date, Category, Subcategory, Installments */}
+                  <div className="space-y-4">
+                    {/* CONDITIONAL DATES */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {txType === 'entrada' ? (
+                        <>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Data Recebido</label>
+                            <input
+                              type="date"
+                              required={txRecebido === 'sim'}
+                              disabled={txRecebido === 'nao'}
+                              value={txDataRecebido}
+                              onChange={(e) => setTxDataRecebido(e.target.value)}
+                              className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              } disabled:opacity-40`}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Data Lançamento *</label>
+                            <input
+                              type="date"
+                              required
+                              value={txDataLancamento}
+                              onChange={(e) => setTxDataLancamento(e.target.value)}
+                              className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Data Vencimento *</label>
+                            <input
+                              type="date"
+                              required
+                              value={txDataVencimento}
+                              onChange={(e) => setTxDataVencimento(e.target.value)}
+                              className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Data Lançamento *</label>
+                            <input
+                              type="date"
+                              required
+                              value={txDataLancamento}
+                              onChange={(e) => setTxDataLancamento(e.target.value)}
+                              className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* COMMON - CATEGORIA WITH INLINE OPTION TO CREATE CATEGORY */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoria *</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowInlineCategory(!showInlineCategory);
+                            setShowInlineSubcategory(false);
+                          }}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus size={12} /> Criar Categoria
+                        </button>
+                      </div>
+                      
+                      <select
+                        required
+                        value={txCategoryId}
+                        onChange={(e) => {
+                          setTxCategoryId(e.target.value);
+                          setTxSubcategory('');
+                          setShowInlineSubcategory(false);
+                        }}
+                        className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                        }`}
+                      >
+                        <option value="">Selecione...</option>
+                        {categories
+                          .filter(c => c.type === 'ambas' || c.type === txType)
+                          .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+
+                      {/* Inline Category Creation Drawer/Input */}
+                      {showInlineCategory && (
+                        <div className={`mt-2 p-3.5 rounded-xl border space-y-3 ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950 border-zinc-850'
+                        }`}>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Nova Categoria de {txType === 'entrada' ? 'Receita' : 'Despesa'}</span>
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              placeholder="Nome da categoria (ex: Ofertas Especiais)"
+                              value={inlineCategoryName}
+                              onChange={(e) => setInlineCategoryName(e.target.value)}
+                              className={`w-full text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Subcategorias (opcional, separadas por vírgula)"
+                              value={inlineCategorySubcategories}
+                              onChange={(e) => setInlineCategorySubcategories(e.target.value)}
+                              className={`w-full text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => { setShowInlineCategory(false); setInlineCategoryName(''); setInlineCategorySubcategories(''); }}
+                                className="px-2.5 py-1.5 bg-zinc-800 text-zinc-400 rounded-lg text-[10px] cursor-pointer hover:bg-zinc-700"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCreateInlineCategory}
+                                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                              >
+                                Criar Categoria
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SUBCATEGORY DROPDOWN - ALWAYS VISIBLE BELOW CATEGORY */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Subcategoria</label>
+                        {txCategoryId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowInlineSubcategory(!showInlineSubcategory);
+                              setShowInlineCategory(false);
+                            }}
+                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus size={12} /> Criar Subcategoria
+                          </button>
+                        )}
+                      </div>
+                      
+                      <select
+                        value={txSubcategory}
+                        onChange={(e) => setTxSubcategory(e.target.value)}
+                        disabled={!txCategoryId}
+                        className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                        } disabled:opacity-50`}
+                      >
+                        <option value="">Nenhuma</option>
+                        {categories.find(c => c.id === txCategoryId)?.subcategories?.map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                      </select>
+
+                      {/* Inline Subcategory Creation Input */}
+                      {showInlineSubcategory && txCategoryId && (
+                        <div className={`mt-2 p-3 rounded-xl border space-y-2 ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950 border-zinc-850'
+                        }`}>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Nova Subcategoria</span>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Ex: Culto Dominical, Sede"
+                              value={inlineSubcategoryName}
+                              onChange={(e) => setInlineSubcategoryName(e.target.value)}
+                              className={`text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1 ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!inlineSubcategoryName.trim()) return;
+                                const newSub = inlineSubcategoryName.trim();
+                                setCategories(categories.map(c => {
+                                  if (c.id === txCategoryId) {
+                                    const subs = c.subcategories || [];
+                                    if (!subs.includes(newSub)) {
+                                      return { ...c, subcategories: [...subs, newSub] };
+                                    }
+                                  }
+                                  return c;
+                                }));
+                                setTxSubcategory(newSub);
+                                setInlineSubcategoryName('');
+                                setShowInlineSubcategory(false);
+                              }}
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowInlineSubcategory(false); setInlineSubcategoryName(''); }}
+                              className="px-2 py-1.5 bg-zinc-800 text-zinc-400 rounded-lg text-[10px] cursor-pointer hover:bg-zinc-700"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* COMMON - PARCELAMENTO */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Parcelamento *</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['nao', 'sim', 'recorrente'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setTxParcelamento(mode)}
+                            className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-all border capitalize ${
+                              txParcelamento === mode
+                                ? 'bg-indigo-600/10 border-indigo-500 text-indigo-400 font-bold'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800/80 text-zinc-400'
+                            }`}
+                          >
+                            {mode === 'nao' ? 'Não' : mode === 'sim' ? 'Sim' : 'Recorrente'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* PARCELAMENTO FREQUENCY & COUNT (ONLY FOR 'SIM') */}
+                    {txParcelamento === 'sim' && (
+                      <div className={`grid grid-cols-2 gap-4 p-4 rounded-xl border ${
+                        isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950/40 border-zinc-850'
+                      }`}>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Frequência *</label>
+                          <select
+                            required
+                            value={txFrequenciaParcelas}
+                            onChange={(e: any) => setTxFrequenciaParcelas(e.target.value)}
+                            className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                            }`}
+                          >
+                            <option value="diario">Diário</option>
+                            <option value="semanal">Semanal</option>
+                            <option value="quinzenal">Quinzenal</option>
+                            <option value="mensal">Mensal</option>
+                            <option value="anual">Anual</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nº de Parcelas *</label>
+                          <input
+                            type="number"
+                            min="1"
+                            required
+                            value={txNumeroParcelas}
+                            onChange={(e) => setTxNumeroParcelas(e.target.value)}
+                            className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ACTION BUTTONS (SAVE & CONTINUE AND SAVE & EXIT) */}
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800/20">
+                  <button
+                    type="submit"
+                    onClick={() => setCloseOnSave(false)}
+                    className={`py-3 rounded-xl text-xs font-bold cursor-pointer transition-all border ${
+                      isHighContrast
+                        ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-300 text-zinc-800'
+                        : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-300'
+                    }`}
+                  >
+                    Salvar e Continuar
+                  </button>
+                  <button
+                    type="submit"
+                    onClick={() => setCloseOnSave(true)}
+                    className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow"
+                  >
+                    {editingTx ? 'Salvar Alterações' : 'Salvar e Sair'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Account (Create / Edit) */}
+        {showAccountModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowAccountModal(false);
+              setEditingAccount(null);
+            }}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20 shrink-0">
+                <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                  {editingAccount ? 'Editar Conta Bancária' : 'Cadastrar Nova Conta Bancária'}
+                </h3>
+                <button 
+                  onClick={() => {
+                    setShowAccountModal(false);
+                    setEditingAccount(null);
+                  }} 
+                  className="text-zinc-500 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveAccount} className="p-6 space-y-4 overflow-y-auto">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome Amigável *</label>
+                  <input
+                    type="text" required value={accName} onChange={(e) => setAccName(e.target.value)} placeholder="Ex: Caixa Tesouraria, Bradesco Geral"
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+                </div>
+
+                {/* TIPO DE CONTA (caixa físico, conta corrente, conta poupança, conta investimento) */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex justify-between items-center">
+                    <span>Tipo de Conta *</span>
+                    <span className="text-[9px] lowercase font-normal text-zinc-400">escolha uma opção</span>
+                  </label>
+                  <select
+                    value={accType}
+                    onChange={(e) => setAccType(e.target.value as BankAccountType)}
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium cursor-pointer ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  >
+                    <option value="caixa_fisico">Caixa Físico</option>
+                    <option value="conta_corrente">Conta Corrente</option>
+                    <option value="conta_poupanca">Conta Poupança</option>
+                    <option value="conta_investimento">Conta Investimento</option>
+                  </select>
+
+                  {/* Atalhos rápidos para alternar em 1 clique */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-0.5">
+                    {[
+                      { id: 'caixa_fisico', label: 'Caixa Físico' },
+                      { id: 'conta_corrente', label: 'Conta Corrente' },
+                      { id: 'conta_poupanca', label: 'Conta Poupança' },
+                      { id: 'conta_investimento', label: 'Conta Investimento' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setAccType(item.id as BankAccountType)}
+                        className={`px-2 py-1.5 rounded-lg text-[10px] font-medium border text-center transition-all cursor-pointer ${
+                          accType === item.id
+                            ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 font-bold shadow-sm'
+                            : isHighContrast
+                            ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-250 text-zinc-700'
+                            : 'bg-zinc-950/60 hover:bg-zinc-800 border-zinc-800 text-zinc-400'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome do Banco *</label>
+                  <input
+                    type="text" required value={accBankName} onChange={(e) => setAccBankName(e.target.value)} placeholder="Ex: Dinheiro em Espécie, Banco Bradesco S.A."
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Agência</label>
+                    <input
+                      type="text" value={accAgency} onChange={(e) => setAccAgency(e.target.value)} placeholder="Ex: 0001"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      {accType === 'caixa_fisico' ? 'Identificação / Número *' : 'Número da Conta *'}
+                    </label>
+                    <input
+                      type="text" required value={accNumber} onChange={(e) => setAccNumber(e.target.value)} placeholder="Ex: 102030-4"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* SALDO INICIAL E DATA DO SALDO INICIAL */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Saldo Inicial (R$) *</label>
+                    <input
+                      type="number" step="0.01" required value={accInitialBalance} onChange={(e) => setAccInitialBalance(e.target.value)} placeholder="0,00"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Data do Saldo Inicial *</label>
+                    <input
+                      type="date"
+                      required
+                      value={accInitialBalanceDate}
+                      onChange={(e) => setAccInitialBalanceDate(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-sans">Imagem com Moldura Redonda</label>
+                  <div className={`flex items-center gap-3 p-3 rounded-xl border ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800'
+                  }`}>
+                    <div className="w-12 h-12 rounded-full border border-zinc-700/50 flex items-center justify-center shrink-0 bg-zinc-800 overflow-hidden relative">
+                      {accImage ? (
+                        <img src={accImage} alt="Preview Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Building2 size={20} className="text-zinc-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setAccImage(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full text-[10px] text-zinc-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-zinc-800 file:text-zinc-300 hover:file:bg-zinc-700 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={accImage}
+                        onChange={(e) => setAccImage(e.target.value)}
+                        placeholder="Ou digite a URL da imagem..."
+                        className={`w-full text-[10px] px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
+                        }`}
+                      />
+                    </div>
+                    {accImage && (
+                      <button
+                        type="button"
+                        onClick={() => setAccImage('')}
+                        className="text-[10px] font-bold text-rose-500 hover:underline shrink-0"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">
+                  {editingAccount ? 'Salvar Alterações' : 'Salvar Conta Bancária'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: New Transfer */}
+        {showTransferModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowTransferModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl text-left ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20">
+                <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>Transferência entre Contas Bancárias</h3>
+                <button onClick={() => setShowTransferModal(false)} className="text-zinc-500 hover:text-white cursor-pointer"><X size={16} /></button>
+              </div>
+
+              <form onSubmit={handleAddTransfer} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Conta Origem (Despesa) *</label>
+                    <select
+                      required value={tfSourceId} onChange={(e) => setTfSourceId(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="">Selecione...</option>
+                      {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} (Saldo: {formatCurrency(acc.currentBalance)})</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Conta Destino (Entrada) *</label>
+                    <select
+                      required value={tfDestId} onChange={(e) => setTfDestId(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="">Selecione...</option>
+                      {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} (Saldo: {formatCurrency(acc.currentBalance)})</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Valor (R$) *</label>
+                    <input
+                      type="number" step="0.01" required min="0.01" value={tfValue} onChange={(e) => setTfValue(e.target.value)} placeholder="0,00"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Data *</label>
+                    <input
+                      type="date" required value={tfDate} onChange={(e) => setTfDate(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 relative">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Histórico / Descrição</label>
+                    {transfers.some(tf => tf.observation && tf.observation.toLowerCase().trim() === tfObservation.toLowerCase().trim()) && (
+                      <span className="text-[9px] text-indigo-400 font-bold bg-indigo-500/10 px-1.5 py-0.5 rounded-full">✨ Memória Ativa</span>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={tfObservation}
+                    onChange={(e) => {
+                      setTfObservation(e.target.value);
+                      setShowTfSuggestions(true);
+                    }}
+                    onFocus={() => setShowTfSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowTfSuggestions(false), 200)}
+                    placeholder="Ex: Repasse de valores do caixa para fundo de poupança reformas"
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+
+                  {/* Dropdown Suggestions from previous transfers */}
+                  {showTfSuggestions && (() => {
+                    const defaultSuggestions = [
+                      'Depósito de dinheiro do caixa em conta',
+                      'Aporte poupança reformas',
+                      'Transferência entre contas correntes',
+                      'Repasse financeiro para fundo missionário',
+                      'Cobertura de saldo de conta operacional'
+                    ];
+
+                    const pastObs = transfers
+                      .map(tf => tf.observation?.trim())
+                      .filter((obs): obs is string => Boolean(obs && obs.length > 0));
+
+                    const allSuggestions = Array.from(new Set([...pastObs, ...defaultSuggestions]));
+                    const term = tfObservation.trim().toLowerCase();
+                    const filtered = term.length > 0
+                      ? allSuggestions.filter(s => s.toLowerCase().includes(term))
+                      : allSuggestions.slice(0, 6);
+
+                    if (filtered.length === 0) return null;
+
+                    return (
+                      <div className={`absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl border shadow-xl backdrop-blur-md ${
+                        isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}>
+                        <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-800/10 flex justify-between items-center">
+                          <span>Histórico de transferências anteriores</span>
+                          <span className="text-[8px] text-indigo-400 font-semibold">Preenchimento rápido</span>
+                        </div>
+                        {filtered.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setTfObservation(item);
+                              setShowTfSuggestions(false);
+                            }}
+                            className={`w-full text-left px-3.5 py-2 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 font-medium cursor-pointer flex items-center justify-between border-b last:border-0 ${
+                              isHighContrast ? 'border-zinc-100 text-zinc-800' : 'border-zinc-900 text-zinc-300'
+                            }`}
+                          >
+                            <span className="truncate mr-2">{item}</span>
+                            <span className="text-[9px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full font-bold shrink-0">Inserir</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Quick pills below field */}
+                  {(() => {
+                    const defaultSuggestions = [
+                      'Depósito caixa em conta',
+                      'Aporte poupança reformas',
+                      'Transferência entre contas',
+                      'Fundo missionário'
+                    ];
+                    const pastObs = transfers
+                      .map(tf => tf.observation?.trim())
+                      .filter((obs): obs is string => Boolean(obs && obs.length > 0));
+                    const chips = Array.from(new Set([...pastObs, ...defaultSuggestions])).slice(0, 3);
+
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500">Memória Rápida:</span>
+                        {chips.map((chip, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setTfObservation(chip);
+                              setShowTfSuggestions(false);
+                            }}
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer truncate max-w-[200px] ${
+                              isHighContrast
+                                ? 'bg-zinc-100 hover:bg-indigo-50 hover:border-indigo-300 text-zinc-700 hover:text-indigo-600 border-zinc-200'
+                                : 'bg-zinc-900/60 hover:bg-indigo-500/10 hover:border-indigo-500/40 text-zinc-400 hover:text-indigo-300 border-zinc-800'
+                            }`}
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">
+                  Confirmar Transferência
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: New Category */}
+        {showCategoryModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowCategoryModal(false);
+              setEditingCategory(null);
+            }}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20 shrink-0">
+                <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                  {editingCategory ? 'Editar Categoria Pai' : 'Criar Nova Categoria Pai'}
+                </h3>
+                <button 
+                  onClick={() => {
+                    setShowCategoryModal(false);
+                    setEditingCategory(null);
+                  }} 
+                  className="text-zinc-500 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddCategory} className="p-6 space-y-4 overflow-y-auto">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome da Categoria *</label>
+                  <input
+                    type="text" required value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Ex: Manutenção Templo, Missões Nacionais"
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoria Principal *</label>
+                  <select
+                    required value={catMainCategory} onChange={(e: any) => setCatMainCategory(e.target.value)}
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  >
+                    <option value="Despesas Fixas">Despesas Fixas</option>
+                    <option value="Despesas Variáveis">Despesas Variáveis</option>
+                    <option value="Investimentos">Investimentos</option>
+                    <option value="Receitas">Receitas</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tipo de Fluxo *</label>
+                  <select
+                    required value={catType} onChange={(e: any) => setCatType(e.target.value)}
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  >
+                    <option value="entrada">Apenas Receitas</option>
+                    <option value="saida">Apenas Despesas</option>
+                    <option value="ambas">Ambos os Fluxos (Uso geral)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Cor do Marcador *</label>
+                  <div className="grid grid-cols-7 gap-2">
+                    {['emerald', 'blue', 'purple', 'amber', 'rose', 'sky', 'indigo'].map(colorOpt => (
+                      <button
+                        key={colorOpt} type="button" onClick={() => setCatColor(colorOpt)}
+                        className={`aspect-square rounded-lg transition-transform cursor-pointer border-2 ${
+                          colorOpt === 'emerald' ? 'bg-emerald-500' :
+                          colorOpt === 'blue' ? 'bg-blue-500' :
+                          colorOpt === 'purple' ? 'bg-purple-500' :
+                          colorOpt === 'amber' ? 'bg-amber-500' :
+                          colorOpt === 'rose' ? 'bg-rose-500' :
+                          colorOpt === 'sky' ? 'bg-sky-500' : 'bg-indigo-500'
+                        } ${catColor === colorOpt ? 'border-indigo-600 scale-110 shadow' : 'border-transparent'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Subcategorias Vinculadas */}
+                <div className="space-y-2 pt-2 border-t border-dashed border-zinc-800/60">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Subcategorias Vinculadas ({catSubcategories.length})
+                    </label>
+                  </div>
+
+                  <div className={`flex flex-wrap gap-1.5 min-h-[36px] p-2.5 rounded-xl border border-dashed ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-250' : 'bg-zinc-950/40 border-zinc-800'
+                  }`}>
+                    {catSubcategories.length === 0 ? (
+                      <span className="text-[11px] text-zinc-500 italic p-1">Nenhuma subcategoria cadastrada</span>
+                    ) : (
+                      catSubcategories.map(sub => (
+                        <span
+                          key={sub}
+                          className={`inline-flex items-center gap-1.5 text-[10px] font-semibold border px-2 py-1 rounded-lg transition-colors ${
+                            isHighContrast ? 'bg-white border-zinc-250 text-zinc-800 shadow-xs' : 'bg-zinc-850 border-zinc-750 text-zinc-200'
+                          }`}
+                        >
+                          <span>{sub}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editingCategory) {
+                                handleDeleteSubcategory(editingCategory.id, sub);
+                              } else {
+                                setCatSubcategories(catSubcategories.filter(s => s !== sub));
+                              }
+                            }}
+                            className="p-0.5 text-zinc-400 hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title={`Excluir subcategoria "${sub}"`}
+                          >
+                            <X size={11} />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Campo para adicionar nova subcategoria no modal */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nome de nova subcategoria..."
+                      value={modalNewSubcategory}
+                      onChange={(e) => setModalNewSubcategory(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const trimmed = modalNewSubcategory.trim();
+                          if (trimmed && !catSubcategories.includes(trimmed)) {
+                            setCatSubcategories([...catSubcategories, trimmed]);
+                            setModalNewSubcategory('');
+                          }
+                        }
+                      }}
+                      className={`text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trimmed = modalNewSubcategory.trim();
+                        if (trimmed && !catSubcategories.includes(trimmed)) {
+                          setCatSubcategories([...catSubcategories, trimmed]);
+                          setModalNewSubcategory('');
+                        }
+                      }}
+                      className="px-3 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                    >
+                      + Adicionar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-zinc-800/40">
+                  <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">
+                    {editingCategory ? 'Salvar Alterações' : 'Salvar Categoria'}
+                  </button>
+
+                  {editingCategory && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(editingCategory.id)}
+                      className="w-full py-2.5 rounded-xl border border-rose-500/30 text-rose-500 hover:bg-rose-500/10 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Trash2 size={13} />
+                      <span>Excluir esta categoria</span>
+                    </button>
+                  )}
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Safe Deletion Confirmation Dialog */}
+        {deleteConfirmState && deleteConfirmState.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+            onClick={() => setDeleteConfirmState(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-md w-full overflow-hidden shadow-2xl p-6 text-left space-y-4 ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-500">
+                  <AlertCircle size={22} />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <h3 className={`text-sm font-bold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                    {deleteConfirmState.title}
+                  </h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    {deleteConfirmState.description}
+                  </p>
+                </div>
+              </div>
+
+              {deleteConfirmState.warningNote && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] leading-relaxed flex items-start gap-2">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{deleteConfirmState.warningNote}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800/40">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmState(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors border ${
+                    isHighContrast 
+                      ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-300 text-zinc-700' 
+                      : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-300'
+                  }`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteConfirmState.onConfirm();
+                  }}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow flex items-center gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  <span>{deleteConfirmState.confirmButtonText || 'Confirmar Exclusão'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: View Scanned Receipt / Lightbox */}
+        {selectedReceiptImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[100]"
+            onClick={() => setSelectedReceiptImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-3xl w-full max-h-[90vh] flex flex-col justify-center items-center"
+            >
+              <button
+                onClick={() => setSelectedReceiptImage(null)}
+                className="absolute -top-12 right-0 md:top-4 md:-right-12 p-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-full cursor-pointer z-10 border border-zinc-700"
+                title="Fechar visualização"
+              >
+                <X size={18} />
+              </button>
+              <div className="rounded-2xl overflow-hidden border border-zinc-800 max-w-full max-h-[80vh] bg-zinc-950 flex items-center justify-center shadow-2xl">
+                <img
+                  src={selectedReceiptImage}
+                  alt="Recibo Digitalizado"
+                  className="max-w-full max-h-[80vh] object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <p className="text-zinc-400 text-xs mt-3 font-semibold">Comprovante de Lançamento Financeiro</p>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Print / Export PDF Report (Layout conforming to user image) */}
+        {showPrintReportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col z-[100] overflow-y-auto p-3 sm:p-6"
+            onClick={() => setShowPrintReportModal(false)}
+          >
+            {/* Modal Controls Header Bar (hidden during printing) */}
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              className="max-w-[1240px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <Printer size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{getTransactionReportTitle()}</h3>
+                  <p className="text-[11px] text-zinc-400">Configurado para impressão e exportação em página A4 (Paisagem) sem quebras de colunas</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95"
+                >
+                  <Printer size={15} />
+                  <span>Imprimir / Salvar em PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  disabled={isGeneratingPDF}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-xl transition-all cursor-pointer border border-zinc-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isGeneratingPDF ? (
+                    <Loader2 size={15} className="animate-spin text-indigo-400" />
+                  ) : (
+                    <Download size={15} />
+                  )}
+                  <span>{isGeneratingPDF ? 'Gerando PDF...' : 'Baixar Arquivo PDF'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPrintReportModal(false)}
+                  className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer ml-1"
+                  title="Fechar"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Report Canvas */}
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              className="max-w-[1240px] w-full mx-auto overflow-x-auto pb-12"
+            >
+              <div
+                id="report-printable-sheet"
+                className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-8 sm:p-10 min-w-[1020px] select-text font-sans"
+              >
+                {/* 1. Official Header matching institutional format */}
+                <div className="flex items-center gap-5 pb-5 border-b-2 border-zinc-900 text-left mb-6">
+                  <MNVLogo size={80} />
+                  <div className="flex flex-col items-start justify-center">
+                    <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
+                      MINISTÉRIO NOVA VIDA
+                    </h1>
+                    <p className="text-xs font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
+                      AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
+                    </p>
+                    <p className="text-xs font-mono font-bold text-zinc-600">
+                      CNPJ: 62.471.271-0001-82
+                    </p>
+                    <div className="mt-2.5 pt-2 border-t border-zinc-300 w-full">
+                      <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-indigo-900">
+                        {getTransactionReportTitle()}
+                      </h2>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Visão Geral (4 KPI Cards, matching user screenshot) */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-zinc-900 mb-3">
+                    Visão Geral
+                  </h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Card 1: Receitas Totais */}
+                    <div className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                          RECEITAS TOTAIS
+                        </span>
+                        <div className="p-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/60">
+                          <ArrowUpRight size={14} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-lg font-black text-zinc-900 font-mono">
+                          {formatCurrency(reportTotalReceitas)}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          Dízimos e ofertas consolidadas
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Despesas Totais */}
+                    <div className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                          DESPESAS TOTAIS
+                        </span>
+                        <div className="p-1 rounded-lg bg-rose-50 text-rose-500 border border-rose-200/60">
+                          <ArrowDownRight size={14} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-lg font-black text-zinc-900 font-mono">
+                          {formatCurrency(reportTotalDespesas)}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          Soma de todas as despesas
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Superávit Líquido */}
+                    <div className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                          SUPERÁVIT LÍQUIDO
+                        </span>
+                        <div className="p-1 rounded-lg bg-indigo-50 text-indigo-500 border border-indigo-200/60">
+                          <TrendingUp size={14} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <p className={`text-lg font-black font-mono ${reportSuperavit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                          {formatCurrency(reportSuperavit)}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">
+                          Inflows operacionais líquidos
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Saldo em Contas (Solid indigo background matching user screenshot) */}
+                    <div className="rounded-2xl p-4 bg-indigo-600 text-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: '#4338ca' }}>
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                          SALDO EM CONTAS
+                        </span>
+                        <div className="p-1 rounded-lg bg-white/20 text-white">
+                          <Wallet size={14} />
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-lg font-black text-white font-mono">
+                          {formatCurrency(reportTotalSaldoContas)}
+                        </p>
+                        <p className="text-[10px] text-white/80 mt-0.5">
+                          Total de saldos de bancos
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Bancos (Bank Cards row, matching user screenshot) */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-zinc-900 mb-3">
+                    Bancos
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    {accounts.slice(0, 5).map(acc => {
+                      const stats = getAccountPeriodStats(acc);
+                      return (
+                        <div key={acc.id} className="border border-zinc-200 rounded-xl p-3 bg-white shadow-2xs flex flex-col justify-between text-left">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={18} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-bold text-zinc-800 truncate leading-tight">{acc.name}</p>
+                                <p className="text-[8px] text-zinc-400 truncate">{acc.accountType === 'caixa_fisico' ? `Nº ${acc.accountNumber}` : `Ag ${acc.agency} | CC ${acc.accountNumber}`}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-1.5 my-2 text-[8px]">
+                              <div className="bg-emerald-50/80 border border-emerald-100 rounded px-1.5 py-1">
+                                <span className="text-emerald-700 font-bold block text-[7px] uppercase">Entradas</span>
+                                <span className="text-emerald-600 font-mono font-bold block truncate">+{formatCurrency(stats.totalEntradas)}</span>
+                              </div>
+                              <div className="bg-rose-50/80 border border-rose-100 rounded px-1.5 py-1 text-right">
+                                <span className="text-rose-700 font-bold block text-[7px] uppercase">Saídas</span>
+                                <span className="text-rose-600 font-mono font-bold block truncate">-{formatCurrency(stats.totalSaidas)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-dashed border-zinc-200 flex justify-between items-baseline text-[8px]">
+                            <div>
+                              <span className="text-zinc-400 uppercase text-[7px] block">Inicial</span>
+                              <span className="text-zinc-600 font-mono block">{formatCurrency(stats.initialBalanceForPeriod)}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-zinc-400 uppercase text-[7px] block">Atual</span>
+                              <span className={`font-mono font-bold block text-[9.5px] ${stats.finalBalanceForPeriod >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                                {formatCurrency(stats.finalBalanceForPeriod)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. Lançamentos (Table with all 11 columns, calibrated to fit in 1 page width) */}
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900 mb-3">
+                    {txFilterType === 'transfer' ? 'Transferências' : 'Lançamentos'}
+                  </h3>
+
+                  {txFilterType === 'transfer' ? (
+                    <div className="w-full border border-zinc-200 rounded-xl overflow-hidden bg-white">
+                      <table className="w-full border-collapse text-left table-fixed">
+                        <thead>
+                          <tr className="border-b border-zinc-200 bg-zinc-50/80 text-[8.5px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap">
+                            <th className="py-2.5 px-2 w-[12%]">Data</th>
+                            <th className="py-2.5 px-2 w-[24%]">Conta Origem (Saída)</th>
+                            <th className="py-2.5 px-2 w-[24%]">Conta Destino (Entrada)</th>
+                            <th className="py-2.5 px-2 w-[25%]">Observações</th>
+                            <th className="py-2.5 px-2 w-[15%] text-right">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 text-[8.5px]">
+                          {displayTransfers.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="py-8 text-center text-zinc-400 font-medium text-xs">
+                                Nenhuma transferência encontrada para o período selecionado.
+                              </td>
+                            </tr>
+                          ) : (
+                            displayTransfers.map(tf => {
+                              const src = accounts.find(a => a.id === tf.sourceAccountId);
+                              const dest = accounts.find(a => a.id === tf.destinationAccountId);
+                              return (
+                                <tr key={tf.id} className="hover:bg-zinc-50/50">
+                                  <td className="py-2.5 px-2 font-mono text-zinc-600 whitespace-nowrap font-semibold">
+                                    {tf.date.split('-').reverse().join('/')}
+                                  </td>
+                                  <td className="py-2.5 px-2">
+                                    <div className="flex items-center gap-1.5">
+                                      {src && <BankLogo bankName={src.bankName} imageUrl={src.image} size={14} />}
+                                      <span className="font-medium text-zinc-800 truncate">{src ? `${src.name} (${src.bankName})` : '—'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-2">
+                                    <div className="flex items-center gap-1.5">
+                                      {dest && <BankLogo bankName={dest.bankName} imageUrl={dest.image} size={14} />}
+                                      <span className="font-medium text-zinc-800 truncate">{dest ? `${dest.name} (${dest.bankName})` : '—'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-2 text-zinc-500 italic truncate">
+                                    {tf.observation || '—'}
+                                  </td>
+                                  <td className="py-2.5 px-2 font-bold font-mono text-right text-indigo-600 whitespace-nowrap">
+                                    {formatCurrency(tf.value)}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-zinc-200 bg-zinc-50 font-bold text-[9px] text-zinc-700">
+                            <td className="py-2.5 px-2" colSpan={4}>
+                              Total ({displayTransfers.length} transferências)
+                            </td>
+                            <td className="py-2.5 px-2 font-mono text-right text-indigo-600">
+                              {formatCurrency(displayTransfers.reduce((s, t) => s + t.value, 0))}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="w-full border border-zinc-200 rounded-xl overflow-hidden bg-white">
+                      <table className="w-full border-collapse text-left table-fixed">
+                        <thead>
+                          <tr className="border-b border-zinc-200 bg-zinc-50/80 text-[8.5px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap">
+                            <th className="py-2.5 px-2 w-[8.5%]">
+                              {txFilterType === 'entrada' ? 'Data de Recebido' : txFilterType === 'saida' ? 'Data de Lançamento' : 'Data'}
+                            </th>
+                            <th className="py-2.5 px-2 w-[18%]">Descrição</th>
+                            <th className="py-2.5 px-2 w-[9.5%]">Valor</th>
+                            <th className="py-2.5 px-1.5 w-[6.5%]">Tipo</th>
+                            <th className="py-2.5 px-2 w-[13.5%]">Categoria</th>
+                            <th className="py-2.5 px-2 w-[11%]">Conta Bancária</th>
+                            <th className="py-2.5 px-1 w-[5.5%] text-center">
+                              {txFilterType === 'entrada' ? 'Recebido' : txFilterType === 'saida' ? 'Pago' : 'Recebido / Pago'}
+                            </th>
+                            <th className="py-2.5 px-2 w-[8.5%]">
+                              {txFilterType === 'entrada' ? 'Recebido de' : txFilterType === 'saida' ? 'Pagar quem' : 'Recebido / Pagar'}
+                            </th>
+                            <th className="py-2.5 px-1.5 w-[6.5%]">Forma Pgto</th>
+                            <th className="py-2.5 px-1.5 w-[5.5%]">Parcelamento</th>
+                            <th className="py-2.5 px-2 w-[7%]">Observações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 text-[8.5px]">
+                          {displayTransactions.length === 0 ? (
+                            <tr>
+                              <td colSpan={11} className="py-8 text-center text-zinc-400 font-medium text-xs">
+                                Nenhum lançamento encontrado para o período selecionado.
+                              </td>
+                            </tr>
+                          ) : (
+                            displayTransactions.map((tx) => {
+                              const cat = categories.find(c => c.id === tx.categoryId);
+                              const acc = accounts.find(a => a.id === tx.accountId);
+                              const isEntrada = tx.type === 'entrada';
+                              const dateVal = (isEntrada 
+                                ? (tx.dataRecebido || tx.date) 
+                                : (tx.dataLancamento || tx.date)
+                              )?.split('-').reverse().join('/') || '—';
+                              const vencimentoVal = !isEntrada && tx.dataVencimento ? tx.dataVencimento.split('-').reverse().join('/') : null;
+                              const isDone = isEntrada ? tx.recebido !== 'nao' : tx.pago !== 'nao';
+                              const personEntity = isEntrada ? (tx.recebidoDe || '—') : (tx.vaiPagarQuem || '—');
+                              const paymentMethodVal = (tx.paymentMethod || tx.formaPagamento)?.toUpperCase() || '—';
+                              const installmentVal = tx.parcelamento === 'sim' 
+                                ? `${tx.numeroParcelas || 1}x ${tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}` 
+                                : tx.parcelamento === 'recorrente' 
+                                  ? 'Recorrente' 
+                                  : (tx.installments || 'À Vista');
+
+                              return (
+                                <tr key={tx.id} className="hover:bg-zinc-50/50">
+                                  {/* 1. Data */}
+                                  <td className="py-2.5 px-2 font-mono text-zinc-600 whitespace-nowrap">
+                                    <span className="font-semibold text-zinc-800">{dateVal}</span>
+                                    {vencimentoVal && vencimentoVal !== dateVal && (
+                                      <span className="block text-[7px] text-zinc-400 font-normal">Venc: {vencimentoVal}</span>
+                                    )}
+                                  </td>
+                                  {/* 2. Descrição */}
+                                  <td className="py-2.5 px-2 font-semibold text-zinc-900 truncate">
+                                    {tx.description}
+                                  </td>
+                                  {/* 3. Valor */}
+                                  <td className={`py-2.5 px-2 font-bold font-mono whitespace-nowrap ${isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {isEntrada ? '+ ' : '- '}{formatCurrency(tx.value)}
+                                  </td>
+                                  {/* 4. Tipo */}
+                                  <td className="py-2.5 px-1.5 whitespace-nowrap">
+                                    <span className={`px-1.5 py-0.5 rounded text-[7.5px] font-bold uppercase ${isEntrada ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                      {isEntrada ? 'Receita' : 'Despesa'}
+                                    </span>
+                                  </td>
+                                  {/* 5. Categoria */}
+                                  <td className="py-2.5 px-2 whitespace-nowrap">
+                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[7.5px] font-medium truncate max-w-full ${
+                                      isEntrada 
+                                        ? 'bg-teal-50 text-teal-800 border border-teal-200' 
+                                        : 'bg-zinc-100 text-zinc-800 border border-zinc-200'
+                                    }`}>
+                                      {cat?.name || '—'}{tx.subcategory ? ` • ${tx.subcategory}` : ''}
+                                    </span>
+                                  </td>
+                                  {/* 6. Conta Bancária */}
+                                  <td className="py-2.5 px-2 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
+                                      {acc && <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={14} />}
+                                      <span className="font-medium text-zinc-800 truncate">{acc?.name || '—'}</span>
+                                    </div>
+                                  </td>
+                                  {/* 7. Recebido / Pago */}
+                                  <td className="py-2.5 px-1 text-center whitespace-nowrap">
+                                    <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[7px] font-bold ${
+                                      isDone 
+                                        ? 'bg-emerald-100 text-emerald-700' 
+                                        : (isEntrada ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700')
+                                    }`}>
+                                      {isDone ? 'Sim' : 'Não'}
+                                    </span>
+                                  </td>
+                                  {/* 8. Recebido de / Pagar quem */}
+                                  <td className="py-2.5 px-2 text-zinc-700 truncate" title={personEntity}>
+                                    {personEntity}
+                                  </td>
+                                  {/* 9. Forma de Pagamento */}
+                                  <td className="py-2.5 px-1.5 whitespace-nowrap">
+                                    {paymentMethodVal !== '—' ? (
+                                      <span className="px-1 py-0.5 rounded text-[7px] font-mono font-bold bg-zinc-100 border border-zinc-200 text-zinc-700">
+                                        {paymentMethodVal}
+                                      </span>
+                                    ) : '—'}
+                                  </td>
+                                  {/* 10. Parcelamento */}
+                                  <td className="py-2.5 px-1.5 text-zinc-600 whitespace-nowrap">
+                                    {installmentVal}
+                                  </td>
+                                  {/* 11. Observações */}
+                                  <td className="py-2.5 px-2 text-zinc-500 italic truncate" title={tx.observation || ''}>
+                                    {tx.observation || '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-zinc-200 bg-zinc-50 font-bold text-[9px] text-zinc-700">
+                            <td className="py-2.5 px-2" colSpan={2}>
+                              Total ({displayTransactions.length} {txFilterType === 'saida' ? 'despesas' : txFilterType === 'entrada' ? 'receitas' : 'lançamentos'})
+                            </td>
+                            <td className={`py-2.5 px-2 font-mono ${txFilterType === 'saida' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              {txFilterType === 'saida'
+                                ? `- ${formatCurrency(displayTransactions.filter(t => t.type === 'saida').reduce((s, t) => s + t.value, 0))}`
+                                : txFilterType === 'entrada'
+                                  ? `+ ${formatCurrency(displayTransactions.filter(t => t.type === 'entrada').reduce((s, t) => s + t.value, 0))}`
+                                  : (reportSuperavit >= 0 ? `+ ${formatCurrency(reportSuperavit)}` : `- ${formatCurrency(Math.abs(reportSuperavit))}`)}
+                            </td>
+                            <td colSpan={8}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Modal: Print / Export Balanço Patrimonial (Publication Quality A4 Landscape) */}
+        {showPrintBalancoModal && (() => {
+          const rangeBase = getBalancoPeriodDateRange(balancoBaseYear, balancoPeriodScope);
+          const rangeComp = getBalancoPeriodDateRange(balancoCompYear, balancoPeriodScope);
+
+          const calcVar = (base: number, comp: number) => {
+            const diff = base - comp;
+            const pct = comp !== 0 ? ((base - comp) / Math.abs(comp)) * 100 : (base > 0 ? 100 : 0);
+            return { diff, pct };
+          };
+
+          const renderBadge = (diff: number, pct: number, isExpense = false) => {
+            if (!balancoCompareEnabled) return null;
+            if (diff === 0) {
+              return (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                  0.0%
+                </span>
+              );
+            }
+            const isPositive = diff > 0;
+            const isGood = isExpense ? !isPositive : isPositive;
+            const colorClass = isGood 
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+              : 'bg-rose-50 text-rose-700 border-rose-200';
+
+            return (
+              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-mono font-bold border ${colorClass}`}>
+                {isPositive ? '+' : ''}{pct.toFixed(1)}%
+              </span>
+            );
+          };
+
+          // 1. Ativo Circulante
+          let printTotalCircBase = 0;
+          let printTotalCircComp = 0;
+          const printAccounts = accounts.map(acc => {
+            const bBal = getAccountBalanceAtDate(acc.id, rangeBase.end);
+            const cBal = balancoCompareEnabled ? getAccountBalanceAtDate(acc.id, rangeComp.end) : 0;
+            printTotalCircBase += bBal;
+            printTotalCircComp += cBal;
+            return { acc, bBal, cBal, v: calcVar(bBal, cBal) };
+          });
+          const printCircVar = calcVar(printTotalCircBase, printTotalCircComp);
+
+          // 2. Ativo Imobilizado
+          let printTotalImobBase = 0;
+          let printTotalImobComp = 0;
+          const printAssets = fixedAssets.map(fa => {
+            const inBase = fa.acquisitionDate <= rangeBase.end;
+            const inComp = fa.acquisitionDate <= rangeComp.end;
+            const bVal = inBase ? (fa.currentValue || fa.acquisitionValue) : 0;
+            const cVal = inComp ? fa.acquisitionValue : 0;
+            printTotalImobBase += bVal;
+            printTotalImobComp += cVal;
+            return { fa, inBase, inComp, bVal, cVal, v: calcVar(bVal, cVal) };
+          });
+          const printImobVar = calcVar(printTotalImobBase, printTotalImobComp);
+
+          const printTotalAtivoBase = printTotalCircBase + printTotalImobBase;
+          const printTotalAtivoComp = printTotalCircComp + printTotalImobComp;
+          const printTotalAtivoVar = calcVar(printTotalAtivoBase, printTotalAtivoComp);
+
+          // 3. Receitas
+          const printBaseInflows = transactions.filter(t => {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            return t.type === 'entrada' && d >= rangeBase.start && d <= rangeBase.end;
+          });
+          const printCompInflows = transactions.filter(t => {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            return t.type === 'entrada' && d >= rangeComp.start && d <= rangeComp.end;
+          });
+
+          const printRevCats = categories.filter(c => c.type === 'entrada' || c.type === 'ambas').map(cat => {
+            const bSum = printBaseInflows.filter(t => t.categoryId === cat.id).reduce((s, t) => s + t.value, 0);
+            const cSum = balancoCompareEnabled ? printCompInflows.filter(t => t.categoryId === cat.id).reduce((s, t) => s + t.value, 0) : 0;
+            const subcats = (cat.subcategories || []).map(sub => {
+              const subBase = printBaseInflows.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((s, t) => s + t.value, 0);
+              const subComp = balancoCompareEnabled ? printCompInflows.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((s, t) => s + t.value, 0) : 0;
+              return { sub, subBase, subComp, v: calcVar(subBase, subComp) };
+            }).filter(s => s.subBase > 0 || s.subComp > 0);
+            return { cat, bSum, cSum, v: calcVar(bSum, cSum), subcats };
+          }).filter(c => c.bSum > 0 || c.cSum > 0);
+
+          const printTotalRecBase = printBaseInflows.reduce((s, t) => s + t.value, 0);
+          const printTotalRecComp = printCompInflows.reduce((s, t) => s + t.value, 0);
+          const printRecVar = calcVar(printTotalRecBase, printTotalRecComp);
+
+          // 4. Despesas
+          const printBaseOutflows = transactions.filter(t => {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            return t.type === 'saida' && d >= rangeBase.start && d <= rangeBase.end;
+          });
+          const printCompOutflows = transactions.filter(t => {
+            const d = t.dataRecebido || t.dataLancamento || t.date;
+            return t.type === 'saida' && d >= rangeComp.start && d <= rangeComp.end;
+          });
+
+          const printExpCats = categories.filter(c => c.type === 'saida' || c.type === 'ambas').map(cat => {
+            const bSum = printBaseOutflows.filter(t => t.categoryId === cat.id).reduce((s, t) => s + t.value, 0);
+            const cSum = balancoCompareEnabled ? printCompOutflows.filter(t => t.categoryId === cat.id).reduce((s, t) => s + t.value, 0) : 0;
+            const subcats = (cat.subcategories || []).map(sub => {
+              const subBase = printBaseOutflows.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((s, t) => s + t.value, 0);
+              const subComp = balancoCompareEnabled ? printCompOutflows.filter(t => t.categoryId === cat.id && t.subcategory === sub).reduce((s, t) => s + t.value, 0) : 0;
+              return { sub, subBase, subComp, v: calcVar(subBase, subComp) };
+            }).filter(s => s.subBase > 0 || s.subComp > 0);
+            return { cat, bSum, cSum, v: calcVar(bSum, cSum), subcats };
+          }).filter(c => c.bSum > 0 || c.cSum > 0);
+
+          const printTotalDespBase = printBaseOutflows.reduce((s, t) => s + t.value, 0);
+          const printTotalDespComp = printCompOutflows.reduce((s, t) => s + t.value, 0);
+          const printDespVar = calcVar(printTotalDespBase, printTotalDespComp);
+
+          // 5. Resultado
+          const printSuperavitBase = printTotalRecBase - printTotalDespBase;
+          const printSuperavitComp = printTotalRecComp - printTotalDespComp;
+          const printSuperavitVar = calcVar(printSuperavitBase, printSuperavitComp);
+          const printPatrimonioBase = printTotalAtivoBase + printSuperavitBase;
+          const printPatrimonioComp = printTotalAtivoComp + printSuperavitComp;
+          const printPatrimonioVar = calcVar(printPatrimonioBase, printPatrimonioComp);
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col z-[100] overflow-y-auto p-3 sm:p-6"
+              onClick={() => setShowPrintBalancoModal(false)}
+            >
+              {/* Modal Controls Header Bar */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[1240px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                    <Printer size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Impressão & Exportação do Balanço Patrimonial</h3>
+                    <p className="text-[11px] text-zinc-400">Layout contábil oficial configurado em folha A4 com cabeçalho do Ministério Nova Vida</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95"
+                  >
+                    <Printer size={15} />
+                    <span>Imprimir / Salvar em PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportBalancoPDF}
+                    disabled={isGeneratingBalancoPDF}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-xl transition-all cursor-pointer border border-zinc-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isGeneratingBalancoPDF ? (
+                      <Loader2 size={15} className="animate-spin text-indigo-400" />
+                    ) : (
+                      <Download size={15} />
+                    )}
+                    <span>{isGeneratingBalancoPDF ? 'Gerando PDF...' : 'Baixar Arquivo PDF'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportBalancoExcel}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+                  >
+                    <FileSpreadsheet size={15} />
+                    <span>Excel (.xlsx)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPrintBalancoModal(false)}
+                    className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer ml-1"
+                    title="Fechar"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Document Sheet */}
+              <div 
+                onClick={(e) => e.stopPropagation()} 
+                className="max-w-[1240px] w-full mx-auto pb-12 flex justify-center"
+              >
+                <div
+                  id="balanco-printable-sheet"
+                  className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-8 sm:p-10 min-w-[1020px] select-text font-sans text-left"
+                >
+                  {/* 1. Official Header matching user request */}
+                  <div className="flex items-center gap-5 pb-5 border-b-2 border-zinc-900 text-left">
+                    <MNVLogo size={80} />
+                    <div className="flex flex-col items-start justify-center">
+                      <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
+                        MINISTÉRIO NOVA VIDA
+                      </h1>
+                      <p className="text-xs font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
+                        AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
+                      </p>
+                      <p className="text-xs font-mono font-bold text-zinc-600">
+                        CNPJ: 62.471.271-0001-82
+                      </p>
+                      <div className="mt-2.5 pt-2 border-t border-zinc-300 w-full">
+                        <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-indigo-900">
+                          BALANÇO PATRIMONIAL DO EXERCÍCIO ENCERRADO EM 31 DE DEZEMBRO DE {balancoBaseYear}
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Resumo Analítico em Cards */}
+                  <div className="grid grid-cols-6 gap-3 my-5">
+                    <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50">
+                      <span className="block text-[8px] uppercase font-bold text-zinc-500">Ativo Circulante</span>
+                      <span className="text-xs font-black font-mono text-zinc-900">{formatCurrency(printTotalCircBase)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50">
+                      <span className="block text-[8px] uppercase font-bold text-zinc-500">Ativo Imobilizado</span>
+                      <span className="text-xs font-black font-mono text-zinc-900">{formatCurrency(printTotalImobBase)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50">
+                      <span className="block text-[8px] uppercase font-bold text-indigo-700">Total do Ativo</span>
+                      <span className="text-xs font-black font-mono text-indigo-900">{formatCurrency(printTotalAtivoBase)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50">
+                      <span className="block text-[8px] uppercase font-bold text-emerald-700">Total Receitas</span>
+                      <span className="text-xs font-black font-mono text-emerald-800">+{formatCurrency(printTotalRecBase)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-rose-200 bg-rose-50">
+                      <span className="block text-[8px] uppercase font-bold text-rose-700">Total Despesas</span>
+                      <span className="text-xs font-black font-mono text-rose-800">-{formatCurrency(printTotalDespBase)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-zinc-300 bg-zinc-100">
+                      <span className="block text-[8px] uppercase font-bold text-zinc-700">Superávit Líquido</span>
+                      <span className={`text-xs font-black font-mono ${printSuperavitBase >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {formatCurrency(printSuperavitBase)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 3. QUADRO 1: ATIVO CIRCULANTE & NÃO CIRCULANTE */}
+                  <div className="space-y-4 mb-6">
+                    <div className="border-b border-zinc-300 pb-1 flex justify-between items-center">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900">
+                        1. ATIVOS DA ENTIDADE (CIRCULANTE E NÃO CIRCULANTE)
+                      </h3>
+                      <span className="text-xs font-mono font-black text-indigo-900">
+                        Total Ativo: {formatCurrency(printTotalAtivoBase)}
+                      </span>
+                    </div>
+
+                    {/* 1.1 Ativo Circulante */}
+                    <div>
+                      <h4 className="text-[10px] font-bold uppercase text-zinc-700 mb-1">
+                        1.1 Ativo Circulante (Disponibilidades: Bancos e Caixa)
+                      </h4>
+                      <table className="w-full text-left border-collapse text-[10px] border border-zinc-200">
+                        <thead>
+                          <tr className="bg-zinc-100 border-b border-zinc-200 font-bold uppercase text-zinc-700 text-[8px]">
+                            <th className="py-1.5 px-3">Conta / Instituição</th>
+                            <th className="py-1.5 px-3">Tipo da Conta</th>
+                            <th className="py-1.5 px-3 text-right">Saldo em {balancoBaseYear}</th>
+                            {balancoCompareEnabled && (
+                              <>
+                                <th className="py-1.5 px-3 text-right text-zinc-600">Saldo em {balancoCompYear}</th>
+                                <th className="py-1.5 px-3 text-right">Variação (R$)</th>
+                                <th className="py-1.5 px-3 text-right">Variação (%)</th>
+                              </>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-200 text-zinc-800">
+                          {printAccounts.map(({ acc, bBal, cBal, v }) => (
+                            <tr key={acc.id} className="hover:bg-zinc-50">
+                              <td className="py-1.5 px-3 font-semibold">
+                                <div className="flex items-center gap-2">
+                                  <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={16} />
+                                  <span>{acc.name} ({acc.bankName})</span>
+                                </div>
+                              </td>
+                              <td className="py-1.5 px-3">{getAccountTypeLabel(acc.type)}</td>
+                              <td className="py-1.5 px-3 text-right font-mono font-bold">{formatCurrency(bBal)}</td>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <td className="py-1.5 px-3 text-right font-mono text-zinc-600">{formatCurrency(cBal)}</td>
+                                  <td className={`py-1.5 px-3 text-right font-mono font-bold ${v.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right">{renderBadge(v.diff, v.pct)}</td>
+                                </>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-zinc-100 font-bold border-t border-zinc-300 text-zinc-900">
+                            <td colSpan={2} className="py-1.5 px-3 uppercase text-[8px]">Subtotal Ativo Circulante</td>
+                            <td className="py-1.5 px-3 text-right font-mono text-indigo-900 font-black">{formatCurrency(printTotalCircBase)}</td>
+                            {balancoCompareEnabled && (
+                              <>
+                                <td className="py-1.5 px-3 text-right font-mono text-zinc-600 font-bold">{formatCurrency(printTotalCircComp)}</td>
+                                <td className={`py-1.5 px-3 text-right font-mono font-bold ${printCircVar.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                  {printCircVar.diff > 0 ? '+' : ''}{formatCurrency(printCircVar.diff)}
+                                </td>
+                                <td className="py-1.5 px-3 text-right">{renderBadge(printCircVar.diff, printCircVar.pct)}</td>
+                              </>
+                            )}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* 1.2 Ativo Não Circulante (Imobilizado) */}
+                    <div>
+                      <h4 className="text-[10px] font-bold uppercase text-zinc-700 mb-1">
+                        1.2 Ativo Não Circulante (Imobilizado / Bens Móveis, Imóveis e Equipamentos)
+                      </h4>
+                      <table className="w-full text-left border-collapse text-[10px] border border-zinc-200">
+                        <thead>
+                          <tr className="bg-zinc-100 border-b border-zinc-200 font-bold uppercase text-zinc-700 text-[8px]">
+                            <th className="py-1.5 px-3">Bem Patrimonial</th>
+                            <th className="py-1.5 px-3">Categoria</th>
+                            <th className="py-1.5 px-3">Aquisição</th>
+                            <th className="py-1.5 px-3 text-right">Valor em {balancoBaseYear}</th>
+                            {balancoCompareEnabled && (
+                              <>
+                                <th className="py-1.5 px-3 text-right text-zinc-600">Valor em {balancoCompYear}</th>
+                                <th className="py-1.5 px-3 text-right">Variação (R$)</th>
+                                <th className="py-1.5 px-3 text-right">Variação (%)</th>
+                              </>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-200 text-zinc-800">
+                          {printAssets.map(({ fa, inBase, inComp, bVal, cVal, v }) => (
+                            <tr key={fa.id} className="hover:bg-zinc-50">
+                              <td className="py-1.5 px-3 font-semibold">
+                                {fa.name}
+                                {fa.description && <span className="block text-[8px] text-zinc-500 font-normal">{fa.description}</span>}
+                              </td>
+                              <td className="py-1.5 px-3 font-medium text-zinc-600">{fa.category}</td>
+                              <td className="py-1.5 px-3 font-mono text-zinc-600">{fa.acquisitionDate ? fa.acquisitionDate.split('-').reverse().join('/') : '—'}</td>
+                              <td className="py-1.5 px-3 text-right font-mono font-bold">
+                                {inBase ? formatCurrency(bVal) : '—'}
+                              </td>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <td className="py-1.5 px-3 text-right font-mono text-zinc-600">{inComp ? formatCurrency(cVal) : '—'}</td>
+                                  <td className={`py-1.5 px-3 text-right font-mono font-bold ${v.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right">{renderBadge(v.diff, v.pct)}</td>
+                                </>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-zinc-100 font-bold border-t border-zinc-300 text-zinc-900">
+                            <td colSpan={3} className="py-1.5 px-3 uppercase text-[8px]">Subtotal Ativo Imobilizado</td>
+                            <td className="py-1.5 px-3 text-right font-mono text-amber-800 font-black">{formatCurrency(printTotalImobBase)}</td>
+                            {balancoCompareEnabled && (
+                              <>
+                                <td className="py-1.5 px-3 text-right font-mono text-zinc-600 font-bold">{formatCurrency(printTotalImobComp)}</td>
+                                <td className={`py-1.5 px-3 text-right font-mono font-bold ${printImobVar.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                  {printImobVar.diff > 0 ? '+' : ''}{formatCurrency(printImobVar.diff)}
+                                </td>
+                                <td className="py-1.5 px-3 text-right">{renderBadge(printImobVar.diff, printImobVar.pct)}</td>
+                              </>
+                            )}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Total Geral do Ativo */}
+                    <div className="p-2.5 bg-zinc-900 text-white rounded-xl flex justify-between items-center text-xs font-black">
+                      <span className="uppercase tracking-wider">TOTAL DO ATIVO CONSOLIDADO (1.1 + 1.2)</span>
+                      <div className="flex items-center gap-6 font-mono text-xs">
+                        <span>{balancoBaseYear}: {formatCurrency(printTotalAtivoBase)}</span>
+                        {balancoCompareEnabled && (
+                          <span className="text-zinc-400 font-normal">vs {balancoCompYear}: {formatCurrency(printTotalAtivoComp)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. QUADRO 2: DEMONSTRAÇÃO DE RECEITAS */}
+                  <div className="space-y-2 mb-6">
+                    <div className="border-b border-zinc-300 pb-1 flex justify-between items-center">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800">
+                        2. DEMONSTRAÇÃO DAS RECEITAS OPERACIONAIS (+)
+                      </h3>
+                      <span className="text-xs font-mono font-black text-emerald-700">
+                        Total Receitas: +{formatCurrency(printTotalRecBase)}
+                      </span>
+                    </div>
+
+                    <table className="w-full text-left border-collapse text-[10px] border border-zinc-200">
+                      <thead>
+                        <tr className="bg-emerald-50 border-b border-zinc-200 font-bold uppercase text-emerald-900 text-[8px]">
+                          <th className="py-1.5 px-3">Categoria de Receita</th>
+                          <th className="py-1.5 px-3">Grupo Principal</th>
+                          <th className="py-1.5 px-3 text-right">Exercício {balancoBaseYear}</th>
+                          {balancoCompareEnabled && (
+                            <>
+                              <th className="py-1.5 px-3 text-right text-zinc-600">Exercício {balancoCompYear}</th>
+                              <th className="py-1.5 px-3 text-right">Variação (R$)</th>
+                              <th className="py-1.5 px-3 text-right">Variação (%)</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 text-zinc-800">
+                        {printRevCats.map(({ cat, bSum, cSum, v, subcats }) => (
+                          <React.Fragment key={cat.id}>
+                            <tr className="bg-zinc-50/50 font-bold">
+                              <td className="py-1.5 px-3 text-zinc-900">{cat.name}</td>
+                              <td className="py-1.5 px-3 text-zinc-600 font-normal">{cat.mainCategory || 'Receitas Gerais'}</td>
+                              <td className="py-1.5 px-3 text-right font-mono text-emerald-800">+{formatCurrency(bSum)}</td>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <td className="py-1.5 px-3 text-right font-mono text-zinc-600 font-medium">+{formatCurrency(cSum)}</td>
+                                  <td className={`py-1.5 px-3 text-right font-mono ${v.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right">{renderBadge(v.diff, v.pct)}</td>
+                                </>
+                              )}
+                            </tr>
+                            {subcats.map(({ sub, subBase, subComp, v: sv }) => (
+                              <tr key={sub} className="text-[9px] text-zinc-600">
+                                <td className="py-1 px-3 pl-6">• {sub}</td>
+                                <td className="py-1 px-3 italic">Subcategoria</td>
+                                <td className="py-1 px-3 text-right font-mono text-zinc-800">+{formatCurrency(subBase)}</td>
+                                {balancoCompareEnabled && (
+                                  <>
+                                    <td className="py-1 px-3 text-right font-mono text-zinc-500">+{formatCurrency(subComp)}</td>
+                                    <td className="py-1 px-3 text-right font-mono">{sv.diff > 0 ? '+' : ''}{formatCurrency(sv.diff)}</td>
+                                    <td className="py-1 px-3 text-right font-mono">{sv.pct.toFixed(1)}%</td>
+                                  </>
+                                )}
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-emerald-100/70 font-black border-t-2 border-emerald-300 text-emerald-950">
+                          <td colSpan={2} className="py-1.5 px-3 uppercase text-[9px]">TOTAL DAS RECEITAS</td>
+                          <td className="py-1.5 px-3 text-right font-mono text-emerald-900 text-xs">+{formatCurrency(printTotalRecBase)}</td>
+                          {balancoCompareEnabled && (
+                            <>
+                              <td className="py-1.5 px-3 text-right font-mono text-zinc-700 text-xs">+{formatCurrency(printTotalRecComp)}</td>
+                              <td className="py-1.5 px-3 text-right font-mono text-xs">{printRecVar.diff > 0 ? '+' : ''}{formatCurrency(printRecVar.diff)}</td>
+                              <td className="py-1.5 px-3 text-right">{renderBadge(printRecVar.diff, printRecVar.pct)}</td>
+                            </>
+                          )}
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* 5. QUADRO 3: DEMONSTRAÇÃO DE DESPESAS */}
+                  <div className="space-y-2 mb-6">
+                    <div className="border-b border-zinc-300 pb-1 flex justify-between items-center">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-rose-800">
+                        3. DEMONSTRAÇÃO DAS DESPESAS OPERACIONAIS (-)
+                      </h3>
+                      <span className="text-xs font-mono font-black text-rose-700">
+                        Total Despesas: -{formatCurrency(printTotalDespBase)}
+                      </span>
+                    </div>
+
+                    <table className="w-full text-left border-collapse text-[10px] border border-zinc-200">
+                      <thead>
+                        <tr className="bg-rose-50 border-b border-zinc-200 font-bold uppercase text-rose-900 text-[8px]">
+                          <th className="py-1.5 px-3">Categoria de Despesa</th>
+                          <th className="py-1.5 px-3">Grupo Principal</th>
+                          <th className="py-1.5 px-3 text-right">Exercício {balancoBaseYear}</th>
+                          {balancoCompareEnabled && (
+                            <>
+                              <th className="py-1.5 px-3 text-right text-zinc-600">Exercício {balancoCompYear}</th>
+                              <th className="py-1.5 px-3 text-right">Variação (R$)</th>
+                              <th className="py-1.5 px-3 text-right">Variação (%)</th>
+                            </>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 text-zinc-800">
+                        {printExpCats.map(({ cat, bSum, cSum, v, subcats }) => (
+                          <React.Fragment key={cat.id}>
+                            <tr className="bg-zinc-50/50 font-bold">
+                              <td className="py-1.5 px-3 text-zinc-900">{cat.name}</td>
+                              <td className="py-1.5 px-3 text-zinc-600 font-normal">{cat.mainCategory || 'Despesas Gerais'}</td>
+                              <td className="py-1.5 px-3 text-right font-mono text-rose-800">-{formatCurrency(bSum)}</td>
+                              {balancoCompareEnabled && (
+                                <>
+                                  <td className="py-1.5 px-3 text-right font-mono text-zinc-600 font-medium">-{formatCurrency(cSum)}</td>
+                                  <td className={`py-1.5 px-3 text-right font-mono ${v.diff <= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                    {v.diff > 0 ? '+' : ''}{formatCurrency(v.diff)}
+                                  </td>
+                                  <td className="py-1.5 px-3 text-right">{renderBadge(v.diff, v.pct, true)}</td>
+                                </>
+                              )}
+                            </tr>
+                            {subcats.map(({ sub, subBase, subComp, v: sv }) => (
+                              <tr key={sub} className="text-[9px] text-zinc-600">
+                                <td className="py-1 px-3 pl-6">• {sub}</td>
+                                <td className="py-1 px-3 italic">Subcategoria</td>
+                                <td className="py-1 px-3 text-right font-mono text-zinc-800">-{formatCurrency(subBase)}</td>
+                                {balancoCompareEnabled && (
+                                  <>
+                                    <td className="py-1 px-3 text-right font-mono text-zinc-500">-{formatCurrency(subComp)}</td>
+                                    <td className="py-1 px-3 text-right font-mono">{sv.diff > 0 ? '+' : ''}{formatCurrency(sv.diff)}</td>
+                                    <td className="py-1 px-3 text-right font-mono">{sv.pct.toFixed(1)}%</td>
+                                  </>
+                                )}
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-rose-100/70 font-black border-t-2 border-rose-300 text-rose-950">
+                          <td colSpan={2} className="py-1.5 px-3 uppercase text-[9px]">TOTAL DAS DESPESAS</td>
+                          <td className="py-1.5 px-3 text-right font-mono text-rose-900 text-xs">-{formatCurrency(printTotalDespBase)}</td>
+                          {balancoCompareEnabled && (
+                            <>
+                              <td className="py-1.5 px-3 text-right font-mono text-zinc-700 text-xs">-{formatCurrency(printTotalDespComp)}</td>
+                              <td className="py-1.5 px-3 text-right font-mono text-xs">{printDespVar.diff > 0 ? '+' : ''}{formatCurrency(printDespVar.diff)}</td>
+                              <td className="py-1.5 px-3 text-right">{renderBadge(printDespVar.diff, printDespVar.pct, true)}</td>
+                            </>
+                          )}
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* 6. QUADRO 4: SÍNTESE DO RESULTADO OPERACIONAL & PATRIMÔNIO LÍQUIDO */}
+                  <div className="border border-zinc-300 rounded-xl p-3.5 bg-zinc-50 mb-6 space-y-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900 border-b border-zinc-200 pb-1">
+                      4. SÍNTESE DO RESULTADO CONTÁBIL & PATRIMÔNIO LÍQUIDO CONSOLIDADO
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-1">
+                      <div>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase block">Total Receitas:</span>
+                        <span className="font-mono font-bold text-emerald-800">+{formatCurrency(printTotalRecBase)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase block">Total Despesas:</span>
+                        <span className="font-mono font-bold text-rose-800">-{formatCurrency(printTotalDespBase)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase block">Superávit do Exercício:</span>
+                        <span className={`font-mono font-black ${printSuperavitBase >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
+                          {formatCurrency(printSuperavitBase)}
+                        </span>
+                      </div>
+                      <div className="bg-indigo-100 p-2 rounded-lg border border-indigo-200">
+                        <span className="text-[9px] text-indigo-900 font-black uppercase block">Patrimônio Líquido Total:</span>
+                        <span className="font-mono font-black text-indigo-950 text-sm">{formatCurrency(printPatrimonioBase)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 7. TERMO DE ENCERRAMENTO E ASSINATURAS LEGAIS */}
+                  <div className="pt-6 border-t-2 border-zinc-900 space-y-6 page-break-inside-avoid">
+                    <p className="text-[9px] text-zinc-600 text-center leading-relaxed max-w-3xl mx-auto italic">
+                      "Certificamos sob as penas da lei que o presente Balanço Patrimonial e as respectivas Demonstrações Contábeis refletem com exatidão a situação financeira, orçamentária e patrimonial do Ministério Nova Vida no encerramento do exercício de {balancoBaseYear}."
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-8 pt-4 text-center text-zinc-800">
+                      <div>
+                        <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
+                        <p className="text-[10px] font-black uppercase text-zinc-900">Pr. Presidente</p>
+                        <p className="text-[8px] text-zinc-500">Diretoria Executiva</p>
+                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                      </div>
+
+                      <div>
+                        <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
+                        <p className="text-[10px] font-black uppercase text-zinc-900">1º Tesoureiro(a)</p>
+                        <p className="text-[8px] text-zinc-500">Diretoria Financeira</p>
+                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                      </div>
+
+                      <div>
+                        <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
+                        <p className="text-[10px] font-black uppercase text-zinc-900">Conselho Fiscal / CRC</p>
+                        <p className="text-[8px] text-zinc-500">Contabilidade & Auditoria</p>
+                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                      </div>
+                    </div>
+
+                    <div className="text-center pt-1 text-[9px] font-mono text-zinc-400">
+                      Pirassununga/SP, {getPeriodClosingDescription(balancoBaseYear, balancoPeriodScope).toLowerCase()}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
+
+        {/* Modal: Print / Export Demonstrativo Operacional (DRE / Fluxo de Caixa Mês a Mês) */}
+        {showPrintDREModal && (() => {
+          const {
+            DRE_MONTHS_LIST,
+            yearInitialCash,
+            monthlyInflow,
+            monthlyOutflow,
+            monthlyResult,
+            monthlyStartCash,
+            monthlyEndCash,
+            totalInflowYear,
+            totalOutflowYear,
+            totalResultYear,
+            endCashYear,
+            incomeCategories,
+            expenseCategories
+          } = dreCalculations;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col z-[100] overflow-y-auto p-3 sm:p-6"
+              onClick={() => setShowPrintDREModal(false)}
+            >
+              {/* Modal Controls Header Bar (hidden during printing) */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[1300px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                    <Printer size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">
+                      Demonstrativo Operacional (DRE / Fluxo de Caixa) — Exercício de {dreSelectedYear}
+                    </h3>
+                    <p className="text-[11px] text-zinc-400">
+                      Visualização mês a mês e anual oficial configurada para folha A4 (Paisagem) em alta definição
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        window.print();
+                      } catch (e) {
+                        console.warn('window.print error:', e);
+                      }
+                      await handleExportDREPDF();
+                    }}
+                    disabled={isGeneratingDREPDF}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Imprimir na impressora ou salvar PDF"
+                  >
+                    {isGeneratingDREPDF ? (
+                      <Loader2 size={15} className="animate-spin text-white" />
+                    ) : (
+                      <Printer size={15} />
+                    )}
+                    <span>{isGeneratingDREPDF ? 'Gerando PDF...' : 'Imprimir / Salvar em PDF'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportDREPDF}
+                    disabled={isGeneratingDREPDF}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-xl transition-all cursor-pointer border border-zinc-700 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Baixar arquivo PDF formatado direto"
+                  >
+                    {isGeneratingDREPDF ? (
+                      <Loader2 size={15} className="animate-spin text-indigo-400" />
+                    ) : (
+                      <Download size={15} />
+                    )}
+                    <span>{isGeneratingDREPDF ? 'Baixando...' : 'Baixar Arquivo PDF'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportDREExcel}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+                  >
+                    <FileSpreadsheet size={15} />
+                    <span>Excel (.xlsx)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPrintDREModal(false)}
+                    className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer ml-1"
+                    title="Fechar"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Document Sheet */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="max-w-[1300px] w-full mx-auto pb-12 flex justify-center"
+              >
+                <div
+                  id="dre-printable-sheet"
+                  className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-8 sm:p-10 min-w-[1100px] select-text font-sans text-left"
+                >
+                  {/* Official Header */}
+                  <div className="flex items-center gap-5 pb-5 border-b-2 border-zinc-900 text-left mb-6">
+                    <MNVLogo size={80} />
+                    <div className="flex flex-col items-start justify-center">
+                      <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
+                        MINISTÉRIO NOVA VIDA
+                      </h1>
+                      <p className="text-xs font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
+                        AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
+                      </p>
+                      <p className="text-xs font-mono font-bold text-zinc-600">
+                        CNPJ: 62.471.271-0001-82
+                      </p>
+                      <div className="mt-2.5 pt-2 border-t border-zinc-300 w-full">
+                        <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-indigo-900">
+                          DEMONSTRATIVO DE RESULTADO (DRE) E FLUXO DE CAIXA OPERACIONAL MÊS A MÊS - EXERCÍCIO DE {dreSelectedYear}
+                        </h2>
+                        <p className="text-[10px] font-mono text-zinc-500 uppercase mt-0.5">
+                          Visualização Anual Consolidada de 01 de Janeiro a 31 de Dezembro de {dreSelectedYear}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-5 gap-3 mb-6">
+                    <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50">
+                      <span className="block text-[8px] uppercase font-bold text-zinc-500">Saldo Inicial (01/Jan)</span>
+                      <span className="text-xs font-black font-mono text-zinc-900">{formatCurrency(yearInitialCash)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50">
+                      <span className="block text-[8px] uppercase font-bold text-emerald-700">Receitas Operacionais (+)</span>
+                      <span className="text-xs font-black font-mono text-emerald-900">+{formatCurrency(totalInflowYear)}</span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-rose-200 bg-rose-50">
+                      <span className="block text-[8px] uppercase font-bold text-rose-700">Despesas Operacionais (-)</span>
+                      <span className="text-xs font-black font-mono text-rose-900">-{formatCurrency(totalOutflowYear)}</span>
+                    </div>
+                    <div className={`p-3 rounded-xl border ${totalResultYear >= 0 ? 'border-emerald-200 bg-emerald-50/60' : 'border-rose-200 bg-rose-50/60'}`}>
+                      <span className={`block text-[8px] uppercase font-bold ${totalResultYear >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
+                        Resultado ({totalResultYear >= 0 ? 'Superávit' : 'Déficit'})
+                      </span>
+                      <span className={`text-xs font-black font-mono ${totalResultYear >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
+                        {totalResultYear >= 0 ? '+' : ''}{formatCurrency(totalResultYear)}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50">
+                      <span className="block text-[8px] uppercase font-bold text-indigo-700">Saldo Final (31/Dez)</span>
+                      <span className="text-xs font-black font-mono text-indigo-900">{formatCurrency(endCashYear)}</span>
+                    </div>
+                  </div>
+
+                  {/* Complete 12-Month Table */}
+                  <div className="mb-8 overflow-hidden rounded-xl border border-zinc-300">
+                    <table className="w-full text-left border-collapse text-[10px]">
+                      <thead>
+                        <tr className="bg-zinc-100 border-b border-zinc-300 font-bold uppercase text-zinc-700 text-[9px]">
+                          <th className="py-2 px-3 min-w-[200px] border-r border-zinc-300">Estrutura / Categoria</th>
+                          {DRE_MONTHS_LIST.map(m => (
+                            <th key={m.key} className="py-2 px-2 text-right border-r border-zinc-300 min-w-[65px]">
+                              {m.label}
+                            </th>
+                          ))}
+                          <th className="py-2 px-3 text-right font-black bg-zinc-200 text-zinc-900 min-w-[90px]">
+                            Total {dreSelectedYear}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 text-zinc-800">
+                        {/* 1. Saldo Inicial */}
+                        <tr className="bg-zinc-50/80 font-bold">
+                          <td className="py-2 px-3 text-zinc-900 border-r border-zinc-300">
+                            SALDO INICIAL DE DISPONIBILIDADES
+                          </td>
+                          {monthlyStartCash.map((val, idx) => (
+                            <td key={idx} className="py-2 px-2 text-right font-mono border-r border-zinc-200 text-zinc-700">
+                              {formatCurrency(val)}
+                            </td>
+                          ))}
+                          <td className="py-2 px-3 text-right font-mono font-black bg-zinc-100 text-zinc-900">
+                            {formatCurrency(yearInitialCash)}
+                          </td>
+                        </tr>
+
+                        {/* 2. RECEITAS HEADER */}
+                        <tr className="bg-emerald-100/70 border-t-2 border-emerald-300 font-black text-emerald-950">
+                          <td colSpan={14} className="py-2 px-3 text-[10px] tracking-wide">
+                            1. RECEITAS E ENTRADAS OPERACIONAIS (+)
+                          </td>
+                        </tr>
+
+                        {incomeCategories.length === 0 ? (
+                          <tr>
+                            <td colSpan={14} className="py-3 px-4 text-center text-zinc-400 italic">
+                              Nenhuma receita registrada no exercício de {dreSelectedYear}.
+                            </td>
+                          </tr>
+                        ) : (
+                          incomeCategories.map(cat => (
+                            <React.Fragment key={cat.id}>
+                              <tr className="bg-emerald-50/20 font-bold hover:bg-emerald-50/40">
+                                <td className="py-1.5 px-3 text-zinc-900 border-r border-zinc-300">
+                                  {cat.name}
+                                </td>
+                                {cat.months.map((val, mIdx) => (
+                                  <td key={mIdx} className="py-1.5 px-2 text-right font-mono border-r border-zinc-200 text-emerald-800">
+                                    {val > 0 ? formatCurrency(val) : '-'}
+                                  </td>
+                                ))}
+                                <td className="py-1.5 px-3 text-right font-mono font-bold bg-emerald-50 text-emerald-900">
+                                  {formatCurrency(cat.total)}
+                                </td>
+                              </tr>
+                              {cat.subcategoriesList?.map(sub => (
+                                <tr key={sub.name} className="text-[9px] text-zinc-600 bg-white">
+                                  <td className="py-1 px-3 pl-6 italic border-r border-zinc-300 text-zinc-600">
+                                    • {sub.name}
+                                  </td>
+                                  {sub.months.map((sVal, smIdx) => (
+                                    <td key={smIdx} className="py-1 px-2 text-right font-mono border-r border-zinc-200 text-zinc-600">
+                                      {sVal > 0 ? formatCurrency(sVal) : '-'}
+                                    </td>
+                                  ))}
+                                  <td className="py-1 px-3 text-right font-mono font-medium bg-zinc-50 text-zinc-700">
+                                    {formatCurrency(sub.total)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          ))
+                        )}
+
+                        {/* TOTAL RECEITAS */}
+                        <tr className="bg-emerald-100 font-black border-t border-b-2 border-emerald-300 text-emerald-950">
+                          <td className="py-2 px-3 border-r border-emerald-300">
+                            TOTAL DE RECEITAS OPERACIONAIS (+)
+                          </td>
+                          {monthlyInflow.map((val, idx) => (
+                            <td key={idx} className="py-2 px-2 text-right font-mono border-r border-emerald-200 text-emerald-950 font-bold">
+                              {formatCurrency(val)}
+                            </td>
+                          ))}
+                          <td className="py-2 px-3 text-right font-mono font-black bg-emerald-200 text-emerald-950">
+                            {formatCurrency(totalInflowYear)}
+                          </td>
+                        </tr>
+
+                        {/* 3. DESPESAS HEADER */}
+                        <tr className="bg-rose-100/70 border-t-2 border-rose-300 font-black text-rose-950">
+                          <td colSpan={14} className="py-2 px-3 text-[10px] tracking-wide">
+                            2. DESPESAS E SAÍDAS OPERACIONAIS (-)
+                          </td>
+                        </tr>
+
+                        {expenseCategories.length === 0 ? (
+                          <tr>
+                            <td colSpan={14} className="py-3 px-4 text-center text-zinc-400 italic">
+                              Nenhuma despesa registrada no exercício de {dreSelectedYear}.
+                            </td>
+                          </tr>
+                        ) : (
+                          expenseCategories.map(cat => (
+                            <React.Fragment key={cat.id}>
+                              <tr className="bg-rose-50/20 font-bold hover:bg-rose-50/40">
+                                <td className="py-1.5 px-3 text-zinc-900 border-r border-zinc-300">
+                                  {cat.name}
+                                </td>
+                                {cat.months.map((val, mIdx) => (
+                                  <td key={mIdx} className="py-1.5 px-2 text-right font-mono border-r border-zinc-200 text-rose-800">
+                                    {val > 0 ? `-${formatCurrency(val)}` : '-'}
+                                  </td>
+                                ))}
+                                <td className="py-1.5 px-3 text-right font-mono font-bold bg-rose-50 text-rose-900">
+                                  -{formatCurrency(cat.total)}
+                                </td>
+                              </tr>
+                              {cat.subcategoriesList?.map(sub => (
+                                <tr key={sub.name} className="text-[9px] text-zinc-600 bg-white">
+                                  <td className="py-1 px-3 pl-6 italic border-r border-zinc-300 text-zinc-600">
+                                    • {sub.name}
+                                  </td>
+                                  {sub.months.map((sVal, smIdx) => (
+                                    <td key={smIdx} className="py-1 px-2 text-right font-mono border-r border-zinc-200 text-zinc-600">
+                                      {sVal > 0 ? `-${formatCurrency(sVal)}` : '-'}
+                                    </td>
+                                  ))}
+                                  <td className="py-1 px-3 text-right font-mono font-medium bg-zinc-50 text-zinc-700">
+                                    -{formatCurrency(sub.total)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          ))
+                        )}
+
+                        {/* TOTAL DESPESAS */}
+                        <tr className="bg-rose-100 font-black border-t border-b-2 border-rose-300 text-rose-950">
+                          <td className="py-2 px-3 border-r border-rose-300">
+                            TOTAL DE DESPESAS OPERACIONAIS (-)
+                          </td>
+                          {monthlyOutflow.map((val, idx) => (
+                            <td key={idx} className="py-2 px-2 text-right font-mono border-r border-rose-200 text-rose-950 font-bold">
+                              -{formatCurrency(val)}
+                            </td>
+                          ))}
+                          <td className="py-2 px-3 text-right font-mono font-black bg-rose-200 text-rose-950">
+                            -{formatCurrency(totalOutflowYear)}
+                          </td>
+                        </tr>
+
+                        {/* 4. RESULTADO OPERACIONAL */}
+                        <tr className="bg-zinc-100 font-black border-t-2 border-zinc-400 text-zinc-950">
+                          <td className="py-2 px-3 border-r border-zinc-300">
+                            RESULTADO DO MÊS (SUPERÁVIT / DÉFICIT)
+                          </td>
+                          {monthlyResult.map((val, idx) => (
+                            <td key={idx} className={`py-2 px-2 text-right font-mono font-black border-r border-zinc-300 ${val >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {val > 0 ? `+${formatCurrency(val)}` : val < 0 ? formatCurrency(val) : 'R$ 0,00'}
+                            </td>
+                          ))}
+                          <td className={`py-2 px-3 text-right font-mono font-black ${totalResultYear >= 0 ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'}`}>
+                            {totalResultYear > 0 ? `+${formatCurrency(totalResultYear)}` : formatCurrency(totalResultYear)}
+                          </td>
+                        </tr>
+
+                        {/* 5. SALDO FINAL ACUMULADO */}
+                        <tr className="bg-indigo-100 font-black border-t-2 border-indigo-400 text-indigo-950">
+                          <td className="py-2.5 px-3 border-r border-indigo-300">
+                            SALDO FINAL DE DISPONIBILIDADES (CAIXA / BANCOS)
+                          </td>
+                          {monthlyEndCash.map((val, idx) => (
+                            <td key={idx} className="py-2.5 px-2 text-right font-mono font-black border-r border-indigo-200 text-indigo-950">
+                              {formatCurrency(val)}
+                            </td>
+                          ))}
+                          <td className="py-2.5 px-3 text-right font-mono font-black bg-indigo-200 text-indigo-950">
+                            {formatCurrency(endCashYear)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Termo de Encerramento e Assinaturas Legais */}
+                  <div className="pt-6 border-t-2 border-zinc-900 space-y-6 page-break-inside-avoid">
+                    <p className="text-[9px] text-zinc-600 text-center leading-relaxed max-w-3xl mx-auto italic">
+                      "Certificamos sob as penas da lei que o presente Demonstrativo de Resultado (DRE) e Fluxo de Caixa Operacional reflete fielmente as movimentações de entradas, saídas e disponibilidades financeiras do Ministério Nova Vida no exercício de {dreSelectedYear}."
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-8 pt-4 text-center text-zinc-800">
+                      <div>
+                        <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
+                        <p className="text-[10px] font-black uppercase text-zinc-900">Pr. Presidente</p>
+                        <p className="text-[8px] text-zinc-500">Diretoria Executiva</p>
+                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                      </div>
+
+                      <div>
+                        <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
+                        <p className="text-[10px] font-black uppercase text-zinc-900">1º Tesoureiro(a)</p>
+                        <p className="text-[8px] text-zinc-500">Diretoria Financeira</p>
+                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                      </div>
+
+                      <div>
+                        <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
+                        <p className="text-[10px] font-black uppercase text-zinc-900">Conselho Fiscal / CRC</p>
+                        <p className="text-[8px] text-zinc-500">Contabilidade & Auditoria</p>
+                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                      </div>
+                    </div>
+
+                    <div className="text-center pt-1 text-[9px] font-mono text-zinc-400">
+                      Pirassununga/SP, 31 de dezembro de {dreSelectedYear}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
+
+        {/* Modal: Fixed Asset (Create / Edit) */}
+        {showAddAssetModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowAddAssetModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl text-left ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className={`p-4 border-b flex justify-between items-center ${
+                isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/20 border-zinc-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Building2 className={`w-4 h-4 ${isHighContrast ? 'text-indigo-600' : 'text-indigo-500'}`} />
+                  <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-900' : 'text-zinc-200'}`}>
+                    {editingAssetId ? 'Editar Bem Patrimonial' : 'Cadastrar Novo Bem Patrimonial (Ativo)'}
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => setShowAddAssetModal(false)} 
+                  className={`p-1 rounded cursor-pointer transition-colors ${
+                    isHighContrast ? 'text-zinc-400 hover:text-zinc-700' : 'text-zinc-500 hover:text-white'
+                  }`}
+                  type="button"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveAsset} className="p-6 space-y-4">
+                <div>
+                  <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                    isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                  }`}>
+                    Nome do Bem / Ativo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Templo Sede, Sistema de Som Behringer, Van 16L..."
+                    value={assetFormName}
+                    onChange={(e) => setAssetFormName(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                      isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                    }`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Categoria do Bem *
+                    </label>
+                    <select
+                      value={assetFormCategory}
+                      onChange={(e) => setAssetFormCategory(e.target.value as any)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                        isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                      }`}
+                    >
+                      <option value="Imóveis e Terrenos">Imóveis e Terrenos</option>
+                      <option value="Veículos">Veículos</option>
+                      <option value="Equipamentos e Instrumentos">Equipamentos e Instrumentos</option>
+                      <option value="Mobiliário e TI">Mobiliário e TI</option>
+                      <option value="Outros Bens">Outros Bens</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Data de Aquisição *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={assetFormDate}
+                      onChange={(e) => setAssetFormDate(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                        isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Valor de Aquisição (R$) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="0.00"
+                      value={assetFormAcqValue}
+                      onChange={(e) => setAssetFormAcqValue(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono ${
+                        isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                      isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                    }`}>
+                      Valor Atual Avaliado (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Igual à aquisição se vazio"
+                      value={assetFormCurValue}
+                      onChange={(e) => setAssetFormCurValue(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono ${
+                        isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+                    isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                  }`}>
+                    Descrição / Observações Patrimoniais
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Detalhes sobre localização, número de patrimônio, estado de conservação..."
+                    value={assetFormDesc}
+                    onChange={(e) => setAssetFormDesc(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none ${
+                      isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+                    }`}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAssetModal(false)}
+                    className={`px-4 py-2 text-xs font-bold cursor-pointer transition-colors ${
+                      isHighContrast ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow"
+                  >
+                    {editingAssetId ? 'Salvar Alterações' : 'Cadastrar Bem'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
+
+      {/* PRINT-OPTIMIZED DYNAMIC MEDIA HOOK STYLES */}
+      <style>{`
+        @media print {
+          @page {
+            size: landscape;
+            margin: 8mm;
+          }
+          html, body {
+            background: white !important;
+            color: #18181b !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #report-printable-sheet, #report-printable-sheet *,
+          #balanco-printable-sheet, #balanco-printable-sheet *,
+          #printable-report-area, #printable-report-area * {
+            visibility: visible !important;
+          }
+          #report-printable-sheet,
+          #balanco-printable-sheet {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          #printable-report-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .no-print, .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          .fixed, [role="dialog"], .backdrop-blur-md {
+            position: static !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            backdrop-filter: none !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+
+    </div>
+  );
+}
