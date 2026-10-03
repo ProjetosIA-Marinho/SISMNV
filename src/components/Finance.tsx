@@ -240,13 +240,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     const saved = localStorage.getItem('admmnv_finance_categories');
     if (saved) return JSON.parse(saved);
     return [
-      { id: 'cat-1', name: 'Dízimos', type: 'entrada', color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20', subcategories: ['Membros', 'Visitantes', 'Transferências Online'], mainCategory: 'Receitas' },
-      { id: 'cat-2', name: 'Ofertas Regulares', type: 'entrada', color: 'bg-green-500/15 text-green-500 border-green-500/20', subcategories: ['Culto de Domingo', 'Culto de Ensino', 'Círculo de Oração'], mainCategory: 'Receitas' },
-      { id: 'cat-3', name: 'Ofertas de Missões', type: 'entrada', color: 'bg-teal-500/15 text-teal-500 border-teal-500/20', subcategories: ['Sertão', 'Projetos Globais', 'Missão Urbana'], mainCategory: 'Receitas' },
-      { id: 'cat-4', name: 'Aluguel do Templo', type: 'saida', color: 'bg-red-500/15 text-red-500 border-red-500/20', subcategories: ['Sede Principal', 'Estacionamento'], mainCategory: 'Despesas Fixas' },
-      { id: 'cat-5', name: 'Energia & Água', type: 'saida', color: 'bg-amber-500/15 text-amber-500 border-amber-500/20', subcategories: ['Energia Elétrica', 'Saneamento Água'], mainCategory: 'Despesas Variáveis' },
-      { id: 'cat-6', name: 'Salários & Prebendas', type: 'saida', color: 'bg-rose-500/15 text-rose-500 border-rose-500/20', subcategories: ['Prebenda Pastoral', 'Zeladoria', 'Secretaria'], mainCategory: 'Despesas Fixas' },
-      { id: 'cat-7', name: 'Ação Social', type: 'saida', color: 'bg-sky-500/15 text-sky-500 border-sky-500/20', subcategories: ['Cestas Básicas', 'Medicamentos', 'Ajuda de Custo'], mainCategory: 'Despesas Variáveis' },
+      { id: 'cat-1', code: '1.01', name: 'Dízimos', type: 'entrada', color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/20', subcategories: ['Membros', 'Visitantes', 'Transferências Online', 'PIX'], group: 'Receitas', mainCategory: 'Receitas', parentCategory: 'Dízimos e Ofertas', description: 'Arrecadação regular de dízimos dos membros e congregados' },
+      { id: 'cat-2', code: '1.02', name: 'Ofertas Regulares', type: 'entrada', color: 'bg-green-500/15 text-green-500 border-green-500/20', subcategories: ['Culto de Domingo', 'Culto de Ensino', 'Círculo de Oração'], group: 'Receitas', mainCategory: 'Receitas', parentCategory: 'Dízimos e Ofertas', description: 'Ofertas voluntárias recolhidas durante os cultos e reuniões' },
+      { id: 'cat-3', code: '1.03', name: 'Ofertas de Missões', type: 'entrada', color: 'bg-teal-500/15 text-teal-500 border-teal-500/20', subcategories: ['Sertão', 'Projetos Globais', 'Missão Urbana'], group: 'Receitas', mainCategory: 'Receitas', parentCategory: 'Dízimos e Ofertas', description: 'Ofertas e doações com destinação para evangelização e missões' },
+      { id: 'cat-4', code: '2.01', name: 'Aluguel do Templo', type: 'saida', color: 'bg-red-500/15 text-red-500 border-red-500/20', subcategories: ['Sede Principal', 'Estacionamento'], group: 'Despesas Fixas', mainCategory: 'Despesas Fixas', parentCategory: 'Despesas Operacionais', description: 'Locação predial do templo e dependências anexas' },
+      { id: 'cat-5', code: '2.02', name: 'Energia & Água', type: 'saida', color: 'bg-amber-500/15 text-amber-500 border-amber-500/20', subcategories: ['Energia Elétrica', 'Saneamento Água'], group: 'Despesas Variáveis', mainCategory: 'Despesas Variáveis', parentCategory: 'Utilidades e Consumo', description: 'Contas de consumo elétrico e abastecimento de água' },
+      { id: 'cat-6', code: '2.03', name: 'Salários & Prebendas', type: 'saida', color: 'bg-rose-500/15 text-rose-500 border-rose-500/20', subcategories: ['Prebenda Pastoral', 'Zeladoria', 'Secretaria'], group: 'Despesas Fixas', mainCategory: 'Despesas Fixas', parentCategory: 'Pessoal e Pastoral', description: 'Remunerações pastorais, encargos e pessoal de apoio' },
+      { id: 'cat-7', code: '3.01', name: 'Ação Social', type: 'saida', color: 'bg-sky-500/15 text-sky-500 border-sky-500/20', subcategories: ['Cestas Básicas', 'Medicamentos', 'Ajuda de Custo'], group: 'Despesas Variáveis', mainCategory: 'Despesas Variáveis', parentCategory: 'Departamentos e Ministérios', description: 'Auxílio a famílias em vulnerabilidade e projetos beneficentes' },
     ];
   });
 
@@ -685,10 +685,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [tfDate, setTfDate] = useState(new Date().toISOString().split('T')[0]);
   const [tfObservation, setTfObservation] = useState('');
 
+  const [catCode, setCatCode] = useState('');
   const [catName, setCatName] = useState('');
   const [catType, setCatType] = useState<'entrada' | 'saida' | 'ambas'>('entrada');
   const [catColor, setCatColor] = useState('emerald');
-  const [catMainCategory, setCatMainCategory] = useState<'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas'>('Despesas Fixas');
+  const [catMainCategory, setCatMainCategory] = useState<'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas' | string>('Despesas Fixas');
+  const [catParentCategory, setCatParentCategory] = useState('');
+  const [catDescription, setCatDescription] = useState('');
   const [catSubcategories, setCatSubcategories] = useState<string[]>([]);
   const [modalNewSubcategory, setModalNewSubcategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<TransactionCategory | null>(null);
@@ -1360,9 +1363,12 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const handleOpenCategoryModal = (cat?: TransactionCategory) => {
     if (cat) {
       setEditingCategory(cat);
+      setCatCode(cat.code || '');
       setCatName(cat.name);
       setCatType(cat.type);
       setCatSubcategories(cat.subcategories || []);
+      setCatParentCategory(cat.parentCategory || '');
+      setCatDescription(cat.description || '');
       let foundColor = 'emerald';
       if (cat.color.includes('blue')) foundColor = 'blue';
       else if (cat.color.includes('purple')) foundColor = 'purple';
@@ -1371,14 +1377,17 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       else if (cat.color.includes('sky')) foundColor = 'sky';
       else if (cat.color.includes('indigo')) foundColor = 'indigo';
       setCatColor(foundColor);
-      setCatMainCategory(cat.mainCategory || 'Despesas Fixas');
+      setCatMainCategory(cat.mainCategory || cat.group || 'Despesas Fixas');
     } else {
       setEditingCategory(null);
+      setCatCode(`${categories.length + 1}`.padStart(2, '0'));
       setCatName('');
       setCatType('entrada');
       setCatColor('emerald');
+      setCatParentCategory('');
+      setCatDescription('');
       setCatSubcategories([]);
-      setCatMainCategory('Despesas Fixas');
+      setCatMainCategory('Receitas');
     }
     setModalNewSubcategory('');
     setShowCategoryModal(true);
@@ -1403,11 +1412,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
         if (c.id === editingCategory.id) {
           return {
             ...c,
+            code: catCode.trim() || undefined,
             name: catName.trim(),
             type: catType,
             color: colors[catColor] || colors.emerald,
+            group: catMainCategory,
+            mainCategory: catMainCategory as any,
+            parentCategory: catParentCategory.trim() || undefined,
+            description: catDescription.trim() || undefined,
             subcategories: catSubcategories,
-            mainCategory: catMainCategory
           };
         }
         return c;
@@ -1416,11 +1429,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     } else {
       const newCat: TransactionCategory = {
         id: `cat-${Date.now()}`,
+        code: catCode.trim() || `${categories.length + 1}`.padStart(2, '0'),
         name: catName.trim(),
         type: catType,
         color: colors[catColor] || colors.emerald,
+        group: catMainCategory,
+        mainCategory: catMainCategory as any,
+        parentCategory: catParentCategory.trim() || undefined,
+        description: catDescription.trim() || undefined,
         subcategories: catSubcategories,
-        mainCategory: catMainCategory
       };
       setCategories([...categories, newCat]);
     }
@@ -1428,12 +1445,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setShowCategoryModal(false);
 
     // Reset Form
+    setCatCode('');
     setCatName('');
     setCatType('entrada');
     setCatColor('emerald');
+    setCatParentCategory('');
+    setCatDescription('');
     setCatSubcategories([]);
     setModalNewSubcategory('');
-    setCatMainCategory('Despesas Fixas');
   };
 
   const handleAddSubcategory = (categoryId: string) => {
@@ -6096,42 +6115,83 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
             {categoryViewMode === 'grid' ? (
               <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categories.map(cat => (
-                  <div key={cat.id} className={`p-5 rounded-xl border flex flex-col justify-between gap-4 ${
-                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/10 border-[#27272a]'
+                {categories.map((cat, cIdx) => (
+                  <div key={cat.id} className={`p-5 rounded-xl border flex flex-col justify-between gap-4 transition-all duration-200 ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200 shadow-sm' : 'bg-zinc-900/20 border-[#27272a] hover:border-zinc-700'
                   }`}>
                     <div>
-                      <div className="flex justify-between items-start">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold border ${cat.color}`}>
-                          {cat.name}
-                        </span>
-                        <div className="flex items-center gap-1">
+                      {/* Header with Código & Categoria Name */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
+                            isHighContrast ? 'bg-zinc-200 text-zinc-800 border-zinc-300' : 'bg-zinc-800 text-indigo-400 border-zinc-700'
+                          }`}>
+                            {cat.code || `${cIdx + 1}`.padStart(2, '0')}
+                          </span>
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
+                            {cat.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleOpenCategoryModal(cat)}
                             className="p-1 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/5 cursor-pointer"
                             title="Editar Categoria"
                           >
-                            <Edit3 size={12} />
+                            <Edit3 size={13} />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(cat.id)}
                             className="p-1 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/5 cursor-pointer"
                             title="Excluir Categoria"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </div>
-                      <p className="text-[9px] text-zinc-500 mt-1 capitalize">Uso: {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Apenas receitas' : 'Apenas despesas'}</p>
-                      {cat.mainCategory && (
-                        <p className={`text-[9px] font-bold mt-1 ${isHighContrast ? 'text-indigo-600' : 'text-indigo-400'}`}>
-                          Categoria Principal: {cat.mainCategory}
-                        </p>
-                      )}
+
+                      {/* Formatted attributes: Tipo / Grupo / Categoria Pai / Descrição */}
+                      <div className="mt-3.5 space-y-2 text-xs border-t border-dashed border-zinc-800/60 pt-3">
+                        <div className="grid grid-cols-2 gap-2 text-[11px]">
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Tipo</span>
+                            <span className={`inline-flex items-center gap-1 font-bold ${
+                              cat.type === 'entrada' ? 'text-emerald-400' : cat.type === 'saida' ? 'text-rose-400' : 'text-indigo-400'
+                            }`}>
+                              {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receita' : 'Despesa'}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Grupo</span>
+                            <span className={`font-semibold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                              {cat.group || cat.mainCategory || '—'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Categoria Pai</span>
+                          <span className={`font-semibold text-[11px] ${cat.parentCategory ? (isHighContrast ? 'text-zinc-700' : 'text-zinc-300') : 'text-zinc-500 italic'}`}>
+                            {cat.parentCategory || '— (Raiz)'}
+                          </span>
+                        </div>
+
+                        {cat.description && (
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Descrição</span>
+                            <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed mt-0.5">
+                              {cat.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Subcategories list */}
-                      <div className="mt-4 space-y-2">
-                        <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Subcategorias</p>
+                      <div className="mt-4 space-y-2 border-t border-dashed border-zinc-800/60 pt-3">
+                        <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">
+                          Subcategorias ({(cat.subcategories || []).length})
+                        </p>
                         <div className="flex flex-wrap gap-1.5">
                           {(cat.subcategories || []).length === 0 ? (
                             <span className="text-[10px] text-zinc-500 italic">Nenhuma subcategoria cadastrada</span>
@@ -6163,7 +6223,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     <div className="border-t border-dashed border-zinc-800/60 pt-3 flex gap-1.5">
                       <input
                         type="text"
-                        placeholder="Nova sub..."
+                        placeholder="Nova subcategoria..."
                         value={newSubcategoryName[cat.id] || ''}
                         onChange={(e) => setNewSubcategoryName({
                           ...newSubcategoryName,
@@ -6190,106 +6250,140 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 ))}
               </div>
             ) : (
-              // --- LIST VIEW WITH HIGH POLISH AND USER CONTROLS ---
+              // --- LIST VIEW FORMATTED AS: Código / Categoria / Tipo / Grupo / Categoria Pai / Descrição ---
               <div className="p-5">
                 <div className={`border rounded-xl overflow-x-auto scrollbar-thin ${isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'}`}>
-                  <table className="w-full text-left border-collapse min-w-[700px]">
+                  <table className="w-full text-left border-collapse min-w-[950px]">
                     <thead>
                       <tr className={`border-b text-[9px] font-bold uppercase tracking-wider ${isHighContrast ? 'bg-zinc-50 text-zinc-500 border-zinc-200' : 'bg-zinc-900/40 text-zinc-400 border-zinc-800'}`}>
-                        <th className="p-4">Categoria Pai</th>
-                        <th className="p-4">Tipo / Fluxo</th>
-                        <th className="p-4">Grupo Principal</th>
-                        <th className="p-4">Subcategorias</th>
-                        <th className="p-4">Adicionar Inline</th>
-                        <th className="p-4 text-right">Ações</th>
+                        <th className="p-4 w-24">Código</th>
+                        <th className="p-4 min-w-[180px]">Categoria</th>
+                        <th className="p-4 w-28">Tipo</th>
+                        <th className="p-4 min-w-[140px]">Grupo</th>
+                        <th className="p-4 min-w-[150px]">Categoria Pai</th>
+                        <th className="p-4 min-w-[200px]">Descrição</th>
+                        <th className="p-4 min-w-[180px]">Subcategorias</th>
+                        <th className="p-4 text-right w-24">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/40">
-                      {categories.map(cat => (
+                      {categories.map((cat, cIdx) => (
                         <tr 
                           key={cat.id} 
                           className={`hover:bg-zinc-500/5 transition-colors text-xs ${
                             isHighContrast ? 'text-zinc-800' : 'text-zinc-200'
                           }`}
                         >
-                          {/* Categoria Pai Badge */}
+                          {/* 1. Código */}
+                          <td className="p-4 font-mono font-bold text-[11px] text-indigo-400 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded border ${
+                              isHighContrast ? 'bg-zinc-100 border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-indigo-400'
+                            }`}>
+                              {cat.code || `${cIdx + 1}`.padStart(2, '0')}
+                            </span>
+                          </td>
+
+                          {/* 2. Categoria */}
                           <td className="p-4 font-semibold">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
                               {cat.name}
                             </span>
                           </td>
 
-                          {/* Tipo / Fluxo */}
-                          <td className="p-4 capitalize font-mono text-[10px] text-zinc-400">
-                            {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receitas' : 'Despesas'}
+                          {/* 3. Tipo */}
+                          <td className="p-4 capitalize font-semibold text-[11px] whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              cat.type === 'entrada'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : cat.type === 'saida'
+                                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                            }`}>
+                              {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receita' : 'Despesa'}
+                            </span>
                           </td>
 
-                          {/* Grupo Principal */}
+                          {/* 4. Grupo */}
                           <td className="p-4">
-                            {cat.mainCategory ? (
-                              <span className={`text-[10px] font-bold ${isHighContrast ? 'text-indigo-600' : 'text-indigo-400'}`}>
-                                {cat.mainCategory}
+                            <span className={`text-[11px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                              {cat.group || cat.mainCategory || '—'}
+                            </span>
+                          </td>
+
+                          {/* 5. Categoria Pai */}
+                          <td className="p-4 text-[11px]">
+                            {cat.parentCategory ? (
+                              <span className={`font-semibold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>
+                                {cat.parentCategory}
                               </span>
                             ) : (
-                              <span className="text-zinc-500 italic">—</span>
+                              <span className="text-zinc-500 italic text-[10px]">— (Raiz)</span>
                             )}
                           </td>
 
-                          {/* Subcategorias List */}
-                          <td className="p-4">
-                            <div className="flex flex-wrap gap-1 max-w-sm">
-                              {(cat.subcategories || []).length === 0 ? (
-                                <span className="text-[10px] text-zinc-500 italic">Nenhuma subcategoria</span>
-                              ) : (
-                                (cat.subcategories || []).map(sub => (
-                                  <span 
-                                    key={sub} 
-                                    className={`inline-flex items-center gap-1.5 text-[10px] font-semibold border px-2 py-0.5 rounded-md transition-colors ${
-                                      isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-300'
-                                    }`}
-                                  >
-                                    <span>{sub}</span>
-                                    <button 
-                                      type="button"
-                                      onClick={() => handleDeleteSubcategory(cat.id, sub)}
-                                      className="p-0.5 text-zinc-400 hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                      title={`Excluir subcategoria "${sub}"`}
-                                    >
-                                      <X size={11} />
-                                    </button>
-                                  </span>
-                                ))
-                              )}
-                            </div>
+                          {/* 6. Descrição */}
+                          <td className="p-4 text-[11px] text-zinc-400 max-w-xs">
+                            {cat.description ? (
+                              <p className="line-clamp-2 leading-tight">{cat.description}</p>
+                            ) : (
+                              <span className="text-zinc-600 italic text-[10px]">—</span>
+                            )}
                           </td>
 
-                          {/* Inline Subcategory Adder */}
+                          {/* Subcategorias List & Inline Adder */}
                           <td className="p-4">
-                            <div className="flex gap-1 items-center max-w-[160px]">
-                              <input
-                                type="text"
-                                placeholder="Nova sub..."
-                                value={newSubcategoryName[cat.id] || ''}
-                                onChange={(e) => setNewSubcategoryName({
-                                  ...newSubcategoryName,
-                                  [cat.id]: e.target.value
-                                })}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    handleAddSubcategory(cat.id);
-                                  }
-                                }}
-                                className={`text-[10px] font-medium px-2 py-1 rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 w-24 ${
-                                  isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                                }`}
-                              />
-                              <button
-                                onClick={() => handleAddSubcategory(cat.id)}
-                                className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold cursor-pointer"
-                              >
-                                +
-                              </button>
+                            <div className="space-y-1.5">
+                              <div className="flex flex-wrap gap-1 max-w-sm">
+                                {(cat.subcategories || []).length === 0 ? (
+                                  <span className="text-[10px] text-zinc-500 italic">Sem subcategorias</span>
+                                ) : (
+                                  (cat.subcategories || []).map(sub => (
+                                    <span 
+                                      key={sub} 
+                                      className={`inline-flex items-center gap-1.5 text-[9px] font-semibold border px-1.5 py-0.5 rounded transition-colors ${
+                                        isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-850 border-zinc-700/80 text-zinc-300'
+                                      }`}
+                                    >
+                                      <span>{sub}</span>
+                                      <button 
+                                        type="button"
+                                        onClick={() => handleDeleteSubcategory(cat.id, sub)}
+                                        className="text-zinc-400 hover:text-rose-500 cursor-pointer"
+                                        title={`Excluir "${sub}"`}
+                                      >
+                                        <X size={10} />
+                                      </button>
+                                    </span>
+                                  ))
+                                )}
+                              </div>
+
+                              <div className="flex gap-1 items-center max-w-[150px]">
+                                <input
+                                  type="text"
+                                  placeholder="+ sub..."
+                                  value={newSubcategoryName[cat.id] || ''}
+                                  onChange={(e) => setNewSubcategoryName({
+                                    ...newSubcategoryName,
+                                    [cat.id]: e.target.value
+                                  })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddSubcategory(cat.id);
+                                    }
+                                  }}
+                                  className={`text-[9px] font-medium px-1.5 py-0.5 rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 w-20 ${
+                                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                                  }`}
+                                />
+                                <button
+                                  onClick={() => handleAddSubcategory(cat.id)}
+                                  className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-bold cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </td>
 
@@ -6298,21 +6392,21 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => handleOpenCategoryModal(cat)}
-                                className={`p-1.5 rounded transition-colors ${
+                                className={`p-1.5 rounded transition-colors cursor-pointer ${
                                   isHighContrast ? 'hover:bg-zinc-100 text-zinc-600' : 'hover:bg-zinc-800 text-zinc-400'
                                 }`}
                                 title="Editar Categoria"
                               >
-                                <Edit3 size={12} />
+                                <Edit3 size={13} />
                               </button>
                               <button
                                 onClick={() => handleDeleteCategory(cat.id)}
-                                className={`p-1.5 rounded transition-colors ${
-                                  isHighContrast ? 'hover:bg-red-50 text-zinc-600 hover:text-red-600' : 'hover:bg-red-950/20 text-zinc-400 hover:text-red-400'
+                                className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                  isHighContrast ? 'hover:bg-rose-50 text-rose-600' : 'hover:bg-rose-500/10 text-rose-400'
                                 }`}
                                 title="Excluir Categoria"
                               >
-                                <Trash2 size={12} />
+                                <Trash2 size={13} />
                               </button>
                             </div>
                           </td>
@@ -9546,7 +9640,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             >
               <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20 shrink-0">
                 <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
-                  {editingCategory ? 'Editar Categoria Pai' : 'Criar Nova Categoria Pai'}
+                  {editingCategory ? 'Editar Categoria' : 'Cadastrar Nova Categoria'}
                 </h3>
                 <button 
                   onClick={() => {
@@ -9560,43 +9654,83 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               </div>
 
               <form onSubmit={handleAddCategory} className="p-6 space-y-4 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 1. Código */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Código</label>
+                    <input
+                      type="text" value={catCode} onChange={(e) => setCatCode(e.target.value)} placeholder="1.01"
+                      className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-indigo-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* 2. Nome da Categoria */}
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome da Categoria *</label>
+                    <input
+                      type="text" required value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Ex: Dízimos, Energia Elétrica"
+                      className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* 3. Tipo */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tipo de Fluxo *</label>
+                    <select
+                      required value={catType} onChange={(e: any) => setCatType(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="entrada">Receita (Entrada)</option>
+                      <option value="saida">Despesa (Saída)</option>
+                      <option value="ambas">Ambos os Fluxos</option>
+                    </select>
+                  </div>
+
+                  {/* 4. Grupo */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Grupo *</label>
+                    <select
+                      required value={catMainCategory} onChange={(e: any) => setCatMainCategory(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="Receitas">Receitas</option>
+                      <option value="Despesas Fixas">Despesas Fixas</option>
+                      <option value="Despesas Variáveis">Despesas Variáveis</option>
+                      <option value="Investimentos">Investimentos</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 5. Categoria Pai */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome da Categoria *</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoria Pai (Opcional)</label>
                   <input
-                    type="text" required value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Ex: Manutenção Templo, Missões Nacionais"
-                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                    type="text" value={catParentCategory} onChange={(e) => setCatParentCategory(e.target.value)} placeholder="Ex: Dízimos e Ofertas, Despesas Operacionais..."
+                    className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
                       isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
                     }`}
                   />
                 </div>
 
+                {/* 6. Descrição */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoria Principal *</label>
-                  <select
-                    required value={catMainCategory} onChange={(e: any) => setCatMainCategory(e.target.value)}
-                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Descrição / Finalidade</label>
+                  <textarea
+                    rows={2} value={catDescription} onChange={(e) => setCatDescription(e.target.value)} placeholder="Descreva a finalidade ou regras desta categoria..."
+                    className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium resize-none ${
                       isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
                     }`}
-                  >
-                    <option value="Despesas Fixas">Despesas Fixas</option>
-                    <option value="Despesas Variáveis">Despesas Variáveis</option>
-                    <option value="Investimentos">Investimentos</option>
-                    <option value="Receitas">Receitas</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Tipo de Fluxo *</label>
-                  <select
-                    required value={catType} onChange={(e: any) => setCatType(e.target.value)}
-                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
-                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                    }`}
-                  >
-                    <option value="entrada">Apenas Receitas</option>
-                    <option value="saida">Apenas Despesas</option>
-                    <option value="ambas">Ambos os Fluxos (Uso geral)</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="space-y-2">

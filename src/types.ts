@@ -95,11 +95,15 @@ export interface BankAccount {
 
 export interface TransactionCategory {
   id: string;
-  name: string;
-  type: 'entrada' | 'saida' | 'ambas';
+  code?: string; // Código (ex: 1.01, 2.01, etc.)
+  name: string; // Categoria
+  type: 'entrada' | 'saida' | 'ambas'; // Tipo
   color: string; // Tailwind hex or class representation
+  group?: string; // Grupo / Grupo Macro
+  mainCategory?: 'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas' | string;
+  parentCategory?: string; // Categoria Pai
+  description?: string; // Descrição
   subcategories?: string[]; // List of subcategory names
-  mainCategory?: 'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas';
 }
 
 export interface Transaction {

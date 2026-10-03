@@ -16,7 +16,9 @@ import {
   Tags,
   Check,
   RefreshCw,
-  FolderTree
+  FolderTree,
+  Hash,
+  FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { TransactionCategory } from '../types';
@@ -32,9 +34,12 @@ interface BulkCategoryImportModalProps {
 interface ParsedCategoryRow {
   id: string;
   selected: boolean;
+  code: string;
   name: string;
   type: 'entrada' | 'saida' | 'ambas';
-  mainCategory: 'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas';
+  group: string;
+  parentCategory: string;
+  description: string;
   colorKey: string;
   subcategories: string[];
   subcategoriesRaw: string;
@@ -69,11 +74,12 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
   
   // Default values
   const [defaultType, setDefaultType] = useState<'entrada' | 'saida' | 'ambas'>('saida');
-  const [defaultMainCategory, setDefaultMainCategory] = useState<'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas'>('Despesas Fixas');
+  const [defaultGroup, setDefaultGroup] = useState<string>('Despesas Fixas');
   
   // Bulk action states
-  const [bulkMainCategory, setBulkMainCategory] = useState('');
+  const [bulkGroup, setBulkGroup] = useState('');
   const [bulkType, setBulkType] = useState('');
+  const [bulkParentCategory, setBulkParentCategory] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,14 +123,23 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
         return undefined;
       };
 
+      const rawCode = getVal(['codigo', 'cod', 'code', 'id']) || '';
       const rawName = getVal(['categoria', 'categoriapai', 'nome', 'titulocategoria', 'category', 'name']) || '';
       const rawType = getVal(['tipo', 'fluxo', 'tipodefluxo', 'natureza', 'type']) || '';
-      const rawMainCat = getVal(['classificacao', 'classificacaodre', 'macro', 'grupomacro', 'maincategory', 'grupo']) || '';
+      const rawGroup = getVal(['grupo', 'classificacao', 'classificacaodre', 'macro', 'grupomacro', 'maincategory']) || '';
+      const rawParent = getVal(['categoriapai', 'pai', 'parent', 'parentcategory', 'categoriaorigem']) || '';
+      const rawDesc = getVal(['descricao', 'detalhes', 'observacao', 'obs', 'description', 'finalidade']) || '';
       const rawSubs = getVal(['subcategorias', 'subcategoria', 'subcategories', 'itens', 'subitens']) || '';
       const rawColor = getVal(['cor', 'color', 'coloracao']) || '';
 
       const name = String(rawName).trim();
       if (!name && !rawSubs) return; // Skip empty row
+
+      // Determine Code (Auto generate if empty, e.g., 1.01 or index)
+      let code = String(rawCode).trim();
+      if (!code) {
+        code = `${index + 1}`.padStart(2, '0');
+      }
 
       // Determine Type
       let type: 'entrada' | 'saida' | 'ambas' = defaultType;
@@ -135,17 +150,17 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
         else if (normT.startsWith('s') || normT.startsWith('d') || normT.includes('desp') || normT.includes('said')) type = 'saida';
       }
 
-      // Determine Main Category
-      let mainCategory: 'Despesas Fixas' | 'Despesas Variáveis' | 'Investimentos' | 'Receitas' = defaultMainCategory;
-      if (rawMainCat) {
-        const normM = normalizeText(String(rawMainCat));
-        if (normM.includes('rec')) mainCategory = 'Receitas';
-        else if (normM.includes('fix')) mainCategory = 'Despesas Fixas';
-        else if (normM.includes('var')) mainCategory = 'Despesas Variáveis';
-        else if (normM.includes('inv') || normM.includes('patr')) mainCategory = 'Investimentos';
-      } else if (type === 'entrada') {
-        mainCategory = 'Receitas';
+      // Determine Group
+      let group = String(rawGroup).trim() || defaultGroup;
+      if (!group) {
+        group = type === 'entrada' ? 'Receitas' : 'Despesas Fixas';
       }
+
+      // Determine Parent Category
+      const parentCategory = String(rawParent).trim();
+
+      // Determine Description
+      const description = String(rawDesc).trim();
 
       // Determine Subcategories
       const subcategoriesStr = String(rawSubs || '').trim();
@@ -163,11 +178,11 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
         const normC = normalizeText(String(rawColor));
         const matchedColor = colorKeys.find(c => normC.includes(normalizeText(c)));
         if (matchedColor) colorKey = matchedColor;
-      } else if (mainCategory === 'Receitas' || type === 'entrada') {
+      } else if (group.toLowerCase().includes('rec') || type === 'entrada') {
         colorKey = 'emerald';
-      } else if (mainCategory === 'Despesas Fixas') {
+      } else if (group.toLowerCase().includes('fix')) {
         colorKey = 'rose';
-      } else if (mainCategory === 'Investimentos') {
+      } else if (group.toLowerCase().includes('inv')) {
         colorKey = 'indigo';
       } else {
         colorKey = 'amber';
@@ -183,9 +198,12 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
       rows.push({
         id: `parsed-cat-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
         selected: errors.length === 0,
+        code,
         name: name || `Categoria ${index + 1}`,
         type,
-        mainCategory,
+        group,
+        parentCategory,
+        description,
         colorKey,
         subcategories,
         subcategoriesRaw: subcategories.join(', '),
@@ -262,7 +280,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
       const headers = lines[0].split(sep).map(h => h.trim());
       const hasHeaders = headers.some(h => {
         const nh = normalizeText(h);
-        return nh.includes('categoria') || nh.includes('tipo') || nh.includes('sub') || nh.includes('nome');
+        return nh.includes('categoria') || nh.includes('tipo') || nh.includes('grupo') || nh.includes('nome') || nh.includes('codigo');
       });
 
       const dataRows: Record<string, any>[] = [];
@@ -279,16 +297,19 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
           dataRows.push(rowObj);
         }
       } else {
-        // Assume plain list: Categoria, Tipo, Subcategorias
-        lines.forEach(line => {
+        // Plain format: Código, Categoria, Tipo, Grupo, Categoria Pai, Descrição, Subcategorias
+        lines.forEach((line, idx) => {
           const cleanLine = line.trim();
           if (!cleanLine) return;
           const parts = cleanLine.split(sep).map(p => p.trim());
           dataRows.push({
-            'Categoria': parts[0] || '',
-            'Tipo': parts[1] || 'saida',
-            'Subcategorias': parts[2] || '',
-            'Classificação': parts[3] || 'Despesas Variáveis'
+            'Código': parts[0] || `${idx + 1}`.padStart(2, '0'),
+            'Categoria': parts[1] || parts[0] || '',
+            'Tipo': parts[2] || 'saida',
+            'Grupo': parts[3] || 'Despesas Variáveis',
+            'Categoria Pai': parts[4] || '',
+            'Descrição': parts[5] || '',
+            'Subcategorias': parts[6] || ''
           });
         });
       }
@@ -303,74 +324,90 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
     }
   };
 
-  // Download sample template
+  // Download sample template with 6 standardized columns
   const handleDownloadTemplate = () => {
     try {
       const sampleCategories = [
         {
+          'Código': '1.01',
+          'Categoria': 'Dízimos',
+          'Tipo': 'Receita',
+          'Grupo': 'Receitas',
           'Categoria Pai': 'Dízimos e Ofertas',
+          'Descrição': 'Arrecadação de dízimos de membros e congregados',
+          'Subcategorias': 'Membros, Visitantes, Transferências Online, PIX'
+        },
+        {
+          'Código': '1.02',
+          'Categoria': 'Ofertas Especiais e Missões',
           'Tipo': 'Receita',
-          'Classificação DRE': 'Receitas',
-          'Subcategorias (separadas por vírgula)': 'Membros, Visitantes, Transferências Online, PIX Culto',
-          'Cor': 'Esmeralda'
+          'Grupo': 'Receitas',
+          'Categoria Pai': 'Dízimos e Ofertas',
+          'Descrição': 'Ofertas com destinação específica para evangelismo e missões',
+          'Subcategorias': 'Missões Sertão, Projetos Globais, Missão Urbana'
         },
         {
-          'Categoria Pai': 'Ofertas Especiais e Missões',
-          'Tipo': 'Receita',
-          'Classificação DRE': 'Receitas',
-          'Subcategorias (separadas por vírgula)': 'Missões Sertão, Projetos Globais, Missão Urbana, Construção',
-          'Cor': 'Verde'
-        },
-        {
-          'Categoria Pai': 'Despesas com Pessoal e Pastoral',
+          'Código': '2.01',
+          'Categoria': 'Despesas com Pessoal e Pastoral',
           'Tipo': 'Despesa',
-          'Classificação DRE': 'Despesas Fixas',
-          'Subcategorias (separadas por vírgula)': 'Prebenda Pastoral, FGTS, INSS, Ajuda de Custo',
-          'Cor': 'Rosa'
+          'Grupo': 'Despesas Fixas',
+          'Categoria Pai': 'Despesas Operacionais',
+          'Descrição': 'Remuneração pastoral, encargos trabalhistas e ajuda de custo',
+          'Subcategorias': 'Prebenda Pastoral, FGTS, INSS, Ajuda de Custo'
         },
         {
-          'Categoria Pai': 'Utilidades e Manutenção do Templo',
+          'Código': '2.02',
+          'Categoria': 'Utilidades e Manutenção do Templo',
           'Tipo': 'Despesa',
-          'Classificação DRE': 'Despesas Fixas',
-          'Subcategorias (separadas por vírgula)': 'Energia Elétrica (Enel), Água e Esgoto, Internet Fibra, Aluguel do Salão, Limpeza e Conservação',
-          'Cor': 'Laranja'
+          'Grupo': 'Despesas Fixas',
+          'Categoria Pai': 'Despesas Operacionais',
+          'Descrição': 'Contas de consumo recorrentes e conservação física do templo',
+          'Subcategorias': 'Energia Elétrica (Enel), Água e Esgoto, Internet Fibra, Aluguel do Salão, Limpeza'
         },
         {
-          'Categoria Pai': 'Departamentos e Ministérios',
+          'Código': '3.01',
+          'Categoria': 'Departamentos e Ministérios',
           'Tipo': 'Despesa',
-          'Classificação DRE': 'Despesas Variáveis',
-          'Subcategorias (separadas por vírgula)': 'Ministério Infantil, Jovens, Louvor e Música, Casais, Comunicação e Mídia',
-          'Cor': 'Roxo'
+          'Grupo': 'Despesas Variáveis',
+          'Categoria Pai': 'Atividades Eclesiásticas',
+          'Descrição': 'Verbas direcionadas aos departamentos de jovens, crianças, música e casais',
+          'Subcategorias': 'Ministério Infantil, Jovens, Louvor e Música, Casais, Mídia'
         },
         {
-          'Categoria Pai': 'Investimentos e Aquisições',
+          'Código': '4.01',
+          'Categoria': 'Investimentos e Aquisições',
           'Tipo': 'Despesa',
-          'Classificação DRE': 'Investimentos',
-          'Subcategorias (separadas por vírgula)': 'Equipamentos de Som, Iluminação LED, Instrumentos Musicais, Mobiliário',
-          'Cor': 'Índigo'
+          'Grupo': 'Investimentos',
+          'Categoria Pai': 'Patrimônio',
+          'Descrição': 'Aquisição de equipamentos, reformas estruturais e novos instrumentos',
+          'Subcategorias': 'Equipamentos de Som, Iluminação LED, Instrumentos Musicais, Mobiliário'
         }
       ];
 
       const ws = XLSX.utils.json_to_sheet(sampleCategories);
       ws['!cols'] = [
-        { wch: 36 }, // Categoria Pai
+        { wch: 12 }, // Código
+        { wch: 34 }, // Categoria
         { wch: 14 }, // Tipo
-        { wch: 22 }, // Classificação DRE
-        { wch: 70 }, // Subcategorias
-        { wch: 16 }  // Cor
+        { wch: 22 }, // Grupo
+        { wch: 28 }, // Categoria Pai
+        { wch: 45 }, // Descrição
+        { wch: 60 }  // Subcategorias
       ];
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Categorias e Subcategorias');
+      XLSX.utils.book_append_sheet(wb, ws, 'Plano de Categorias');
 
       const wsInstructions = XLSX.utils.json_to_sheet([
-        { 'Como Preencher': '1. Categoria Pai: Nome do grupo principal da categoria.' },
-        { 'Como Preencher': '2. Tipo: "Receita", "Despesa" ou "Ambas".' },
-        { 'Como Preencher': '3. Classificação DRE: "Receitas", "Despesas Fixas", "Despesas Variáveis" ou "Investimentos".' },
-        { 'Como Preencher': '4. Subcategorias: Liste as subcategorias separadas por vírgula (,).' },
-        { 'Como Preencher': '5. Se a categoria já existir no SISMNV, as novas subcategorias serão mescladas automaticamente.' }
+        { 'Estrutura Padrão': '1. Código: Identificador numérico ou estrutural (ex: 1.01, 2.01.01).' },
+        { 'Estrutura Padrão': '2. Categoria: Nome principal da categoria.' },
+        { 'Estrutura Padrão': '3. Tipo: "Receita", "Despesa" ou "Ambas".' },
+        { 'Estrutura Padrão': '4. Grupo: Grupo macro (ex: "Receitas", "Despesas Fixas", "Despesas Variáveis", "Investimentos").' },
+        { 'Estrutura Padrão': '5. Categoria Pai: Nome do grupo/categoria pai de nível superior (ou vazio se for raiz).' },
+        { 'Estrutura Padrão': '6. Descrição: Finalidade ou detalhamento da categoria.' },
+        { 'Estrutura Padrão': '7. Subcategorias: Subitens separados por vírgula (,).' }
       ]);
-      XLSX.utils.book_append_sheet(wb, wsInstructions, 'Instruções de Preenchimento');
+      XLSX.utils.book_append_sheet(wb, wsInstructions, 'Instruções');
 
       XLSX.writeFile(wb, 'modelo_importacao_categorias_sismnv.xlsx');
     } catch (e) {
@@ -423,16 +460,16 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
     );
   };
 
-  // Bulk Apply Classification
-  const applyBulkMainCategory = () => {
-    if (!bulkMainCategory) return;
+  // Bulk Apply Group
+  const applyBulkGroup = () => {
+    if (!bulkGroup) return;
     setParsedRows(prev =>
       prev.map(r => ({
         ...r,
-        mainCategory: bulkMainCategory as any
+        group: bulkGroup
       }))
     );
-    setBulkMainCategory('');
+    setBulkGroup('');
   };
 
   // Bulk Apply Type
@@ -447,14 +484,29 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
     setBulkType('');
   };
 
+  // Bulk Apply Parent Category
+  const applyBulkParentCategory = () => {
+    if (!bulkParentCategory) return;
+    setParsedRows(prev =>
+      prev.map(r => ({
+        ...r,
+        parentCategory: bulkParentCategory
+      }))
+    );
+    setBulkParentCategory('');
+  };
+
   // Add empty manual row
   const handleAddEmptyRow = () => {
     const newRow: ParsedCategoryRow = {
       id: `parsed-cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       selected: true,
+      code: `${parsedRows.length + 1}`.padStart(2, '0'),
       name: '',
       type: defaultType,
-      mainCategory: defaultMainCategory,
+      group: defaultGroup,
+      parentCategory: '',
+      description: '',
       colorKey: 'indigo',
       subcategories: [],
       subcategoriesRaw: '',
@@ -508,9 +560,13 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
 
         updatedList[existingIdx] = {
           ...updatedList[existingIdx],
+          code: row.code || updatedList[existingIdx].code,
           name: row.name.trim(),
           type: row.type,
-          mainCategory: row.mainCategory,
+          group: row.group,
+          mainCategory: row.group as any,
+          parentCategory: row.parentCategory || updatedList[existingIdx].parentCategory,
+          description: row.description || updatedList[existingIdx].description,
           color: colorObj.class,
           subcategories: combinedSubs
         };
@@ -518,9 +574,13 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
         // Create new
         const newCat: TransactionCategory = {
           id: `cat-bulk-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+          code: row.code || `${updatedList.length + 1}`.padStart(2, '0'),
           name: row.name.trim(),
           type: row.type,
-          mainCategory: row.mainCategory,
+          group: row.group,
+          mainCategory: row.group as any,
+          parentCategory: row.parentCategory || undefined,
+          description: row.description || undefined,
           color: colorObj.class,
           subcategories: row.subcategories
         };
@@ -559,7 +619,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
         transition={{ duration: 0.2 }}
-        className={`relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl shadow-2xl border overflow-hidden ${
+        className={`relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-2xl shadow-2xl border overflow-hidden ${
           isHighContrast
             ? 'bg-white text-zinc-900 border-zinc-300'
             : 'bg-zinc-950 text-zinc-100 border-zinc-800'
@@ -575,13 +635,13 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold">Importar Categorias e Subcategorias em Massa</h3>
+                <h3 className="text-base sm:text-lg font-bold">Importar Categorias e Grupos em Massa</h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  Plano de Contas
+                  Código / Categoria / Tipo / Grupo / Pai / Descrição
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Importe sua estrutura completa de categorias e subcategorias financeiras via planilha Excel (.xlsx) ou CSV.
+                Importe sua estrutura completa de categorias padronizadas via planilha Excel (.xlsx) ou CSV.
               </p>
             </div>
           </div>
@@ -670,7 +730,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                      Fluxo Padrão (Tipo)
+                      Tipo de Fluxo Padrão
                     </label>
                     <select
                       value={defaultType}
@@ -687,11 +747,11 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
 
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                      Classificação DRE Padrão
+                      Grupo Padrão
                     </label>
                     <select
-                      value={defaultMainCategory}
-                      onChange={e => setDefaultMainCategory(e.target.value as any)}
+                      value={defaultGroup}
+                      onChange={e => setDefaultGroup(e.target.value)}
                       className={`w-full px-3 py-1.5 text-xs font-semibold rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
                         isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
                       }`}
@@ -714,7 +774,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                         isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
                       }`}
                     >
-                      <option value="merge">Mesclar subcategorias (Recomendado)</option>
+                      <option value="merge">Mesclar subcategorias e dados (Recomendado)</option>
                       <option value="replace">Substituir categorias existentes</option>
                     </select>
                   </div>
@@ -756,7 +816,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                     {isProcessing ? 'Processando arquivo...' : 'Arraste a planilha de categorias aqui'}
                   </h4>
                   <p className="text-xs text-zinc-400 max-w-md mt-1.5">
-                    Envie seu arquivo <span className="font-semibold text-indigo-400">.XLSX</span>, <span className="font-semibold text-emerald-400">.XLS</span> ou <span className="font-semibold text-amber-400">.CSV</span> com as categorias e subcategorias.
+                    Envie seu arquivo <span className="font-semibold text-indigo-400">.XLSX</span>, <span className="font-semibold text-emerald-400">.XLS</span> ou <span className="font-semibold text-amber-400">.CSV</span> com colunas: Código, Categoria, Tipo, Grupo, Categoria Pai e Descrição.
                   </p>
 
                   <div className="mt-5 flex items-center gap-3">
@@ -772,16 +832,16 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-zinc-300 mb-1.5 flex items-center justify-between">
-                      <span>Cole as linhas de categorias (separadas por tabulação ou vírgula):</span>
+                      <span>Cole as linhas de categorias (Código, Categoria, Tipo, Grupo, Categoria Pai, Descrição):</span>
                       <span className="text-[10px] text-zinc-500 font-normal">
-                        Exemplo: Categoria Pai [TAB] Tipo [TAB] Subcategorias
+                        Dica: Cole direto de uma planilha Excel ou Google Sheets
                       </span>
                     </label>
                     <textarea
                       rows={9}
                       value={pasteContent}
                       onChange={e => setPasteContent(e.target.value)}
-                      placeholder={`Categoria Pai\tTipo\tClassificação\tSubcategorias\nDízimos e Ofertas\tReceita\tReceitas\tMembros, Visitantes, Online\nDespesas Administrativas\tDespesa\tDespesas Fixas\tEnergia, Água, Internet, Aluguel\nMinistérios\tDespesa\tDespesas Variáveis\tInfantil, Jovens, Louvor`}
+                      placeholder={`Código\tCategoria\tTipo\tGrupo\tCategoria Pai\tDescrição\tSubcategorias\n1.01\tDízimos\tReceita\tReceitas\tDízimos e Ofertas\tArrecadação de dízimos de membros\tMembros, Visitantes, Online\n2.01\tEnergia e Água\tDespesa\tDespesas Fixas\tDespesas Operacionais\tContas de consumo mensal\tEnergia Elétrica, Água e Esgoto`}
                       className={`w-full p-4 font-mono text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${
                         isHighContrast
                           ? 'bg-white border-zinc-300 text-zinc-800'
@@ -877,22 +937,22 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5">
                     <select
-                      value={bulkMainCategory}
-                      onChange={e => setBulkMainCategory(e.target.value)}
+                      value={bulkGroup}
+                      onChange={e => setBulkGroup(e.target.value)}
                       className={`text-xs px-2.5 py-1 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
                         isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
                       }`}
                     >
-                      <option value="">Aplicar Classificação a Todos...</option>
+                      <option value="">Aplicar Grupo a Todos...</option>
+                      <option value="Receitas">Receitas</option>
                       <option value="Despesas Fixas">Despesas Fixas</option>
                       <option value="Despesas Variáveis">Despesas Variáveis</option>
-                      <option value="Receitas">Receitas</option>
                       <option value="Investimentos">Investimentos</option>
                     </select>
                     <button
                       type="button"
-                      onClick={applyBulkMainCategory}
-                      disabled={!bulkMainCategory}
+                      onClick={applyBulkGroup}
+                      disabled={!bulkGroup}
                       className="px-2.5 py-1 rounded-lg text-xs font-bold bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-200 cursor-pointer"
                     >
                       Aplicar
@@ -934,7 +994,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                 </div>
               </div>
 
-              {/* Categories Table */}
+              {/* Standardized 6-Column Categories Table */}
               <div className={`rounded-xl border overflow-x-auto max-h-[46vh] ${
                 isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'
               }`}>
@@ -951,12 +1011,13 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                           className="rounded border-zinc-700 text-indigo-600 focus:ring-0 cursor-pointer"
                         />
                       </th>
-                      <th className="py-3 px-2 w-28 font-bold uppercase tracking-wider text-[10px]">Status</th>
-                      <th className="py-3 px-2 min-w-[180px] font-bold uppercase tracking-wider text-[10px]">Categoria Pai</th>
-                      <th className="py-3 px-2 w-28 font-bold uppercase tracking-wider text-[10px]">Tipo</th>
-                      <th className="py-3 px-2 w-40 font-bold uppercase tracking-wider text-[10px]">Classificação DRE</th>
-                      <th className="py-3 px-2 min-w-[280px] font-bold uppercase tracking-wider text-[10px]">Subcategorias (separadas por vírgula)</th>
-                      <th className="py-3 px-2 w-36 font-bold uppercase tracking-wider text-[10px]">Cor / Visual</th>
+                      <th className="py-3 px-2 w-24 font-bold uppercase tracking-wider text-[10px]">Código</th>
+                      <th className="py-3 px-2 min-w-[170px] font-bold uppercase tracking-wider text-[10px]">Categoria</th>
+                      <th className="py-3 px-2 w-24 font-bold uppercase tracking-wider text-[10px]">Tipo</th>
+                      <th className="py-3 px-2 w-36 font-bold uppercase tracking-wider text-[10px]">Grupo</th>
+                      <th className="py-3 px-2 min-w-[150px] font-bold uppercase tracking-wider text-[10px]">Categoria Pai</th>
+                      <th className="py-3 px-2 min-w-[180px] font-bold uppercase tracking-wider text-[10px]">Descrição</th>
+                      <th className="py-3 px-2 min-w-[160px] font-bold uppercase tracking-wider text-[10px]">Subcategorias</th>
                       <th className="py-3 px-2 w-12 text-center">Ações</th>
                     </tr>
                   </thead>
@@ -987,20 +1048,20 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                             />
                           </td>
 
-                          {/* Status Badge */}
+                          {/* 1. Código */}
                           <td className="py-2 px-2">
-                            {row.isExisting ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                <RefreshCw size={10} /> Existente
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                <Plus size={10} /> Nova
-                              </span>
-                            )}
+                            <input
+                              type="text"
+                              value={row.code}
+                              onChange={e => updateRow(row.id, { code: e.target.value })}
+                              placeholder="1.01"
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold ${
+                                isHighContrast ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-indigo-400'
+                              }`}
+                            />
                           </td>
 
-                          {/* Categoria Pai Name */}
+                          {/* 2. Categoria */}
                           <td className="py-2 px-2">
                             <input
                               type="text"
@@ -1022,7 +1083,7 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                             )}
                           </td>
 
-                          {/* Tipo */}
+                          {/* 3. Tipo */}
                           <td className="py-2 px-2">
                             <select
                               value={row.type}
@@ -1037,60 +1098,56 @@ export const BulkCategoryImportModal: React.FC<BulkCategoryImportModalProps> = (
                             </select>
                           </td>
 
-                          {/* Classificação DRE */}
+                          {/* 4. Grupo */}
                           <td className="py-2 px-2">
-                            <select
-                              value={row.mainCategory}
-                              onChange={e => updateRow(row.id, { mainCategory: e.target.value as any })}
-                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                            <input
+                              type="text"
+                              value={row.group}
+                              onChange={e => updateRow(row.id, { group: e.target.value })}
+                              placeholder="Ex: Despesas Fixas"
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold ${
                                 isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
                               }`}
-                            >
-                              <option value="Despesas Fixas">Despesas Fixas</option>
-                              <option value="Despesas Variáveis">Despesas Variáveis</option>
-                              <option value="Receitas">Receitas</option>
-                              <option value="Investimentos">Investimentos</option>
-                            </select>
+                            />
                           </td>
 
-                          {/* Subcategorias Raw Text */}
+                          {/* 5. Categoria Pai */}
+                          <td className="py-2 px-2">
+                            <input
+                              type="text"
+                              value={row.parentCategory}
+                              onChange={e => updateRow(row.id, { parentCategory: e.target.value })}
+                              placeholder="Categoria Pai (se houver)"
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-300'
+                              }`}
+                            />
+                          </td>
+
+                          {/* 6. Descrição */}
+                          <td className="py-2 px-2">
+                            <input
+                              type="text"
+                              value={row.description}
+                              onChange={e => updateRow(row.id, { description: e.target.value })}
+                              placeholder="Finalidade ou detalhes..."
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 text-zinc-400 ${
+                                isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-300'
+                              }`}
+                            />
+                          </td>
+
+                          {/* Subcategorias */}
                           <td className="py-2 px-2">
                             <input
                               type="text"
                               value={row.subcategoriesRaw}
                               onChange={e => updateRow(row.id, { subcategoriesRaw: e.target.value })}
-                              placeholder="Subcategoria 1, Subcategoria 2, ..."
+                              placeholder="Sub 1, Sub 2..."
                               className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
                                 isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
                               }`}
                             />
-                            {row.subcategories.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {row.subcategories.map((sub, sIdx) => (
-                                  <span
-                                    key={sIdx}
-                                    className="px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 text-[9px] border border-zinc-700"
-                                  >
-                                    {sub}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Cor */}
-                          <td className="py-2 px-2">
-                            <select
-                              value={row.colorKey}
-                              onChange={e => updateRow(row.id, { colorKey: e.target.value })}
-                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
-                              }`}
-                            >
-                              {Object.entries(COLOR_PALETTE).map(([key, c]) => (
-                                <option key={key} value={key}>{c.label}</option>
-                              ))}
-                            </select>
                           </td>
 
                           {/* Delete */}
