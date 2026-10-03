@@ -1,0 +1,6 @@
+{
+  "name": "AdmMnv",
+  "description": "Sistema inteligente de gestão de documentos, atas e membros com editor integrado.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
