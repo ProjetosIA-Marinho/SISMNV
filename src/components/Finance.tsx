@@ -2653,7 +2653,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       setIsGeneratingDREPDF(true);
       try {
         const canvas = await html2canvas(element, {
-          scale: 2.2,
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -2665,9 +2665,12 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               clonedEl.style.boxShadow = 'none';
               clonedEl.style.border = 'none';
               clonedEl.style.borderRadius = '0';
-              clonedEl.style.width = '1200px';
-              clonedEl.style.padding = '24px 32px';
+              clonedEl.style.width = '1120px';
+              clonedEl.style.maxWidth = '1120px';
+              clonedEl.style.minWidth = '1120px';
+              clonedEl.style.padding = '16px 20px';
               clonedEl.style.margin = '0 auto';
+              clonedEl.style.backgroundColor = '#ffffff';
             }
           }
         });
@@ -10735,7 +10738,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               {/* Modal Controls Header Bar (hidden during printing) */}
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="max-w-[1300px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
+                className="max-w-[1240px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
@@ -10746,7 +10749,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       Demonstrativo Operacional (DRE / Fluxo de Caixa) — Exercício de {dreSelectedYear}
                     </h3>
                     <p className="text-[11px] text-zinc-400">
-                      Visualização mês a mês e anual oficial configurada para folha A4 (Paisagem) em alta definição
+                      Configurado para impressão e exportação em página A4 (Paisagem) sem cortes de colunas
                     </p>
                   </div>
                 </div>
@@ -10754,24 +10757,12 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        window.print();
-                      } catch (e) {
-                        console.warn('window.print error:', e);
-                      }
-                      await handleExportDREPDF();
-                    }}
-                    disabled={isGeneratingDREPDF}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    onClick={() => window.print()}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 active:scale-95"
                     title="Imprimir na impressora ou salvar PDF"
                   >
-                    {isGeneratingDREPDF ? (
-                      <Loader2 size={15} className="animate-spin text-white" />
-                    ) : (
-                      <Printer size={15} />
-                    )}
-                    <span>{isGeneratingDREPDF ? 'Gerando PDF...' : 'Imprimir / Salvar em PDF'}</span>
+                    <Printer size={15} />
+                    <span>Imprimir / Salvar em PDF</span>
                   </button>
 
                   <button
@@ -10786,7 +10777,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     ) : (
                       <Download size={15} />
                     )}
-                    <span>{isGeneratingDREPDF ? 'Baixando...' : 'Baixar Arquivo PDF'}</span>
+                    <span>{isGeneratingDREPDF ? 'Gerando PDF...' : 'Baixar Arquivo PDF'}</span>
                   </button>
 
                   <button
@@ -10812,30 +10803,30 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               {/* Printable Document Sheet */}
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="max-w-[1300px] w-full mx-auto pb-12 flex justify-center"
+                className="max-w-[1240px] w-full mx-auto pb-12 flex justify-center overflow-x-auto"
               >
                 <div
                   id="dre-printable-sheet"
-                  className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-8 sm:p-10 min-w-[1100px] select-text font-sans text-left"
+                  className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-6 sm:p-8 w-full max-w-[1140px] select-text font-sans text-left box-border"
                 >
                   {/* Official Header */}
-                  <div className="flex items-center gap-5 pb-5 border-b-2 border-zinc-900 text-left mb-6">
-                    <MNVLogo size={80} />
+                  <div className="flex items-center gap-4 pb-4 border-b-2 border-zinc-900 text-left mb-5">
+                    <MNVLogo size={65} />
                     <div className="flex flex-col items-start justify-center">
-                      <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
+                      <h1 className="text-lg sm:text-xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
                         MINISTÉRIO NOVA VIDA
                       </h1>
-                      <p className="text-xs font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
+                      <p className="text-[10.5px] font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
                         AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
                       </p>
-                      <p className="text-xs font-mono font-bold text-zinc-600">
+                      <p className="text-[10.5px] font-mono font-bold text-zinc-600">
                         CNPJ: 62.471.271-0001-82
                       </p>
-                      <div className="mt-2.5 pt-2 border-t border-zinc-300 w-full">
-                        <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-indigo-900">
+                      <div className="mt-2 pt-1.5 border-t border-zinc-300 w-full">
+                        <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-indigo-900">
                           DEMONSTRATIVO DE RESULTADO (DRE) E FLUXO DE CAIXA OPERACIONAL MÊS A MÊS - EXERCÍCIO DE {dreSelectedYear}
                         </h2>
-                        <p className="text-[10px] font-mono text-zinc-500 uppercase mt-0.5">
+                        <p className="text-[9.5px] font-mono text-zinc-500 uppercase mt-0.5">
                           Visualização Anual Consolidada de 01 de Janeiro a 31 de Dezembro de {dreSelectedYear}
                         </p>
                       </div>
@@ -10843,68 +10834,68 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   </div>
 
                   {/* Summary Metric Cards */}
-                  <div className="grid grid-cols-5 gap-3 mb-6">
-                    <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50">
-                      <span className="block text-[8px] uppercase font-bold text-zinc-500">Saldo Inicial (01/Jan)</span>
-                      <span className="text-xs font-black font-mono text-zinc-900">{formatCurrency(yearInitialCash)}</span>
+                  <div className="grid grid-cols-5 gap-2.5 mb-5">
+                    <div className="p-2.5 rounded-xl border border-zinc-200 bg-zinc-50 flex flex-col justify-between" style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}>
+                      <span className="block text-[7.5px] uppercase font-bold text-zinc-500">Saldo Inicial (01/Jan)</span>
+                      <span className="text-xs font-black font-mono text-zinc-900 mt-1 truncate">{formatCurrency(yearInitialCash)}</span>
                     </div>
-                    <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50">
-                      <span className="block text-[8px] uppercase font-bold text-emerald-700">Receitas Operacionais (+)</span>
-                      <span className="text-xs font-black font-mono text-emerald-900">+{formatCurrency(totalInflowYear)}</span>
+                    <div className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50 flex flex-col justify-between" style={{ backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }}>
+                      <span className="block text-[7.5px] uppercase font-bold text-emerald-700">Receitas Operacionais (+)</span>
+                      <span className="text-xs font-black font-mono text-emerald-900 mt-1 truncate">+{formatCurrency(totalInflowYear)}</span>
                     </div>
-                    <div className="p-3 rounded-xl border border-rose-200 bg-rose-50">
-                      <span className="block text-[8px] uppercase font-bold text-rose-700">Despesas Operacionais (-)</span>
-                      <span className="text-xs font-black font-mono text-rose-900">-{formatCurrency(totalOutflowYear)}</span>
+                    <div className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 flex flex-col justify-between" style={{ backgroundColor: '#fff1f2', borderColor: '#fecdd3' }}>
+                      <span className="block text-[7.5px] uppercase font-bold text-rose-700">Despesas Operacionais (-)</span>
+                      <span className="text-xs font-black font-mono text-rose-900 mt-1 truncate">-{formatCurrency(totalOutflowYear)}</span>
                     </div>
-                    <div className={`p-3 rounded-xl border ${totalResultYear >= 0 ? 'border-emerald-200 bg-emerald-50/60' : 'border-rose-200 bg-rose-50/60'}`}>
-                      <span className={`block text-[8px] uppercase font-bold ${totalResultYear >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
+                    <div className={`p-2.5 rounded-xl border flex flex-col justify-between`} style={{ backgroundColor: totalResultYear >= 0 ? '#ecfdf5' : '#fff1f2', borderColor: totalResultYear >= 0 ? '#a7f3d0' : '#fecdd3' }}>
+                      <span className={`block text-[7.5px] uppercase font-bold ${totalResultYear >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
                         Resultado ({totalResultYear >= 0 ? 'Superávit' : 'Déficit'})
                       </span>
-                      <span className={`text-xs font-black font-mono ${totalResultYear >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
+                      <span className={`text-xs font-black font-mono mt-1 truncate ${totalResultYear >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
                         {totalResultYear >= 0 ? '+' : ''}{formatCurrency(totalResultYear)}
                       </span>
                     </div>
-                    <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50">
-                      <span className="block text-[8px] uppercase font-bold text-indigo-700">Saldo Final (31/Dez)</span>
-                      <span className="text-xs font-black font-mono text-indigo-900">{formatCurrency(endCashYear)}</span>
+                    <div className="p-2.5 rounded-xl border text-white flex flex-col justify-between" style={{ backgroundColor: '#4338ca', borderColor: '#3730a3' }}>
+                      <span className="block text-[7.5px] uppercase font-bold text-white/90">Saldo Final (31/Dez)</span>
+                      <span className="text-xs font-black font-mono text-white mt-1 truncate">{formatCurrency(endCashYear)}</span>
                     </div>
                   </div>
 
-                  {/* Complete 12-Month Table */}
-                  <div className="mb-8 overflow-hidden rounded-xl border border-zinc-300">
-                    <table className="w-full text-left border-collapse text-[10px]">
+                  {/* Complete 12-Month Table (14 columns fixed at 100% width) */}
+                  <div className="mb-6 overflow-hidden rounded-xl border border-zinc-300">
+                    <table className="w-full text-left border-collapse table-fixed text-[7.5px]">
                       <thead>
-                        <tr className="bg-zinc-100 border-b border-zinc-300 font-bold uppercase text-zinc-700 text-[9px]">
-                          <th className="py-2 px-3 min-w-[200px] border-r border-zinc-300">Estrutura / Categoria</th>
+                        <tr className="bg-zinc-100 border-b border-zinc-300 font-bold uppercase text-zinc-700 text-[7.5px]">
+                          <th className="py-2 px-2 w-[22%] border-r border-zinc-300">Estrutura / Categoria</th>
                           {DRE_MONTHS_LIST.map(m => (
-                            <th key={m.key} className="py-2 px-2 text-right border-r border-zinc-300 min-w-[65px]">
+                            <th key={m.key} className="py-2 px-1 text-right border-r border-zinc-300 w-[5.75%]">
                               {m.label}
                             </th>
                           ))}
-                          <th className="py-2 px-3 text-right font-black bg-zinc-200 text-zinc-900 min-w-[90px]">
+                          <th className="py-2 px-1.5 text-right font-black bg-zinc-200 text-zinc-900 w-[9%]">
                             Total {dreSelectedYear}
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-200 text-zinc-800">
+                      <tbody className="divide-y divide-zinc-200 text-zinc-800 text-[7.5px]">
                         {/* 1. Saldo Inicial */}
-                        <tr className="bg-zinc-50/80 font-bold">
-                          <td className="py-2 px-3 text-zinc-900 border-r border-zinc-300">
+                        <tr className="bg-zinc-50 font-bold">
+                          <td className="py-1.5 px-2 text-zinc-900 border-r border-zinc-300 truncate">
                             SALDO INICIAL DE DISPONIBILIDADES
                           </td>
                           {monthlyStartCash.map((val, idx) => (
-                            <td key={idx} className="py-2 px-2 text-right font-mono border-r border-zinc-200 text-zinc-700">
+                            <td key={idx} className="py-1.5 px-1 text-right font-mono border-r border-zinc-200 text-zinc-700 whitespace-nowrap">
                               {formatCurrency(val)}
                             </td>
                           ))}
-                          <td className="py-2 px-3 text-right font-mono font-black bg-zinc-100 text-zinc-900">
+                          <td className="py-1.5 px-1.5 text-right font-mono font-black bg-zinc-100 text-zinc-900 whitespace-nowrap">
                             {formatCurrency(yearInitialCash)}
                           </td>
                         </tr>
 
                         {/* 2. RECEITAS HEADER */}
-                        <tr className="bg-emerald-100/70 border-t-2 border-emerald-300 font-black text-emerald-950">
-                          <td colSpan={14} className="py-2 px-3 text-[10px] tracking-wide">
+                        <tr className="bg-emerald-100 border-t-2 border-emerald-300 font-black text-emerald-950" style={{ backgroundColor: '#d1fae5' }}>
+                          <td colSpan={14} className="py-1.5 px-2 text-[8px] tracking-wide uppercase font-black">
                             1. RECEITAS E ENTRADAS OPERACIONAIS (+)
                           </td>
                         </tr>
@@ -10918,30 +10909,30 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         ) : (
                           incomeCategories.map(cat => (
                             <React.Fragment key={cat.id}>
-                              <tr className="bg-emerald-50/20 font-bold hover:bg-emerald-50/40">
-                                <td className="py-1.5 px-3 text-zinc-900 border-r border-zinc-300">
+                              <tr className="bg-emerald-50/30 font-bold hover:bg-emerald-50/50">
+                                <td className="py-1 px-2 text-zinc-900 border-r border-zinc-300 truncate">
                                   {cat.name}
                                 </td>
                                 {cat.months.map((val, mIdx) => (
-                                  <td key={mIdx} className="py-1.5 px-2 text-right font-mono border-r border-zinc-200 text-emerald-800">
+                                  <td key={mIdx} className="py-1 px-1 text-right font-mono border-r border-zinc-200 text-emerald-800 whitespace-nowrap">
                                     {val > 0 ? formatCurrency(val) : '-'}
                                   </td>
                                 ))}
-                                <td className="py-1.5 px-3 text-right font-mono font-bold bg-emerald-50 text-emerald-900">
+                                <td className="py-1 px-1.5 text-right font-mono font-bold bg-emerald-50 text-emerald-900 whitespace-nowrap">
                                   {formatCurrency(cat.total)}
                                 </td>
                               </tr>
                               {cat.subcategoriesList?.map(sub => (
-                                <tr key={sub.name} className="text-[9px] text-zinc-600 bg-white">
-                                  <td className="py-1 px-3 pl-6 italic border-r border-zinc-300 text-zinc-600">
+                                <tr key={sub.name} className="text-[7px] text-zinc-600 bg-white">
+                                  <td className="py-0.5 px-2 pl-4 italic border-r border-zinc-300 text-zinc-600 truncate">
                                     • {sub.name}
                                   </td>
                                   {sub.months.map((sVal, smIdx) => (
-                                    <td key={smIdx} className="py-1 px-2 text-right font-mono border-r border-zinc-200 text-zinc-600">
+                                    <td key={smIdx} className="py-0.5 px-1 text-right font-mono border-r border-zinc-200 text-zinc-600 whitespace-nowrap">
                                       {sVal > 0 ? formatCurrency(sVal) : '-'}
                                     </td>
                                   ))}
-                                  <td className="py-1 px-3 text-right font-mono font-medium bg-zinc-50 text-zinc-700">
+                                  <td className="py-0.5 px-1.5 text-right font-mono font-medium bg-zinc-50 text-zinc-700 whitespace-nowrap">
                                     {formatCurrency(sub.total)}
                                   </td>
                                 </tr>
@@ -10951,23 +10942,23 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         )}
 
                         {/* TOTAL RECEITAS */}
-                        <tr className="bg-emerald-100 font-black border-t border-b-2 border-emerald-300 text-emerald-950">
-                          <td className="py-2 px-3 border-r border-emerald-300">
+                        <tr className="bg-emerald-100 font-black border-t border-b-2 border-emerald-300 text-emerald-950" style={{ backgroundColor: '#a7f3d0' }}>
+                          <td className="py-1.5 px-2 border-r border-emerald-300 font-bold truncate">
                             TOTAL DE RECEITAS OPERACIONAIS (+)
                           </td>
                           {monthlyInflow.map((val, idx) => (
-                            <td key={idx} className="py-2 px-2 text-right font-mono border-r border-emerald-200 text-emerald-950 font-bold">
+                            <td key={idx} className="py-1.5 px-1 text-right font-mono border-r border-emerald-200 text-emerald-950 font-bold whitespace-nowrap">
                               {formatCurrency(val)}
                             </td>
                           ))}
-                          <td className="py-2 px-3 text-right font-mono font-black bg-emerald-200 text-emerald-950">
+                          <td className="py-1.5 px-1.5 text-right font-mono font-black bg-emerald-200 text-emerald-950 whitespace-nowrap">
                             {formatCurrency(totalInflowYear)}
                           </td>
                         </tr>
 
                         {/* 3. DESPESAS HEADER */}
-                        <tr className="bg-rose-100/70 border-t-2 border-rose-300 font-black text-rose-950">
-                          <td colSpan={14} className="py-2 px-3 text-[10px] tracking-wide">
+                        <tr className="bg-rose-100 border-t-2 border-rose-300 font-black text-rose-950" style={{ backgroundColor: '#ffe4e6' }}>
+                          <td colSpan={14} className="py-1.5 px-2 text-[8px] tracking-wide uppercase font-black">
                             2. DESPESAS E SAÍDAS OPERACIONAIS (-)
                           </td>
                         </tr>
@@ -10981,30 +10972,30 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         ) : (
                           expenseCategories.map(cat => (
                             <React.Fragment key={cat.id}>
-                              <tr className="bg-rose-50/20 font-bold hover:bg-rose-50/40">
-                                <td className="py-1.5 px-3 text-zinc-900 border-r border-zinc-300">
+                              <tr className="bg-rose-50/30 font-bold hover:bg-rose-50/50">
+                                <td className="py-1 px-2 text-zinc-900 border-r border-zinc-300 truncate">
                                   {cat.name}
                                 </td>
                                 {cat.months.map((val, mIdx) => (
-                                  <td key={mIdx} className="py-1.5 px-2 text-right font-mono border-r border-zinc-200 text-rose-800">
+                                  <td key={mIdx} className="py-1 px-1 text-right font-mono border-r border-zinc-200 text-rose-800 whitespace-nowrap">
                                     {val > 0 ? `-${formatCurrency(val)}` : '-'}
                                   </td>
                                 ))}
-                                <td className="py-1.5 px-3 text-right font-mono font-bold bg-rose-50 text-rose-900">
+                                <td className="py-1 px-1.5 text-right font-mono font-bold bg-rose-50 text-rose-900 whitespace-nowrap">
                                   -{formatCurrency(cat.total)}
                                 </td>
                               </tr>
                               {cat.subcategoriesList?.map(sub => (
-                                <tr key={sub.name} className="text-[9px] text-zinc-600 bg-white">
-                                  <td className="py-1 px-3 pl-6 italic border-r border-zinc-300 text-zinc-600">
+                                <tr key={sub.name} className="text-[7px] text-zinc-600 bg-white">
+                                  <td className="py-0.5 px-2 pl-4 italic border-r border-zinc-300 text-zinc-600 truncate">
                                     • {sub.name}
                                   </td>
                                   {sub.months.map((sVal, smIdx) => (
-                                    <td key={smIdx} className="py-1 px-2 text-right font-mono border-r border-zinc-200 text-zinc-600">
+                                    <td key={smIdx} className="py-0.5 px-1 text-right font-mono border-r border-zinc-200 text-zinc-600 whitespace-nowrap">
                                       {sVal > 0 ? `-${formatCurrency(sVal)}` : '-'}
                                     </td>
                                   ))}
-                                  <td className="py-1 px-3 text-right font-mono font-medium bg-zinc-50 text-zinc-700">
+                                  <td className="py-0.5 px-1.5 text-right font-mono font-medium bg-zinc-50 text-zinc-700 whitespace-nowrap">
                                     -{formatCurrency(sub.total)}
                                   </td>
                                 </tr>
@@ -11014,46 +11005,46 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         )}
 
                         {/* TOTAL DESPESAS */}
-                        <tr className="bg-rose-100 font-black border-t border-b-2 border-rose-300 text-rose-950">
-                          <td className="py-2 px-3 border-r border-rose-300">
+                        <tr className="bg-rose-100 font-black border-t border-b-2 border-rose-300 text-rose-950" style={{ backgroundColor: '#fecdd3' }}>
+                          <td className="py-1.5 px-2 border-r border-rose-300 font-bold truncate">
                             TOTAL DE DESPESAS OPERACIONAIS (-)
                           </td>
                           {monthlyOutflow.map((val, idx) => (
-                            <td key={idx} className="py-2 px-2 text-right font-mono border-r border-rose-200 text-rose-950 font-bold">
+                            <td key={idx} className="py-1.5 px-1 text-right font-mono border-r border-rose-200 text-rose-950 font-bold whitespace-nowrap">
                               -{formatCurrency(val)}
                             </td>
                           ))}
-                          <td className="py-2 px-3 text-right font-mono font-black bg-rose-200 text-rose-950">
+                          <td className="py-1.5 px-1.5 text-right font-mono font-black bg-rose-200 text-rose-950 whitespace-nowrap">
                             -{formatCurrency(totalOutflowYear)}
                           </td>
                         </tr>
 
                         {/* 4. RESULTADO OPERACIONAL */}
-                        <tr className="bg-zinc-100 font-black border-t-2 border-zinc-400 text-zinc-950">
-                          <td className="py-2 px-3 border-r border-zinc-300">
+                        <tr className="bg-zinc-100 font-black border-t-2 border-zinc-400 text-zinc-950" style={{ backgroundColor: '#f4f4f5' }}>
+                          <td className="py-1.5 px-2 border-r border-zinc-300 font-black truncate">
                             RESULTADO DO MÊS (SUPERÁVIT / DÉFICIT)
                           </td>
                           {monthlyResult.map((val, idx) => (
-                            <td key={idx} className={`py-2 px-2 text-right font-mono font-black border-r border-zinc-300 ${val >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            <td key={idx} className={`py-1.5 px-1 text-right font-mono font-black border-r border-zinc-300 whitespace-nowrap ${val >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                               {val > 0 ? `+${formatCurrency(val)}` : val < 0 ? formatCurrency(val) : 'R$ 0,00'}
                             </td>
                           ))}
-                          <td className={`py-2 px-3 text-right font-mono font-black ${totalResultYear >= 0 ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'}`}>
+                          <td className={`py-1.5 px-1.5 text-right font-mono font-black whitespace-nowrap ${totalResultYear >= 0 ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'}`}>
                             {totalResultYear > 0 ? `+${formatCurrency(totalResultYear)}` : formatCurrency(totalResultYear)}
                           </td>
                         </tr>
 
                         {/* 5. SALDO FINAL ACUMULADO */}
-                        <tr className="bg-indigo-100 font-black border-t-2 border-indigo-400 text-indigo-950">
-                          <td className="py-2.5 px-3 border-r border-indigo-300">
+                        <tr className="bg-indigo-100 font-black border-t-2 border-indigo-400 text-indigo-950" style={{ backgroundColor: '#e0e7ff' }}>
+                          <td className="py-2 px-2 border-r border-indigo-300 font-black truncate">
                             SALDO FINAL DE DISPONIBILIDADES (CAIXA / BANCOS)
                           </td>
                           {monthlyEndCash.map((val, idx) => (
-                            <td key={idx} className="py-2.5 px-2 text-right font-mono font-black border-r border-indigo-200 text-indigo-950">
+                            <td key={idx} className="py-2 px-1 text-right font-mono font-black border-r border-indigo-200 text-indigo-950 whitespace-nowrap">
                               {formatCurrency(val)}
                             </td>
                           ))}
-                          <td className="py-2.5 px-3 text-right font-mono font-black bg-indigo-200 text-indigo-950">
+                          <td className="py-2 px-1.5 text-right font-mono font-black bg-indigo-200 text-indigo-950 whitespace-nowrap">
                             {formatCurrency(endCashYear)}
                           </td>
                         </tr>
@@ -11062,35 +11053,35 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   </div>
 
                   {/* Termo de Encerramento e Assinaturas Legais */}
-                  <div className="pt-6 border-t-2 border-zinc-900 space-y-6 page-break-inside-avoid">
-                    <p className="text-[9px] text-zinc-600 text-center leading-relaxed max-w-3xl mx-auto italic">
+                  <div className="pt-5 border-t-2 border-zinc-900 space-y-5 page-break-inside-avoid">
+                    <p className="text-[8.5px] text-zinc-600 text-center leading-relaxed max-w-3xl mx-auto italic">
                       "Certificamos sob as penas da lei que o presente Demonstrativo de Resultado (DRE) e Fluxo de Caixa Operacional reflete fielmente as movimentações de entradas, saídas e disponibilidades financeiras do Ministério Nova Vida no exercício de {dreSelectedYear}."
                     </p>
 
-                    <div className="grid grid-cols-3 gap-8 pt-4 text-center text-zinc-800">
+                    <div className="grid grid-cols-3 gap-6 pt-3 text-center text-zinc-800">
                       <div>
                         <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
-                        <p className="text-[10px] font-black uppercase text-zinc-900">Pr. Presidente</p>
-                        <p className="text-[8px] text-zinc-500">Diretoria Executiva</p>
-                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                        <p className="text-[9.5px] font-black uppercase text-zinc-900">Pr. Presidente</p>
+                        <p className="text-[7.5px] text-zinc-500">Diretoria Executiva</p>
+                        <p className="text-[6.5px] text-zinc-400">Ministério Nova Vida</p>
                       </div>
 
                       <div>
                         <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
-                        <p className="text-[10px] font-black uppercase text-zinc-900">1º Tesoureiro(a)</p>
-                        <p className="text-[8px] text-zinc-500">Diretoria Financeira</p>
-                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                        <p className="text-[9.5px] font-black uppercase text-zinc-900">1º Tesoureiro(a)</p>
+                        <p className="text-[7.5px] text-zinc-500">Diretoria Financeira</p>
+                        <p className="text-[6.5px] text-zinc-400">Ministério Nova Vida</p>
                       </div>
 
                       <div>
                         <div className="border-b border-zinc-900 w-4/5 mx-auto mb-1"></div>
-                        <p className="text-[10px] font-black uppercase text-zinc-900">Conselho Fiscal / CRC</p>
-                        <p className="text-[8px] text-zinc-500">Contabilidade & Auditoria</p>
-                        <p className="text-[7px] text-zinc-400">Ministério Nova Vida</p>
+                        <p className="text-[9.5px] font-black uppercase text-zinc-900">Conselho Fiscal / CRC</p>
+                        <p className="text-[7.5px] text-zinc-500">Contabilidade & Auditoria</p>
+                        <p className="text-[6.5px] text-zinc-400">Ministério Nova Vida</p>
                       </div>
                     </div>
 
-                    <div className="text-center pt-1 text-[9px] font-mono text-zinc-400">
+                    <div className="text-center pt-1 text-[8px] font-mono text-zinc-400">
                       Pirassununga/SP, 31 de dezembro de {dreSelectedYear}
                     </div>
                   </div>
@@ -11282,8 +11273,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       <style>{`
         @media print {
           @page {
-            size: portrait;
-            margin: 6mm 5mm;
+            size: ${showPrintReportModal ? 'portrait' : 'landscape'};
+            margin: 5mm;
           }
           html, body {
             background: white !important;
@@ -11299,25 +11290,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
           }
           #report-printable-sheet, #report-printable-sheet *,
           #balanco-printable-sheet, #balanco-printable-sheet *,
+          #dre-printable-sheet, #dre-printable-sheet *,
           #printable-report-area, #printable-report-area * {
             visibility: visible !important;
           }
-          #report-printable-sheet {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 0 !important;
-            background: white !important;
-            color: black !important;
-            box-shadow: none !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            box-sizing: border-box !important;
-          }
-          #balanco-printable-sheet {
+          #report-printable-sheet,
+          #balanco-printable-sheet,
+          #dre-printable-sheet {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
