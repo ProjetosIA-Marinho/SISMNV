@@ -3011,25 +3011,26 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               clonedEl.style.boxShadow = 'none';
               clonedEl.style.border = 'none';
               clonedEl.style.borderRadius = '0';
-              clonedEl.style.width = '1140px';
-              clonedEl.style.padding = '24px 32px';
+              clonedEl.style.width = '794px';
+              clonedEl.style.maxWidth = '794px';
+              clonedEl.style.padding = '20px 24px';
               clonedEl.style.margin = '0 auto';
             }
           }
         });
 
         const imgData = canvas.toDataURL('image/png');
-        const pdfWidth = 297; // A4 landscape width in mm
-        const pdfHeight = 210; // A4 landscape height in mm
+        const pdfWidth = 210; // A4 portrait width in mm
+        const pdfHeight = 297; // A4 portrait height in mm
         const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
         const doc = new jsPDF({
-          orientation: 'landscape',
+          orientation: 'portrait',
           unit: 'mm',
           format: 'a4',
         });
 
-        // If it fits within roughly 1 page (up to 225mm), fit cleanly to 1 page
+        // If it fits within roughly 1 page (up to 310mm), fit cleanly to 1 page
         if (imgHeight <= pdfHeight + 15) {
           const scaleFactor = imgHeight > pdfHeight ? (pdfHeight - 4) / imgHeight : 1;
           const renderW = pdfWidth * scaleFactor;
@@ -9660,7 +9661,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             {/* Modal Controls Header Bar (hidden during printing) */}
             <div 
               onClick={(e) => e.stopPropagation()} 
-              className="max-w-[1240px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
+              className="max-w-[850px] w-full mx-auto mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl no-print shrink-0"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
@@ -9668,7 +9669,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">{getTransactionReportTitle()}</h3>
-                  <p className="text-[11px] text-zinc-400">Configurado para impressão e exportação em página A4 (Paisagem) sem quebras de colunas</p>
+                  <p className="text-[11px] text-zinc-400">Configurado para impressão em página A4 (Retrato) com todas as colunas ajustadas</p>
                 </div>
               </div>
 
@@ -9710,160 +9711,160 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             {/* Printable Report Canvas */}
             <div 
               onClick={(e) => e.stopPropagation()} 
-              className="max-w-[1240px] w-full mx-auto overflow-x-auto pb-12"
+              className="max-w-[850px] w-full mx-auto overflow-x-auto pb-12"
             >
               <div
                 id="report-printable-sheet"
-                className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-8 sm:p-10 min-w-[1020px] select-text font-sans"
+                className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-5 sm:p-7 w-full select-text font-sans box-border"
               >
                 {/* 1. Official Header matching institutional format */}
-                <div className="flex items-center gap-5 pb-5 border-b-2 border-zinc-900 text-left mb-6">
-                  <MNVLogo size={80} />
+                <div className="flex items-center gap-4 pb-4 border-b-2 border-zinc-900 text-left mb-5">
+                  <MNVLogo size={65} />
                   <div className="flex flex-col items-start justify-center">
-                    <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
+                    <h1 className="text-lg sm:text-xl font-black uppercase tracking-tight text-zinc-900 leading-tight">
                       MINISTÉRIO NOVA VIDA
                     </h1>
-                    <p className="text-xs font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
+                    <p className="text-[10.5px] font-bold text-zinc-700 uppercase tracking-wide mt-0.5">
                       AV. DR. IVO XAVIER FERREIRA, 3038 - VILA SÃO PEDRO - PIRASSUNUNGA/SP
                     </p>
-                    <p className="text-xs font-mono font-bold text-zinc-600">
+                    <p className="text-[10.5px] font-mono font-bold text-zinc-600">
                       CNPJ: 62.471.271-0001-82
                     </p>
-                    <div className="mt-2.5 pt-2 border-t border-zinc-300 w-full">
-                      <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-indigo-900">
+                    <div className="mt-2 pt-1.5 border-t border-zinc-300 w-full">
+                      <h2 className="text-xs sm:text-sm font-black uppercase tracking-tight text-indigo-900">
                         {getTransactionReportTitle()}
                       </h2>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. Visão Geral (4 KPI Cards, matching user screenshot) */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold text-zinc-900 mb-3">
+                {/* 2. Visão Geral (4 KPI Cards) */}
+                <div className="mb-5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 mb-2">
                     Visão Geral
                   </h3>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {/* Card 1: Receitas Totais */}
-                    <div className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs flex flex-col justify-between">
+                    <div className="border border-zinc-200 rounded-xl p-2.5 bg-white shadow-2xs flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                        <span className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-500">
                           RECEITAS TOTAIS
                         </span>
-                        <div className="p-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/60">
-                          <ArrowUpRight size={14} />
+                        <div className="p-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-200/60">
+                          <ArrowUpRight size={12} />
                         </div>
                       </div>
-                      <div className="mt-3">
-                        <p className="text-lg font-black text-zinc-900 font-mono">
+                      <div className="mt-2">
+                        <p className="text-sm sm:text-base font-black text-zinc-900 font-mono truncate">
                           {formatCurrency(reportTotalReceitas)}
                         </p>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">
-                          Dízimos e ofertas consolidadas
+                        <p className="text-[8px] text-zinc-400 mt-0.5 truncate">
+                          Dízimos e ofertas
                         </p>
                       </div>
                     </div>
 
                     {/* Card 2: Despesas Totais */}
-                    <div className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs flex flex-col justify-between">
+                    <div className="border border-zinc-200 rounded-xl p-2.5 bg-white shadow-2xs flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                        <span className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-500">
                           DESPESAS TOTAIS
                         </span>
-                        <div className="p-1 rounded-lg bg-rose-50 text-rose-500 border border-rose-200/60">
-                          <ArrowDownRight size={14} />
+                        <div className="p-0.5 rounded bg-rose-50 text-rose-500 border border-rose-200/60">
+                          <ArrowDownRight size={12} />
                         </div>
                       </div>
-                      <div className="mt-3">
-                        <p className="text-lg font-black text-zinc-900 font-mono">
+                      <div className="mt-2">
+                        <p className="text-sm sm:text-base font-black text-zinc-900 font-mono truncate">
                           {formatCurrency(reportTotalDespesas)}
                         </p>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">
-                          Soma de todas as despesas
+                        <p className="text-[8px] text-zinc-400 mt-0.5 truncate">
+                          Soma de despesas
                         </p>
                       </div>
                     </div>
 
                     {/* Card 3: Superávit Líquido */}
-                    <div className="border border-zinc-200 rounded-2xl p-4 bg-white shadow-2xs flex flex-col justify-between">
+                    <div className="border border-zinc-200 rounded-xl p-2.5 bg-white shadow-2xs flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                        <span className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-500">
                           SUPERÁVIT LÍQUIDO
                         </span>
-                        <div className="p-1 rounded-lg bg-indigo-50 text-indigo-500 border border-indigo-200/60">
-                          <TrendingUp size={14} />
+                        <div className="p-0.5 rounded bg-indigo-50 text-indigo-500 border border-indigo-200/60">
+                          <TrendingUp size={12} />
                         </div>
                       </div>
-                      <div className="mt-3">
-                        <p className={`text-lg font-black font-mono ${reportSuperavit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                      <div className="mt-2">
+                        <p className={`text-sm sm:text-base font-black font-mono truncate ${reportSuperavit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
                           {formatCurrency(reportSuperavit)}
                         </p>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">
-                          Inflows operacionais líquidos
+                        <p className="text-[8px] text-zinc-400 mt-0.5 truncate">
+                          Resultado líquido
                         </p>
                       </div>
                     </div>
 
-                    {/* Card 4: Saldo em Contas (Solid indigo background matching user screenshot) */}
-                    <div className="rounded-2xl p-4 bg-indigo-600 text-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: '#4338ca' }}>
+                    {/* Card 4: Saldo em Contas */}
+                    <div className="rounded-xl p-2.5 bg-indigo-600 text-white shadow-sm flex flex-col justify-between" style={{ backgroundColor: '#4338ca' }}>
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                        <span className="text-[8.5px] font-bold uppercase tracking-wider text-white/90">
                           SALDO EM CONTAS
                         </span>
-                        <div className="p-1 rounded-lg bg-white/20 text-white">
-                          <Wallet size={14} />
+                        <div className="p-0.5 rounded bg-white/20 text-white">
+                          <Wallet size={12} />
                         </div>
                       </div>
-                      <div className="mt-3">
-                        <p className="text-lg font-black text-white font-mono">
+                      <div className="mt-2">
+                        <p className="text-sm sm:text-base font-black text-white font-mono truncate">
                           {formatCurrency(reportTotalSaldoContas)}
                         </p>
-                        <p className="text-[10px] text-white/80 mt-0.5">
-                          Total de saldos de bancos
+                        <p className="text-[8px] text-white/80 mt-0.5 truncate">
+                          Total em bancos
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 3. Bancos (Bank Cards row, matching user screenshot) */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold text-zinc-900 mb-3">
+                {/* 3. Bancos (Bank Cards grid) */}
+                <div className="mb-5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 mb-2">
                     Bancos
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                    {accounts.slice(0, 5).map(acc => {
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {accounts.slice(0, 8).map(acc => {
                       const stats = getAccountPeriodStats(acc);
                       return (
-                        <div key={acc.id} className="border border-zinc-200 rounded-xl p-3 bg-white shadow-2xs flex flex-col justify-between text-left">
+                        <div key={acc.id} className="border border-zinc-200 rounded-lg p-2 bg-white shadow-2xs flex flex-col justify-between text-left">
                           <div>
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={18} />
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={15} />
                               <div className="min-w-0 flex-1">
-                                <p className="text-[10px] font-bold text-zinc-800 truncate leading-tight">{acc.name}</p>
-                                <p className="text-[8px] text-zinc-400 truncate">{acc.accountType === 'caixa_fisico' ? `Nº ${acc.accountNumber}` : `Ag ${acc.agency} | CC ${acc.accountNumber}`}</p>
+                                <p className="text-[8.5px] font-bold text-zinc-800 truncate leading-tight">{acc.name}</p>
+                                <p className="text-[7px] text-zinc-400 truncate">{acc.accountType === 'caixa_fisico' ? `Nº ${acc.accountNumber}` : `Ag ${acc.agency} | CC ${acc.accountNumber}`}</p>
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-1.5 my-2 text-[8px]">
-                              <div className="bg-emerald-50/80 border border-emerald-100 rounded px-1.5 py-1">
-                                <span className="text-emerald-700 font-bold block text-[7px] uppercase">Entradas</span>
+                            <div className="grid grid-cols-2 gap-1 my-1.5 text-[7px]">
+                              <div className="bg-emerald-50/80 border border-emerald-100 rounded px-1 py-0.5">
+                                <span className="text-emerald-700 font-bold block text-[6px] uppercase">Entradas</span>
                                 <span className="text-emerald-600 font-mono font-bold block truncate">+{formatCurrency(stats.totalEntradas)}</span>
                               </div>
-                              <div className="bg-rose-50/80 border border-rose-100 rounded px-1.5 py-1 text-right">
-                                <span className="text-rose-700 font-bold block text-[7px] uppercase">Saídas</span>
+                              <div className="bg-rose-50/80 border border-rose-100 rounded px-1 py-0.5 text-right">
+                                <span className="text-rose-700 font-bold block text-[6px] uppercase">Saídas</span>
                                 <span className="text-rose-600 font-mono font-bold block truncate">-{formatCurrency(stats.totalSaidas)}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="pt-2 border-t border-dashed border-zinc-200 flex justify-between items-baseline text-[8px]">
+                          <div className="pt-1.5 border-t border-dashed border-zinc-200 flex justify-between items-baseline text-[7px]">
                             <div>
-                              <span className="text-zinc-400 uppercase text-[7px] block">Inicial</span>
-                              <span className="text-zinc-600 font-mono block">{formatCurrency(stats.initialBalanceForPeriod)}</span>
+                              <span className="text-zinc-400 uppercase text-[6px] block">Inicial</span>
+                              <span className="text-zinc-600 font-mono block truncate">{formatCurrency(stats.initialBalanceForPeriod)}</span>
                             </div>
                             <div className="text-right">
-                              <span className="text-zinc-400 uppercase text-[7px] block">Atual</span>
-                              <span className={`font-mono font-bold block text-[9.5px] ${stats.finalBalanceForPeriod >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                              <span className="text-zinc-400 uppercase text-[6px] block">Atual</span>
+                              <span className={`font-mono font-bold block text-[8px] truncate ${stats.finalBalanceForPeriod >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
                                 {formatCurrency(stats.finalBalanceForPeriod)}
                               </span>
                             </div>
@@ -9874,28 +9875,28 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   </div>
                 </div>
 
-                {/* 4. Lançamentos (Table with all 11 columns, calibrated to fit in 1 page width) */}
+                {/* 4. Lançamentos (Table with all 11 columns, calibrated to fit in 100% portrait width) */}
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-900 mb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 mb-2">
                     {txFilterType === 'transfer' ? 'Transferências' : 'Lançamentos'}
                   </h3>
 
                   {txFilterType === 'transfer' ? (
                     <div className="w-full border border-zinc-200 rounded-xl overflow-hidden bg-white">
-                      <table className="w-full border-collapse text-left table-fixed">
+                      <table className="w-full border-collapse text-left table-fixed text-[7.5px]">
                         <thead>
-                          <tr className="border-b border-zinc-200 bg-zinc-50/80 text-[8.5px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap">
-                            <th className="py-2.5 px-2 w-[12%]">Data</th>
-                            <th className="py-2.5 px-2 w-[24%]">Conta Origem (Saída)</th>
-                            <th className="py-2.5 px-2 w-[24%]">Conta Destino (Entrada)</th>
-                            <th className="py-2.5 px-2 w-[25%]">Observações</th>
-                            <th className="py-2.5 px-2 w-[15%] text-right">Valor</th>
+                          <tr className="border-b border-zinc-200 bg-zinc-50/80 font-bold uppercase tracking-wider text-zinc-600">
+                            <th className="py-2 px-1.5 w-[12%]">Data</th>
+                            <th className="py-2 px-1.5 w-[24%]">Conta Origem (Saída)</th>
+                            <th className="py-2 px-1.5 w-[24%]">Conta Destino (Entrada)</th>
+                            <th className="py-2 px-1.5 w-[25%]">Observações</th>
+                            <th className="py-2 px-1.5 w-[15%] text-right">Valor</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100 text-[8.5px]">
+                        <tbody className="divide-y divide-zinc-100">
                           {displayTransfers.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="py-8 text-center text-zinc-400 font-medium text-xs">
+                              <td colSpan={5} className="py-6 text-center text-zinc-400 font-medium text-xs">
                                 Nenhuma transferência encontrada para o período selecionado.
                               </td>
                             </tr>
@@ -9905,25 +9906,25 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               const dest = accounts.find(a => a.id === tf.destinationAccountId);
                               return (
                                 <tr key={tf.id} className="hover:bg-zinc-50/50">
-                                  <td className="py-2.5 px-2 font-mono text-zinc-600 whitespace-nowrap font-semibold">
+                                  <td className="py-1.5 px-1.5 font-mono text-zinc-600 whitespace-nowrap font-semibold">
                                     {tf.date.split('-').reverse().join('/')}
                                   </td>
-                                  <td className="py-2.5 px-2">
-                                    <div className="flex items-center gap-1.5">
-                                      {src && <BankLogo bankName={src.bankName} imageUrl={src.image} size={14} />}
-                                      <span className="font-medium text-zinc-800 truncate">{src ? `${src.name} (${src.bankName})` : '—'}</span>
+                                  <td className="py-1.5 px-1.5">
+                                    <div className="flex items-center gap-1">
+                                      {src && <BankLogo bankName={src.bankName} imageUrl={src.image} size={12} />}
+                                      <span className="font-medium text-zinc-800 truncate">{src ? `${src.name}` : '—'}</span>
                                     </div>
                                   </td>
-                                  <td className="py-2.5 px-2">
-                                    <div className="flex items-center gap-1.5">
-                                      {dest && <BankLogo bankName={dest.bankName} imageUrl={dest.image} size={14} />}
-                                      <span className="font-medium text-zinc-800 truncate">{dest ? `${dest.name} (${dest.bankName})` : '—'}</span>
+                                  <td className="py-1.5 px-1.5">
+                                    <div className="flex items-center gap-1">
+                                      {dest && <BankLogo bankName={dest.bankName} imageUrl={dest.image} size={12} />}
+                                      <span className="font-medium text-zinc-800 truncate">{dest ? `${dest.name}` : '—'}</span>
                                     </div>
                                   </td>
-                                  <td className="py-2.5 px-2 text-zinc-500 italic truncate">
+                                  <td className="py-1.5 px-1.5 text-zinc-500 italic truncate">
                                     {tf.observation || '—'}
                                   </td>
-                                  <td className="py-2.5 px-2 font-bold font-mono text-right text-indigo-600 whitespace-nowrap">
+                                  <td className="py-1.5 px-1.5 font-bold font-mono text-right text-indigo-600 whitespace-nowrap">
                                     {formatCurrency(tf.value)}
                                   </td>
                                 </tr>
@@ -9932,11 +9933,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           )}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t border-zinc-200 bg-zinc-50 font-bold text-[9px] text-zinc-700">
-                            <td className="py-2.5 px-2" colSpan={4}>
+                          <tr className="border-t border-zinc-200 bg-zinc-50 font-bold text-[8px] text-zinc-700">
+                            <td className="py-2 px-1.5" colSpan={4}>
                               Total ({displayTransfers.length} transferências)
                             </td>
-                            <td className="py-2.5 px-2 font-mono text-right text-indigo-600">
+                            <td className="py-2 px-1.5 font-mono text-right text-indigo-600 whitespace-nowrap">
                               {formatCurrency(displayTransfers.reduce((s, t) => s + t.value, 0))}
                             </td>
                           </tr>
@@ -9945,32 +9946,30 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     </div>
                   ) : (
                     <div className="w-full border border-zinc-200 rounded-xl overflow-hidden bg-white">
-                      <table className="w-full border-collapse text-left table-fixed">
+                      <table className="w-full border-collapse text-left table-fixed text-[7px] leading-tight">
                         <thead>
-                          <tr className="border-b border-zinc-200 bg-zinc-50/80 text-[8.5px] font-bold uppercase tracking-wider text-zinc-500 whitespace-nowrap">
-                            <th className="py-2.5 px-2 w-[8.5%]">
-                              {txFilterType === 'entrada' ? 'Data de Recebido' : txFilterType === 'saida' ? 'Data de Lançamento' : 'Data'}
+                          <tr className="border-b border-zinc-200 bg-zinc-50/80 font-bold uppercase tracking-wider text-zinc-600">
+                            <th className="py-2 px-1 w-[8%] text-center">Data</th>
+                            <th className="py-2 px-1 w-[18%]">Descrição</th>
+                            <th className="py-2 px-1 w-[10.5%] text-right">Valor</th>
+                            <th className="py-2 px-1 w-[6.5%] text-center">Tipo</th>
+                            <th className="py-2 px-1 w-[13%]">Categoria</th>
+                            <th className="py-2 px-1 w-[11%]">Conta</th>
+                            <th className="py-2 px-1 w-[5.5%] text-center">
+                              {txFilterType === 'entrada' ? 'Recebido' : txFilterType === 'saida' ? 'Pago' : 'Status'}
                             </th>
-                            <th className="py-2.5 px-2 w-[18%]">Descrição</th>
-                            <th className="py-2.5 px-2 w-[9.5%]">Valor</th>
-                            <th className="py-2.5 px-1.5 w-[6.5%]">Tipo</th>
-                            <th className="py-2.5 px-2 w-[13.5%]">Categoria</th>
-                            <th className="py-2.5 px-2 w-[11%]">Conta Bancária</th>
-                            <th className="py-2.5 px-1 w-[5.5%] text-center">
-                              {txFilterType === 'entrada' ? 'Recebido' : txFilterType === 'saida' ? 'Pago' : 'Recebido / Pago'}
+                            <th className="py-2 px-1 w-[10%]">
+                              {txFilterType === 'entrada' ? 'Recebido de' : txFilterType === 'saida' ? 'Pagar quem' : 'Pessoa'}
                             </th>
-                            <th className="py-2.5 px-2 w-[8.5%]">
-                              {txFilterType === 'entrada' ? 'Recebido de' : txFilterType === 'saida' ? 'Pagar quem' : 'Recebido / Pagar'}
-                            </th>
-                            <th className="py-2.5 px-1.5 w-[6.5%]">Forma Pgto</th>
-                            <th className="py-2.5 px-1.5 w-[5.5%]">Parcelamento</th>
-                            <th className="py-2.5 px-2 w-[7%]">Observações</th>
+                            <th className="py-2 px-1 w-[6.5%] text-center">Pgto</th>
+                            <th className="py-2 px-1 w-[5.5%] text-center">Parc.</th>
+                            <th className="py-2 px-1 w-[5.5%]">Obs</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100 text-[8.5px]">
+                        <tbody className="divide-y divide-zinc-100">
                           {displayTransactions.length === 0 ? (
                             <tr>
-                              <td colSpan={11} className="py-8 text-center text-zinc-400 font-medium text-xs">
+                              <td colSpan={11} className="py-6 text-center text-zinc-400 font-medium text-xs">
                                 Nenhum lançamento encontrado para o período selecionado.
                               </td>
                             </tr>
@@ -9988,37 +9987,37 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               const personEntity = isEntrada ? (tx.recebidoDe || '—') : (tx.vaiPagarQuem || '—');
                               const paymentMethodVal = (tx.paymentMethod || tx.formaPagamento)?.toUpperCase() || '—';
                               const installmentVal = tx.parcelamento === 'sim' 
-                                ? `${tx.numeroParcelas || 1}x ${tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}` 
+                                ? `${tx.numeroParcelas || 1}x` 
                                 : tx.parcelamento === 'recorrente' 
-                                  ? 'Recorrente' 
+                                  ? 'Recorr.' 
                                   : (tx.installments || 'À Vista');
 
                               return (
                                 <tr key={tx.id} className="hover:bg-zinc-50/50">
                                   {/* 1. Data */}
-                                  <td className="py-2.5 px-2 font-mono text-zinc-600 whitespace-nowrap">
-                                    <span className="font-semibold text-zinc-800">{dateVal}</span>
+                                  <td className="py-1 px-1 font-mono text-zinc-600 text-center whitespace-nowrap">
+                                    <span className="font-semibold text-zinc-800 text-[6.5px] block">{dateVal}</span>
                                     {vencimentoVal && vencimentoVal !== dateVal && (
-                                      <span className="block text-[7px] text-zinc-400 font-normal">Venc: {vencimentoVal}</span>
+                                      <span className="block text-[5.5px] text-zinc-400 font-normal">V:{vencimentoVal}</span>
                                     )}
                                   </td>
                                   {/* 2. Descrição */}
-                                  <td className="py-2.5 px-2 font-semibold text-zinc-900 truncate">
+                                  <td className="py-1 px-1 font-semibold text-zinc-900 truncate" title={tx.description}>
                                     {tx.description}
                                   </td>
                                   {/* 3. Valor */}
-                                  <td className={`py-2.5 px-2 font-bold font-mono whitespace-nowrap ${isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <td className={`py-1 px-1 font-bold font-mono text-right whitespace-nowrap ${isEntrada ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {isEntrada ? '+ ' : '- '}{formatCurrency(tx.value)}
                                   </td>
                                   {/* 4. Tipo */}
-                                  <td className="py-2.5 px-1.5 whitespace-nowrap">
-                                    <span className={`px-1.5 py-0.5 rounded text-[7.5px] font-bold uppercase ${isEntrada ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                                      {isEntrada ? 'Receita' : 'Despesa'}
+                                  <td className="py-1 px-1 text-center whitespace-nowrap">
+                                    <span className={`px-1 py-0.5 rounded text-[6px] font-bold uppercase inline-block ${isEntrada ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                      {isEntrada ? 'Rec' : 'Desp'}
                                     </span>
                                   </td>
                                   {/* 5. Categoria */}
-                                  <td className="py-2.5 px-2 whitespace-nowrap">
-                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[7.5px] font-medium truncate max-w-full ${
+                                  <td className="py-1 px-1 whitespace-nowrap">
+                                    <span className={`inline-block px-1 py-0.5 rounded text-[6px] font-medium truncate max-w-full ${
                                       isEntrada 
                                         ? 'bg-teal-50 text-teal-800 border border-teal-200' 
                                         : 'bg-zinc-100 text-zinc-800 border border-zinc-200'
@@ -10027,15 +10026,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     </span>
                                   </td>
                                   {/* 6. Conta Bancária */}
-                                  <td className="py-2.5 px-2 whitespace-nowrap">
-                                    <div className="flex items-center gap-1.5">
-                                      {acc && <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={14} />}
-                                      <span className="font-medium text-zinc-800 truncate">{acc?.name || '—'}</span>
+                                  <td className="py-1 px-1 whitespace-nowrap">
+                                    <div className="flex items-center gap-1">
+                                      {acc && <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={11} />}
+                                      <span className="font-medium text-zinc-800 truncate text-[6.5px]">{acc?.name || '—'}</span>
                                     </div>
                                   </td>
                                   {/* 7. Recebido / Pago */}
-                                  <td className="py-2.5 px-1 text-center whitespace-nowrap">
-                                    <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[7px] font-bold ${
+                                  <td className="py-1 px-1 text-center whitespace-nowrap">
+                                    <span className={`inline-flex items-center justify-center px-1 py-0.5 rounded-full text-[6px] font-bold ${
                                       isDone 
                                         ? 'bg-emerald-100 text-emerald-700' 
                                         : (isEntrada ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700')
@@ -10044,23 +10043,23 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     </span>
                                   </td>
                                   {/* 8. Recebido de / Pagar quem */}
-                                  <td className="py-2.5 px-2 text-zinc-700 truncate" title={personEntity}>
+                                  <td className="py-1 px-1 text-zinc-700 truncate text-[6.5px]" title={personEntity}>
                                     {personEntity}
                                   </td>
                                   {/* 9. Forma de Pagamento */}
-                                  <td className="py-2.5 px-1.5 whitespace-nowrap">
+                                  <td className="py-1 px-1 text-center whitespace-nowrap">
                                     {paymentMethodVal !== '—' ? (
-                                      <span className="px-1 py-0.5 rounded text-[7px] font-mono font-bold bg-zinc-100 border border-zinc-200 text-zinc-700">
+                                      <span className="px-0.5 py-0.2 rounded text-[6px] font-mono font-bold bg-zinc-100 border border-zinc-200 text-zinc-700">
                                         {paymentMethodVal}
                                       </span>
                                     ) : '—'}
                                   </td>
                                   {/* 10. Parcelamento */}
-                                  <td className="py-2.5 px-1.5 text-zinc-600 whitespace-nowrap">
+                                  <td className="py-1 px-1 text-center text-zinc-600 whitespace-nowrap text-[6.5px]">
                                     {installmentVal}
                                   </td>
                                   {/* 11. Observações */}
-                                  <td className="py-2.5 px-2 text-zinc-500 italic truncate" title={tx.observation || ''}>
+                                  <td className="py-1 px-1 text-zinc-500 italic truncate text-[6px]" title={tx.observation || ''}>
                                     {tx.observation || '—'}
                                   </td>
                                 </tr>
@@ -10069,11 +10068,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           )}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t border-zinc-200 bg-zinc-50 font-bold text-[9px] text-zinc-700">
-                            <td className="py-2.5 px-2" colSpan={2}>
+                          <tr className="border-t border-zinc-200 bg-zinc-50 font-bold text-[7.5px] text-zinc-700">
+                            <td className="py-1.5 px-1" colSpan={2}>
                               Total ({displayTransactions.length} {txFilterType === 'saida' ? 'despesas' : txFilterType === 'entrada' ? 'receitas' : 'lançamentos'})
                             </td>
-                            <td className={`py-2.5 px-2 font-mono ${txFilterType === 'saida' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            <td className={`py-1.5 px-1 font-mono text-right ${txFilterType === 'saida' ? 'text-rose-600' : 'text-emerald-600'}`}>
                               {txFilterType === 'saida'
                                 ? `- ${formatCurrency(displayTransactions.filter(t => t.type === 'saida').reduce((s, t) => s + t.value, 0))}`
                                 : txFilterType === 'entrada'
@@ -10288,7 +10287,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               >
                 <div
                   id="balanco-printable-sheet"
-                  className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-8 sm:p-10 min-w-[1020px] select-text font-sans text-left"
+                  className="printable-area bg-white text-zinc-900 border border-zinc-200 shadow-2xl rounded-2xl p-6 sm:p-8 w-full max-w-[1020px] select-text font-sans text-left"
                 >
                   {/* 1. Official Header matching user request */}
                   <div className="flex items-center gap-5 pb-5 border-b-2 border-zinc-900 text-left">
@@ -11283,14 +11282,17 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       <style>{`
         @media print {
           @page {
-            size: landscape;
-            margin: 8mm;
+            size: portrait;
+            margin: 6mm 5mm;
           }
           html, body {
             background: white !important;
             color: #18181b !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           body * {
             visibility: hidden !important;
@@ -11300,31 +11302,49 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
           #printable-report-area, #printable-report-area * {
             visibility: visible !important;
           }
-          #report-printable-sheet,
-          #balanco-printable-sheet {
+          #report-printable-sheet {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            min-width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
             background: white !important;
             color: black !important;
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
+          }
+          #balanco-printable-sheet {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
           }
           #printable-report-area {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
+            max-width: 100% !important;
             background: white !important;
             color: black !important;
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
           }
           .no-print, .no-print * {
             display: none !important;
