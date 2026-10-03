@@ -7,7 +7,9 @@ import {
   Settings, 
   Plus, 
   Coins, 
-  LogOut
+  LogOut,
+  Building2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Tab, AuthUser } from '../types';
 
@@ -114,7 +116,7 @@ export default function Sidebar({
               className="w-full h-full object-cover rounded-xl"
             />
           ) : (
-            <FileSpreadsheet size={18} />
+            <Building2 size={18} />
           )}
         </div>
         {isExpanded && (
