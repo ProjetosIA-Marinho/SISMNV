@@ -69,10 +69,14 @@ export default function Login({
   onToggleHighContrast, 
   systemLogo 
 }: LoginProps) {
-  const [email, setEmail] = useState('projetosia.marinho@gmail.com');
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem('sismnv_remembered_email') || 'projetosia.marinho@gmail.com';
+  });
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('sismnv_remembered_email') !== null ? true : true;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   

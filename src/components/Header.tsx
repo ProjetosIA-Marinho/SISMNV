@@ -17,13 +17,15 @@ import {
   EyeOff,
   X,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Tab, AuthUser } from '../types';
 
 interface HeaderProps {
   currentTab: Tab;
+  setCurrentTab?: (tab: Tab) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onAnalyze: () => void;
@@ -33,11 +35,13 @@ interface HeaderProps {
   onToggleHighContrast: () => void;
   systemLogo?: string | null;
   currentUser?: AuthUser | null;
+  onUpdateUserProfile?: (updatedUser: Partial<AuthUser>) => void;
   onLogout?: () => void;
 }
 
 export default function Header({ 
   currentTab, 
+  setCurrentTab,
   searchQuery, 
   setSearchQuery, 
   onAnalyze,
@@ -47,6 +51,7 @@ export default function Header({
   onToggleHighContrast,
   systemLogo,
   currentUser,
+  onUpdateUserProfile,
   onLogout
 }: HeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -375,6 +380,17 @@ export default function Header({
                   }`}
                 >
                   <Laptop size={14} className="text-indigo-400" /> Inteligência Artificial Ativa
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    if (setCurrentTab) setCurrentTab('settings');
+                  }}
+                  className={`w-full text-left px-4 py-2 text-xs transition-colors flex items-center gap-2.5 ${
+                    isHighContrast ? 'text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950' : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                  }`}
+                >
+                  <Camera size={14} className="text-indigo-400" /> Alterar Foto de Perfil
                 </button>
                 <button
                   onClick={handleOpenPasswordModal}

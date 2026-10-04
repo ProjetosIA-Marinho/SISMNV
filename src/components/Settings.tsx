@@ -22,9 +22,12 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  Camera,
+  User,
+  UserCheck,
   ShieldCheck
 } from 'lucide-react';
-import { Tab } from '../types';
+import { Tab, AuthUser } from '../types';
 import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 
 interface SettingsProps {
@@ -34,6 +37,8 @@ interface SettingsProps {
   onToggleHighContrast: () => void;
   systemLogo?: string | null;
   onUpdateSystemLogo: (logo: string | null) => void;
+  currentUser?: AuthUser | null;
+  onUpdateUserProfile?: (updatedUser: Partial<AuthUser>) => void;
 }
 
 // Built-in presets for quick preview and church / institutional branding
@@ -65,18 +70,46 @@ const LOGO_PRESETS = [
   }
 ];
 
+const AVATAR_PRESETS = [
+  {
+    id: 'avatar-admin',
+    name: 'Admin Padrão',
+    url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCxBAshwmUynhjtsH0L8ebm92U3El4HH-3A00rJylXxlQuL0uGPeeWORWgxNzOAEmJE6MK7GyaSybaqE_II6ITA0atSLAEh_KMtsCC5T5hdyGh0vw5CFdb_FGN29Jt0jAwgQBIaQpfNxRWjzykYlLb2bwOvPGreTFjPKxRNYeOe7MA2-tr89WCtq2cDJKCA1JOb4DWq1kNvNqFOH3ORegq2nL8-ibRGtWHDBDZNjmnYSfpDfalXirFvog'
+  },
+  {
+    id: 'avatar-pastor',
+    name: 'Pr. Presidente',
+    url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHoCx7zauWtM2AxcoTXkOi_IhoJ5BEkIUlM04I4dOiwSYis14Xh8LM8oPIDkVhp6gpIIAOq5aoHCurmYLDGR3yGzTdBai6ch2yIRJkG7JlGAdyPKqMytDzx2C1c26JRYYN1OLkIOOwDEn0dEze7OcRo7DY1P25v9sFUWjjQr9BTKvDs3nDhOqS_TcQvTEBsSJAtTk6VpNP_ebzbtdHIs3FXbNpkYAlht-_FRppRLFdSjeHJkcZuKP5UA'
+  },
+  {
+    id: 'avatar-secretary',
+    name: 'Secretária / Diretoria',
+    url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuArGVb-uVa1SdApjoN4NypDZY3tFdPAec9sCR0leIXlRcNtjo28RNCYfsAb_bKvjw0FR2vPBoKV5gnEDld7Nu2YbHtUchYOw_AJYFGq4xgrFIVTUo0AcUN2XmJKXwALBfzIzXO_AyfDhQFynyHDZl2Z8aeIRDNrS2P0ofgKn84XoNLPa0ZXAaPLe4OpEa9-hx8kT_CBd7xpCqt_gCnA-S1rlQoH687iJj0Rr55-PZai2j-3k3y3eep8hA'
+  },
+  {
+    id: 'avatar-treasurer',
+    name: 'Finanças / Tesouraria',
+    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+  }
+];
+
 export default function Settings({ 
   onResetData, 
   setCurrentTab, 
   isHighContrast, 
   onToggleHighContrast,
   systemLogo,
-  onUpdateSystemLogo
+  onUpdateSystemLogo,
+  currentUser,
+  onUpdateUserProfile
 }: SettingsProps) {
   const [urlInput, setUrlInput] = useState('');
+  const [avatarUrlInput, setAvatarUrlInput] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAvatarDragging, setIsAvatarDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
   // Password change state
   const [currentPass, setCurrentPass] = useState('');
@@ -189,6 +222,66 @@ export default function Settings({
   const handleRemoveLogo = () => {
     onUpdateSystemLogo(null);
     showNotification('success', 'Logotipo personalizado removido. O ícone padrão do sistema foi restaurado.');
+  };
+
+  // Profile Avatar Handlers
+  const handleAvatarFileUpload = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showNotification('error', 'Por favor, selecione um arquivo de imagem válido (PNG, JPG, SVG, WebP).');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      showNotification('error', 'O arquivo é muito grande. Escolha uma imagem de até 3MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result && onUpdateUserProfile) {
+        onUpdateUserProfile({ avatar: result });
+        showNotification('success', 'Foto de perfil atualizada com sucesso a partir da foto enviada!');
+      }
+    };
+    reader.onerror = () => {
+      showNotification('error', 'Falha ao processar o arquivo de imagem.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleAvatarFileUpload(file);
+    }
+    if (avatarFileInputRef.current) {
+      avatarFileInputRef.current.value = '';
+    }
+  };
+
+  const handleApplyAvatarUrl = () => {
+    const trimmed = avatarUrlInput.trim();
+    if (!trimmed) {
+      showNotification('error', 'Insira uma URL de imagem válida.');
+      return;
+    }
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:image/')) {
+      showNotification('error', 'A URL deve começar com http://, https:// ou data:image/.');
+      return;
+    }
+    if (onUpdateUserProfile) {
+      onUpdateUserProfile({ avatar: trimmed });
+      setAvatarUrlInput('');
+      showNotification('success', 'Foto de perfil atualizada com sucesso via URL!');
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    if (onUpdateUserProfile) {
+      onUpdateUserProfile({ 
+        avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCxBAshwmUynhjtsH0L8ebm92U3El4HH-3A00rJylXxlQuL0uGPeeWORWgxNzOAEmJE6MK7GyaSybaqE_II6ITA0atSLAEh_KMtsCC5T5hdyGh0vw5CFdb_FGN29Jt0jAwgQBIaQpfNxRWjzykYlLb2bwOvPGreTFjPKxRNYeOe7MA2-tr89WCtq2cDJKCA1JOb4DWq1kNvNqFOH3ORegq2nL8-ibRGtWHDBDZNjmnYSfpDfalXirFvog" 
+      });
+      showNotification('success', 'Foto de perfil restaurada para a imagem padrão.');
+    }
   };
 
   const cardBgClass = isHighContrast ? 'bg-white border-zinc-200 shadow-md' : 'bg-zinc-950 border-zinc-800 shadow-md';
@@ -464,6 +557,233 @@ export default function Settings({
                     </p>
                     <p className="text-[9px] text-zinc-500">
                       {isSelected ? 'Em uso' : 'Clique para usar'}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* CARD: FOTO DE PERFIL E IDENTIFICAÇÃO DO USUÁRIO */}
+      {/* ============================================================== */}
+      <div className={`p-6 border rounded-2xl space-y-6 ${cardBgClass}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-200/50 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2.5 text-indigo-500">
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+              <Camera size={20} />
+            </div>
+            <div>
+              <h3 className={`text-base font-bold ${textPrimaryClass}`}>Foto de Perfil do Usuário</h3>
+              <p className="text-xs text-zinc-500">
+                Altere sua foto de perfil exibida no topo (Header), barra lateral e lançamentos.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleRemoveAvatar}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer self-start sm:self-auto border ${
+              isHighContrast
+                ? 'bg-zinc-100 hover:bg-rose-50 border-zinc-200 hover:border-rose-300 text-zinc-700 hover:text-rose-700'
+                : 'bg-zinc-900 hover:bg-rose-950/40 border-zinc-800 hover:border-rose-500/40 text-zinc-300 hover:text-rose-300'
+            }`}
+          >
+            <Trash2 size={13} /> Restaurar Padrão
+          </button>
+        </div>
+
+        {/* Live Preview of User Profile */}
+        <div className={`p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-6 ${innerBgClass}`}>
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border-2 border-indigo-500/60 shadow-xl shadow-indigo-600/20 bg-zinc-900">
+                <img 
+                  src={currentUser?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCxBAshwmUynhjtsH0L8ebm92U3El4HH-3A00rJylXxlQuL0uGPeeWORWgxNzOAEmJE6MK7GyaSybaqE_II6ITA0atSLAEh_KMtsCC5T5hdyGh0vw5CFdb_FGN29Jt0jAwgQBIaQpfNxRWjzykYlLb2bwOvPGreTFjPKxRNYeOe7MA2-tr89WCtq2cDJKCA1JOb4DWq1kNvNqFOH3ORegq2nL8-ibRGtWHDBDZNjmnYSfpDfalXirFvog"} 
+                  alt={currentUser?.name || "Foto de Perfil"} 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => avatarFileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 p-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-md border-2 border-white dark:border-zinc-900 transition-transform active:scale-95 cursor-pointer"
+                title="Clique para trocar a foto"
+              >
+                <Camera size={12} />
+              </button>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`text-base font-extrabold ${textPrimaryClass}`}>{currentUser?.name || 'Administrador'}</span>
+                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                  isHighContrast 
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
+                    : 'bg-indigo-950/60 border-indigo-500/40 text-indigo-300'
+                }`}>
+                  {currentUser?.role || 'Acesso Total'}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 mt-0.5 font-mono">
+                {currentUser?.email || 'projetosia.marinho@gmail.com'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <Sparkles size={14} className="text-indigo-400" />
+            <span>Foto atualizada em toda a plataforma</span>
+          </div>
+        </div>
+
+        {/* Inputs Grid: 1. File Upload / 2. Web URL */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Method 1: Local File Upload */}
+          <div className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 ${innerBgClass}`}>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
+                <Upload size={14} />
+                <span>Upload de Nova Foto</span>
+              </div>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Envie uma foto do seu dispositivo (PNG, JPG, WebP máx. 3MB).
+              </p>
+            </div>
+
+            <div 
+              onDragOver={(e) => { e.preventDefault(); setIsAvatarDragging(true); }}
+              onDragLeave={() => setIsAvatarDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsAvatarDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleAvatarFileUpload(file);
+              }}
+              onClick={() => avatarFileInputRef.current?.click()}
+              className={`p-5 rounded-xl border-2 border-dashed flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 ${
+                isAvatarDragging 
+                  ? 'border-indigo-500 bg-indigo-500/10' 
+                  : isHighContrast
+                    ? 'border-zinc-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/20'
+                    : 'border-zinc-800 hover:border-indigo-500/70 bg-zinc-950/40 hover:bg-zinc-900/60'
+              }`}
+            >
+              <input 
+                ref={avatarFileInputRef}
+                type="file" 
+                accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                onChange={handleAvatarFileInputChange}
+                className="hidden" 
+              />
+              <div className="p-2.5 rounded-full bg-indigo-600/10 text-indigo-500 mb-2">
+                <Camera size={18} />
+              </div>
+              <p className={`text-xs font-bold ${textPrimaryClass}`}>
+                Clique para selecionar ou arraste sua foto
+              </p>
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Formato JPG, PNG ou WebP
+              </p>
+            </div>
+          </div>
+
+          {/* Method 2: Web URL input */}
+          <div className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 ${innerBgClass}`}>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
+                <LinkIcon size={14} />
+                <span>Inserir URL da Foto</span>
+              </div>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Cole o link direto da sua foto de perfil hospedada na nuvem.
+              </p>
+            </div>
+
+            <div className="space-y-2 mt-auto">
+              <div className="relative">
+                <input
+                  type="url"
+                  placeholder="https://exemplo.com/minha-foto.jpg"
+                  value={avatarUrlInput}
+                  onChange={(e) => setAvatarUrlInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleApplyAvatarUrl(); }}
+                  className={`w-full pl-3 pr-9 py-2.5 rounded-xl text-xs transition-colors border outline-none ${
+                    isHighContrast 
+                      ? 'bg-white border-zinc-300 text-zinc-900 focus:border-indigo-600 placeholder:text-zinc-400' 
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-100 focus:border-indigo-500 placeholder:text-zinc-600'
+                  }`}
+                />
+                {avatarUrlInput && (
+                  <button 
+                    onClick={() => setAvatarUrlInput('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleApplyAvatarUrl}
+                disabled={!avatarUrlInput.trim()}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/10 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Check size={14} /> Aplicar Link da Foto
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Quick Presets for Profile Picture */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+              Sugestões de Avatares Predefinidos
+            </span>
+            <span className="text-[10px] text-zinc-500">Clique para escolher</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {AVATAR_PRESETS.map((preset) => {
+              const isSelected = currentUser?.avatar === preset.url;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateUserProfile) {
+                      onUpdateUserProfile({ avatar: preset.url });
+                      showNotification('success', `Avatar "${preset.name}" selecionado!`);
+                    }
+                  }}
+                  className={`p-3 rounded-xl border flex items-center gap-3 transition-all cursor-pointer text-left ${
+                    isSelected
+                      ? isHighContrast
+                        ? 'bg-indigo-50/80 border-indigo-500 shadow-sm'
+                        : 'bg-indigo-950/40 border-indigo-500 shadow-sm'
+                      : isHighContrast
+                        ? 'bg-white hover:bg-zinc-50 border-zinc-200'
+                        : 'bg-zinc-900/60 hover:bg-zinc-900 border-zinc-800'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-indigo-500/20 bg-zinc-900">
+                    <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-xs font-bold truncate ${
+                      isSelected ? 'text-indigo-500' : textPrimaryClass
+                    }`}>
+                      {preset.name}
+                    </p>
+                    <p className="text-[9px] text-zinc-500">
+                      {isSelected ? 'Em uso' : 'Selecionar'}
                     </p>
                   </div>
                 </button>

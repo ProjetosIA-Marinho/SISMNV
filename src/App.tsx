@@ -47,7 +47,26 @@ const INITIAL_EVENTS: CalendarEvent[] = [
 export default function App() {
   const [currentTab, setCurrentTab] = useState<Tab>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [isHighContrast, setIsHighContrast] = useState<boolean>(false);
+  const [isHighContrast, setIsHighContrast] = useState<boolean>(() => {
+    try {
+      const savedTheme = localStorage.getItem('sismnv_theme_high_contrast');
+      return savedTheme !== null ? JSON.parse(savedTheme) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleHighContrast = () => {
+    setIsHighContrast(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sismnv_theme_high_contrast', JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to save theme to localStorage', e);
+      }
+      return next;
+    });
+  };
   
   // Real active state list loaded from mockData initial values
   const [documents, setDocuments] = useState<Document[]>(INITIAL_DOCUMENTS);
@@ -84,10 +103,10 @@ export default function App() {
     return localStorage.getItem('sismnv_system_logo') || MNV_LOGO_BASE64;
   });
 
-  // User Authentication state
+  // User Authentication state - uses sessionStorage so closing the tab/browser requires re-login
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
     try {
-      const savedUser = localStorage.getItem('sismnv_auth_user') || sessionStorage.getItem('sismnv_auth_user');
+      const savedUser = sessionStorage.getItem('sismnv_auth_user');
       return savedUser ? JSON.parse(savedUser) : null;
     } catch {
       return null;
@@ -97,10 +116,11 @@ export default function App() {
   const handleLogin = (user: AuthUser) => {
     setCurrentUser(user);
     try {
+      sessionStorage.setItem('sismnv_auth_user', JSON.stringify(user));
       if (user.rememberMe) {
-        localStorage.setItem('sismnv_auth_user', JSON.stringify(user));
+        localStorage.setItem('sismnv_remembered_email', user.email);
       } else {
-        sessionStorage.setItem('sismnv_auth_user', JSON.stringify(user));
+        localStorage.removeItem('sismnv_remembered_email');
       }
     } catch (err) {
       console.error('Failed to save user session', err);
@@ -110,10 +130,26 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     try {
-      localStorage.removeItem('sismnv_auth_user');
       sessionStorage.removeItem('sismnv_auth_user');
+      localStorage.removeItem('sismnv_auth_user');
     } catch (err) {
       console.error('Failed to clear user session', err);
+    }
+  };
+
+  const handleUpdateUserProfile = (updatedFields: Partial<AuthUser>) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...updatedFields };
+    setCurrentUser(updated);
+    try {
+      sessionStorage.setItem('sismnv_auth_user', JSON.stringify(updated));
+      setMembers(prev => prev.map(m => 
+        m.email.toLowerCase() === updated.email.toLowerCase()
+          ? { ...m, avatar: updated.avatar || m.avatar, name: updated.name || m.name }
+          : m
+      ));
+    } catch (err) {
+      console.error('Failed to update user profile in storage', err);
     }
   };
 
@@ -425,9 +461,11 @@ export default function App() {
             onResetData={handleResetData}
             setCurrentTab={setCurrentTab}
             isHighContrast={isHighContrast}
-            onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+            onToggleHighContrast={handleToggleHighContrast}
             systemLogo={systemLogo}
             onUpdateSystemLogo={handleUpdateSystemLogo}
+            currentUser={currentUser}
+            onUpdateUserProfile={handleUpdateUserProfile}
           />
         );
       case 'finance':
@@ -447,7 +485,7 @@ export default function App() {
       <Login
         onLogin={handleLogin}
         isHighContrast={isHighContrast}
-        onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+        onToggleHighContrast={handleToggleHighContrast}
         systemLogo={systemLogo}
       />
     );
@@ -480,15 +518,17 @@ export default function App() {
       }`}>
         <Header 
           currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onAnalyze={handleTriggerAI}
           isAnalyzing={isAnalyzing}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isHighContrast={isHighContrast}
-          onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+          onToggleHighContrast={handleToggleHighContrast}
           systemLogo={systemLogo}
           currentUser={currentUser}
+          onUpdateUserProfile={handleUpdateUserProfile}
           onLogout={handleLogout}
         />
 

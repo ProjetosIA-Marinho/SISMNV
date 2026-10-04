@@ -558,6 +558,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [txFilterType, setTxFilterType] = useState<'all' | 'entrada' | 'saida' | 'transfer'>('all');
   const [txSortOrder, setTxSortOrder] = useState<'asc' | 'desc' | null>(null);
 
+  // Search query within transactions tab
+  const [txSearchQuery, setTxSearchQuery] = useState<string>('');
+
+  // Categories Tab Search & Filters State
+  const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
+  const [categoryTypeFilter, setCategoryTypeFilter] = useState<'all' | 'entrada' | 'saida' | 'ambas'>('all');
+  const [categoryGroupFilter, setCategoryGroupFilter] = useState<string>('all');
+
   // --- PAGINATION & BULK SELECTION FOR TRANSACTIONS ---
   const [txCurrentPage, setTxCurrentPage] = useState<number>(1);
   const [txItemsPerPage, setTxItemsPerPage] = useState<number>(25);
@@ -568,6 +576,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setTxCurrentPage(1);
   }, [
     searchQuery,
+    txSearchQuery,
     txFilterType,
     txSelectedAccountId,
     txSelectedCategoryId,
@@ -1857,14 +1866,22 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const filteredTransactions = transactions.filter(tx => {
     const category = categories.find(c => c.id === tx.categoryId);
     const account = accounts.find(a => a.id === tx.accountId);
-    const term = searchQuery.toLowerCase();
-    const matchesSearch = tx.description.toLowerCase().includes(term) ||
-      (category && category.name.toLowerCase().includes(term)) ||
-      (account && account.name.toLowerCase().includes(term)) ||
-      (tx.subcategory && tx.subcategory.toLowerCase().includes(term)) ||
-      tx.value.toString().includes(term);
+    const term = (txSearchQuery || searchQuery || '').trim().toLowerCase();
+    
+    if (term) {
+      const matchesSearch = tx.description.toLowerCase().includes(term) ||
+        (category && category.name.toLowerCase().includes(term)) ||
+        (account && account.name.toLowerCase().includes(term)) ||
+        (tx.subcategory && tx.subcategory.toLowerCase().includes(term)) ||
+        (tx.recebidoDe && tx.recebidoDe.toLowerCase().includes(term)) ||
+        (tx.vaiPagarQuem && tx.vaiPagarQuem.toLowerCase().includes(term)) ||
+        (tx.observacao && tx.observacao.toLowerCase().includes(term)) ||
+        (tx.documentNumber && tx.documentNumber.toLowerCase().includes(term)) ||
+        tx.value.toString().includes(term);
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
+    }
+
     if (txFilterType === 'entrada' && tx.type !== 'entrada') return false;
     if (txFilterType === 'saida' && tx.type !== 'saida') return false;
     if (txFilterType === 'transfer') return false;
@@ -1933,13 +1950,16 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const filteredTransfers = transfers.filter(tf => {
     const src = accounts.find(a => a.id === tf.sourceAccountId);
     const dest = accounts.find(a => a.id === tf.destinationAccountId);
-    const term = searchQuery.toLowerCase();
-    const matchesSearch = (tf.observation && tf.observation.toLowerCase().includes(term)) ||
-      (src && src.name.toLowerCase().includes(term)) ||
-      (dest && dest.name.toLowerCase().includes(term)) ||
-      tf.value.toString().includes(term);
+    const term = (txSearchQuery || searchQuery || '').trim().toLowerCase();
+    
+    if (term) {
+      const matchesSearch = (tf.observation && tf.observation.toLowerCase().includes(term)) ||
+        (src && src.name.toLowerCase().includes(term)) ||
+        (dest && dest.name.toLowerCase().includes(term)) ||
+        tf.value.toString().includes(term);
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
+    }
 
     // Filter by Account
     if (txSelectedAccountId !== 'all' && tf.sourceAccountId !== txSelectedAccountId && tf.destinationAccountId !== txSelectedAccountId) {
@@ -1976,6 +1996,46 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
     return true;
   });
+
+  // --- FILTERED CATEGORIES FOR CATEGORIES TAB ---
+  const availableCategoryGroups = React.useMemo(() => {
+    const groups = new Set<string>();
+    categories.forEach(c => {
+      if (c.group) groups.add(c.group);
+      if (c.mainCategory) groups.add(c.mainCategory);
+    });
+    return Array.from(groups).filter(Boolean);
+  }, [categories]);
+
+  const filteredCategories = React.useMemo(() => {
+    return categories.filter(cat => {
+      // 1. Search Query
+      if (categorySearchQuery.trim()) {
+        const term = categorySearchQuery.trim().toLowerCase();
+        const matchesName = cat.name.toLowerCase().includes(term);
+        const matchesCode = (cat.code || '').toLowerCase().includes(term);
+        const matchesDesc = (cat.description || '').toLowerCase().includes(term);
+        const matchesGroup = (cat.group || '').toLowerCase().includes(term) || (cat.mainCategory || '').toLowerCase().includes(term);
+        const matchesParent = (cat.parentCategory || '').toLowerCase().includes(term);
+        const matchesSubs = (cat.subcategories || []).some(s => s.toLowerCase().includes(term));
+        if (!matchesName && !matchesCode && !matchesDesc && !matchesGroup && !matchesParent && !matchesSubs) {
+          return false;
+        }
+      }
+
+      // 2. Type Filter
+      if (categoryTypeFilter !== 'all') {
+        if (cat.type !== categoryTypeFilter && cat.type !== 'ambas') return false;
+      }
+
+      // 3. Group Filter
+      if (categoryGroupFilter !== 'all') {
+        if (cat.group !== categoryGroupFilter && cat.mainCategory !== categoryGroupFilter) return false;
+      }
+
+      return true;
+    });
+  }, [categories, categorySearchQuery, categoryTypeFilter, categoryGroupFilter]);
 
   const displayTransactions = React.useMemo(() => {
     if (!txSortOrder) return filteredTransactions;
@@ -5137,11 +5197,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             <div className={`p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
               isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950 border-zinc-900'
             }`}>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap items-center gap-1.5 flex-1 w-full sm:w-auto">
                 <button
                   onClick={() => setTxFilterType('all')}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    txFilterType === 'all' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                    txFilterType === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-200'
                   }`}
                 >
                   Todos
@@ -5149,7 +5209,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <button
                   onClick={() => setTxFilterType('entrada')}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    txFilterType === 'entrada' ? 'bg-emerald-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                    txFilterType === 'entrada' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-200'
                   }`}
                 >
                   Receitas
@@ -5157,7 +5217,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <button
                   onClick={() => setTxFilterType('saida')}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    txFilterType === 'saida' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                    txFilterType === 'saida' ? 'bg-red-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-200'
                   }`}
                 >
                   Despesas
@@ -5165,11 +5225,37 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <button
                   onClick={() => setTxFilterType('transfer')}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    txFilterType === 'transfer' ? 'bg-indigo-600 text-white' : 'text-zinc-500 hover:text-zinc-200'
+                    txFilterType === 'transfer' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-200'
                   }`}
                 >
                   Transferências entre Contas
                 </button>
+
+                {/* Campo de Pesquisa em Transações ao lado de Transferências */}
+                <div className="relative min-w-[200px] sm:min-w-[240px] flex-1 sm:flex-initial ml-0 sm:ml-1.5">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Pesquisar lançamentos..."
+                    value={txSearchQuery}
+                    onChange={(e) => setTxSearchQuery(e.target.value)}
+                    className={`w-full pl-8 pr-7 py-1.5 rounded-lg text-xs transition-colors border outline-none ${
+                      isHighContrast 
+                        ? 'bg-white border-zinc-300 text-zinc-900 focus:border-indigo-600 placeholder:text-zinc-400' 
+                        : 'bg-zinc-900/80 border-zinc-800 text-zinc-200 focus:border-indigo-500 placeholder:text-zinc-500'
+                    }`}
+                  />
+                  {txSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setTxSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs cursor-pointer"
+                      title="Limpar pesquisa"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Action buttons inside transaction tab */}
@@ -6269,7 +6355,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                   isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-600' : 'bg-zinc-900 border-zinc-800 text-zinc-400'
                 }`}>
-                  {categories.length}
+                  {filteredCategories.length} {filteredCategories.length !== categories.length ? `de ${categories.length}` : ''}
                 </span>
               </div>
               
@@ -6326,6 +6412,107 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               </div>
             </div>
 
+            {/* Filter & Search Toolbar for Categories */}
+            <div className={`p-3.5 px-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-3 ${
+              isHighContrast ? 'bg-zinc-50/90 border-zinc-200' : 'bg-zinc-950/30 border-zinc-900'
+            }`}>
+              {/* Type Filters */}
+              <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setCategoryTypeFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    categoryTypeFilter === 'all'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : isHighContrast ? 'text-zinc-600 hover:bg-zinc-200' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                  }`}
+                >
+                  Todas ({categories.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryTypeFilter('entrada')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    categoryTypeFilter === 'entrada'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : isHighContrast ? 'text-zinc-600 hover:bg-zinc-200' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                  }`}
+                >
+                  Receitas ({categories.filter(c => c.type === 'entrada').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryTypeFilter('saida')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    categoryTypeFilter === 'saida'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : isHighContrast ? 'text-zinc-600 hover:bg-zinc-200' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                  }`}
+                >
+                  Despesas ({categories.filter(c => c.type === 'saida').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryTypeFilter('ambas')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    categoryTypeFilter === 'ambas'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : isHighContrast ? 'text-zinc-600 hover:bg-zinc-200' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                  }`}
+                >
+                  Ambas
+                </button>
+              </div>
+
+              {/* Group / Main Category Selector & Search Input */}
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full md:w-auto">
+                {availableCategoryGroups.length > 0 && (
+                  <div className="relative min-w-[140px] flex-1 sm:flex-initial">
+                    <select
+                      value={categoryGroupFilter}
+                      onChange={(e) => setCategoryGroupFilter(e.target.value)}
+                      className={`w-full text-xs font-semibold py-1.5 px-2.5 rounded-lg border outline-none cursor-pointer transition-colors ${
+                        isHighContrast
+                          ? 'bg-white border-zinc-300 text-zinc-800'
+                          : 'bg-zinc-900 border-zinc-800 text-zinc-300'
+                      }`}
+                    >
+                      <option value="all">Todos os Grupos</option>
+                      {availableCategoryGroups.map(grp => (
+                        <option key={grp} value={grp}>{grp}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Search Bar for Categories */}
+                <div className="relative min-w-[200px] sm:min-w-[260px] flex-1 sm:flex-initial">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar categoria, código, sub..."
+                    value={categorySearchQuery}
+                    onChange={(e) => setCategorySearchQuery(e.target.value)}
+                    className={`w-full pl-8 pr-7 py-1.5 rounded-lg text-xs transition-colors border outline-none ${
+                      isHighContrast 
+                        ? 'bg-white border-zinc-300 text-zinc-900 focus:border-indigo-600 placeholder:text-zinc-400' 
+                        : 'bg-zinc-900/80 border-zinc-800 text-zinc-200 focus:border-indigo-500 placeholder:text-zinc-500'
+                    }`}
+                  />
+                  {categorySearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCategorySearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs cursor-pointer"
+                      title="Limpar pesquisa"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Bulk Actions Banner for Selected Categories */}
             {selectedCategoryIds.length > 0 && (
               <div className={`p-3.5 px-5 border-b flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200 ${
@@ -6373,8 +6560,34 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             )}
 
             {categoryViewMode === 'grid' ? (
+              filteredCategories.length === 0 ? (
+                <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-zinc-800/40 border border-zinc-700/50 flex items-center justify-center text-zinc-400">
+                    <Search size={22} />
+                  </div>
+                  <h4 className={`text-sm font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                    Nenhuma categoria encontrada
+                  </h4>
+                  <p className="text-xs text-zinc-500 max-w-sm">
+                    Nenhum resultado corresponde aos filtros e termos de busca aplicados.
+                  </p>
+                  {(categorySearchQuery || categoryTypeFilter !== 'all' || categoryGroupFilter !== 'all') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategorySearchQuery('');
+                        setCategoryTypeFilter('all');
+                        setCategoryGroupFilter('all');
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+                    >
+                      Limpar Filtros de Categoria
+                    </button>
+                  )}
+                </div>
+              ) : (
               <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categories.map((cat, cIdx) => {
+                {filteredCategories.map((cat, cIdx) => {
                   const isSelected = selectedCategoryIds.includes(cat.id);
                   return (
                     <div 
@@ -6523,6 +6736,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   );
                 })}
               </div>
+              )
             ) : (
               // --- LIST VIEW FORMATTED AS: Código / Categoria / Tipo / Grupo / Categoria Pai / Descrição ---
               <div className="p-5">
@@ -6554,7 +6768,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/40">
-                      {categories.map((cat, cIdx) => {
+                      {filteredCategories.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="p-8 text-center text-zinc-500 text-xs">
+                            Nenhuma categoria encontrada com os filtros atuais.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCategories.map((cat, cIdx) => {
                         const isSelected = selectedCategoryIds.includes(cat.id);
                         return (
                           <tr 
@@ -6714,7 +6935,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             </td>
                           </tr>
                         );
-                      })}
+                      })
+                      )}
                     </tbody>
                   </table>
                 </div>
