@@ -568,6 +568,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setSelectedTxIds(prev => prev.filter(id => transactions.some(t => t.id === id)));
   }, [transactions]);
 
+  // --- BULK SELECTION FOR CATEGORIES ---
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
+  // Clean up category selection if categories change
+  useEffect(() => {
+    setSelectedCategoryIds(prev => prev.filter(id => categories.some(c => c.id === id)));
+  }, [categories]);
+
   // --- FORM STATES ---
   const [txDescription, setTxDescription] = useState('');
   const [txValue, setTxValue] = useState('');
@@ -2029,6 +2037,87 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       onConfirm: () => {
         setTransactions(prev => prev.filter(t => !selectedTxIds.includes(t.id)));
         setSelectedTxIds([]);
+        setDeleteConfirmState(null);
+      }
+    });
+  };
+
+  // Selection states & helpers for category bulk deletion
+  const isAllCategoriesSelected = React.useMemo(() => {
+    if (categories.length === 0) return false;
+    return categories.every(cat => selectedCategoryIds.includes(cat.id));
+  }, [categories, selectedCategoryIds]);
+
+  const isSomeCategoriesSelected = React.useMemo(() => {
+    if (categories.length === 0) return false;
+    return categories.some(cat => selectedCategoryIds.includes(cat.id)) && !isAllCategoriesSelected;
+  }, [categories, selectedCategoryIds, isAllCategoriesSelected]);
+
+  const toggleSelectAllCategories = () => {
+    if (isAllCategoriesSelected) {
+      setSelectedCategoryIds([]);
+    } else {
+      setSelectedCategoryIds(categories.map(c => c.id));
+    }
+  };
+
+  const toggleSelectCategory = (id: string) => {
+    setSelectedCategoryIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const clearCategorySelection = () => {
+    setSelectedCategoryIds([]);
+  };
+
+  const handleBulkDeleteCategories = () => {
+    if (selectedCategoryIds.length === 0) return;
+    const count = selectedCategoryIds.length;
+    const selectedCats = categories.filter(c => selectedCategoryIds.includes(c.id));
+    const linkedTxs = transactions.filter(t => selectedCategoryIds.includes(t.categoryId));
+    const totalSubs = selectedCats.reduce((sum, c) => sum + (c.subcategories?.length || 0), 0);
+
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Excluir Categorias em Massa',
+      description: `Tem certeza que deseja excluir permanentemente as ${count} categorias selecionadas?`,
+      warningNote: linkedTxs.length > 0
+        ? `Atenção: Existem ${linkedTxs.length} lançamento(s) financeiro(s) vinculado(s) a estas categorias. Ao confirmar a exclusão, os lançamentos serão preservados e movidos para a categoria padrão "Outros". Além disso, ${totalSubs} subcategoria(s) associada(s) serão removidas.`
+        : `Todas as suas ${totalSubs} subcategorias associadas também serão removidas. Esta ação não poderá ser desfeita.`,
+      confirmButtonText: `Excluir ${count} Categoria(s)`,
+      onConfirm: () => {
+        let nextCategories = categories.filter(c => !selectedCategoryIds.includes(c.id));
+
+        if (linkedTxs.length > 0) {
+          let fallbackCat = nextCategories.find(c => c.name.toLowerCase() === 'outros');
+          if (!fallbackCat) {
+            fallbackCat = {
+              id: `cat-outros-${Date.now()}`,
+              name: 'Outros',
+              type: 'ambas',
+              color: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20',
+              subcategories: [],
+              mainCategory: 'Despesas Variáveis'
+            };
+            nextCategories.push(fallbackCat);
+          }
+
+          const fallbackId = fallbackCat.id;
+          setTransactions(prev => prev.map(t => {
+            if (selectedCategoryIds.includes(t.categoryId)) {
+              return {
+                ...t,
+                categoryId: fallbackId,
+                subcategory: undefined
+              };
+            }
+            return t;
+          }));
+        }
+
+        setCategories(nextCategories);
+        setSelectedCategoryIds([]);
         setDeleteConfirmState(null);
       }
     });
@@ -6056,9 +6145,16 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             </AnimatePresence>
 
             <div className={`p-4 border-b flex justify-between items-center ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-900'}`}>
-              <h3 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
-                Categorias e Subcategorias Financeiras
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                  Categorias e Subcategorias Financeiras
+                </h3>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-600' : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+                }`}>
+                  {categories.length}
+                </span>
+              </div>
               
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* Segmented View Mode Toggle */}
@@ -6113,149 +6209,223 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               </div>
             </div>
 
+            {/* Bulk Actions Banner for Selected Categories */}
+            {selectedCategoryIds.length > 0 && (
+              <div className={`p-3.5 px-5 border-b flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200 ${
+                isHighContrast 
+                  ? 'bg-indigo-50/90 border-indigo-200 text-indigo-950' 
+                  : 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                    <CheckSquare size={16} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold">
+                      {selectedCategoryIds.length} {selectedCategoryIds.length === 1 ? 'categoria selecionada' : 'categorias selecionadas'}
+                    </span>
+                    <span className="text-[11px] opacity-75 ml-2">
+                      (de um total de {categories.length})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAllCategories}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      isHighContrast
+                        ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100'
+                        : 'bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-800'
+                    }`}
+                  >
+                    {isAllCategoriesSelected ? 'Desmarcar todas' : 'Selecionar todas'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteCategories}
+                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Trash2 size={13} />
+                    <span>Excluir Selecionadas ({selectedCategoryIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {categoryViewMode === 'grid' ? (
               <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categories.map((cat, cIdx) => (
-                  <div key={cat.id} className={`p-5 rounded-xl border flex flex-col justify-between gap-4 transition-all duration-200 ${
-                    isHighContrast ? 'bg-zinc-50 border-zinc-200 shadow-sm' : 'bg-zinc-900/20 border-[#27272a] hover:border-zinc-700'
-                  }`}>
-                    <div>
-                      {/* Header with Código & Categoria Name */}
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
-                            isHighContrast ? 'bg-zinc-200 text-zinc-800 border-zinc-300' : 'bg-zinc-800 text-indigo-400 border-zinc-700'
-                          }`}>
-                            {cat.code || `${cIdx + 1}`.padStart(2, '0')}
-                          </span>
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
-                            {cat.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => handleOpenCategoryModal(cat)}
-                            className="p-1 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/5 cursor-pointer"
-                            title="Editar Categoria"
-                          >
-                            <Edit3 size={13} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            className="p-1 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/5 cursor-pointer"
-                            title="Excluir Categoria"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Formatted attributes: Tipo / Grupo / Categoria Pai / Descrição */}
-                      <div className="mt-3.5 space-y-2 text-xs border-t border-dashed border-zinc-800/60 pt-3">
-                        <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Tipo</span>
-                            <span className={`inline-flex items-center gap-1 font-bold ${
-                              cat.type === 'entrada' ? 'text-emerald-400' : cat.type === 'saida' ? 'text-rose-400' : 'text-indigo-400'
+                {categories.map((cat, cIdx) => {
+                  const isSelected = selectedCategoryIds.includes(cat.id);
+                  return (
+                    <div 
+                      key={cat.id} 
+                      className={`p-5 rounded-xl border flex flex-col justify-between gap-4 transition-all duration-200 ${
+                        isSelected
+                          ? (isHighContrast ? 'bg-indigo-50/70 border-indigo-400 ring-2 ring-indigo-500/40 shadow-sm' : 'bg-indigo-950/25 border-indigo-500/60 ring-2 ring-indigo-500/30')
+                          : (isHighContrast ? 'bg-zinc-50 border-zinc-200 shadow-sm' : 'bg-zinc-900/20 border-[#27272a] hover:border-zinc-700')
+                      }`}
+                    >
+                      <div>
+                        {/* Header with Selection Checkbox, Código & Categoria Name */}
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectCategory(cat.id)}
+                              className="w-4 h-4 rounded border-zinc-700 text-indigo-600 focus:ring-indigo-500/30 accent-indigo-600 cursor-pointer shrink-0"
+                              title={isSelected ? "Desmarcar esta categoria" : "Selecionar categoria para exclusão"}
+                            />
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
+                              isHighContrast ? 'bg-zinc-200 text-zinc-800 border-zinc-300' : 'bg-zinc-800 text-indigo-400 border-zinc-700'
                             }`}>
-                              {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receita' : 'Despesa'}
+                              {cat.code || `${cIdx + 1}`.padStart(2, '0')}
+                            </span>
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
+                              {cat.name}
                             </span>
                           </div>
-
-                          <div>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Grupo</span>
-                            <span className={`font-semibold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
-                              {cat.group || cat.mainCategory || '—'}
-                            </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => handleOpenCategoryModal(cat)}
+                              className="p-1 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/5 cursor-pointer"
+                              title="Editar Categoria"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(cat.id)}
+                              className="p-1 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/5 cursor-pointer"
+                              title="Excluir Categoria"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </div>
 
-                        <div>
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Categoria Pai</span>
-                          <span className={`font-semibold text-[11px] ${cat.parentCategory ? (isHighContrast ? 'text-zinc-700' : 'text-zinc-300') : 'text-zinc-500 italic'}`}>
-                            {cat.parentCategory || '— (Raiz)'}
-                          </span>
-                        </div>
-
-                        {cat.description && (
-                          <div>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Descrição</span>
-                            <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed mt-0.5">
-                              {cat.description}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Subcategories list */}
-                      <div className="mt-4 space-y-2 border-t border-dashed border-zinc-800/60 pt-3">
-                        <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">
-                          Subcategorias ({(cat.subcategories || []).length})
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {(cat.subcategories || []).length === 0 ? (
-                            <span className="text-[10px] text-zinc-500 italic">Nenhuma subcategoria cadastrada</span>
-                          ) : (
-                            (cat.subcategories || []).map(sub => (
-                              <span 
-                                key={sub} 
-                                className={`inline-flex items-center gap-1.5 text-[10px] font-semibold border px-2 py-0.5 rounded-md transition-colors ${
-                                  isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-300'
-                                }`}
-                              >
-                                <span>{sub}</span>
-                                <button 
-                                  type="button"
-                                  onClick={() => handleDeleteSubcategory(cat.id, sub)}
-                                  className="p-0.5 text-zinc-400 hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                  title={`Excluir subcategoria "${sub}"`}
-                                >
-                                  <X size={11} />
-                                </button>
+                        {/* Formatted attributes: Tipo / Grupo / Categoria Pai / Descrição */}
+                        <div className="mt-3.5 space-y-2 text-xs border-t border-dashed border-zinc-800/60 pt-3">
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Tipo</span>
+                              <span className={`inline-flex items-center gap-1 font-bold ${
+                                cat.type === 'entrada' ? 'text-emerald-400' : cat.type === 'saida' ? 'text-rose-400' : 'text-indigo-400'
+                              }`}>
+                                {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receita' : 'Despesa'}
                               </span>
-                            ))
+                            </div>
+
+                            <div>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Grupo</span>
+                              <span className={`font-semibold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                {cat.group || cat.mainCategory || '—'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Categoria Pai</span>
+                            <span className={`font-semibold text-[11px] ${cat.parentCategory ? (isHighContrast ? 'text-zinc-700' : 'text-zinc-300') : 'text-zinc-500 italic'}`}>
+                              {cat.parentCategory || '— (Raiz)'}
+                            </span>
+                          </div>
+
+                          {cat.description && (
+                            <div>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 block">Descrição</span>
+                              <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed mt-0.5">
+                                {cat.description}
+                              </p>
+                            </div>
                           )}
                         </div>
+
+                        {/* Subcategories list */}
+                        <div className="mt-4 space-y-2 border-t border-dashed border-zinc-800/60 pt-3">
+                          <p className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">
+                            Subcategorias ({(cat.subcategories || []).length})
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(cat.subcategories || []).length === 0 ? (
+                              <span className="text-[10px] text-zinc-500 italic">Nenhuma subcategoria cadastrada</span>
+                            ) : (
+                              (cat.subcategories || []).map(sub => (
+                                <span 
+                                  key={sub} 
+                                  className={`inline-flex items-center gap-1.5 text-[10px] font-semibold border px-2 py-0.5 rounded-md transition-colors ${
+                                    isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-300'
+                                  }`}
+                                >
+                                  <span>{sub}</span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleDeleteSubcategory(cat.id, sub)}
+                                    className="p-0.5 text-zinc-400 hover:text-rose-500 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                    title={`Excluir subcategoria "${sub}"`}
+                                  >
+                                    <X size={11} />
+                                  </button>
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Add Inline Subcategory form */}
+                      <div className="border-t border-dashed border-zinc-800/60 pt-3 flex gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="Nova subcategoria..."
+                          value={newSubcategoryName[cat.id] || ''}
+                          onChange={(e) => setNewSubcategoryName({
+                            ...newSubcategoryName,
+                            [cat.id]: e.target.value
+                          })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddSubcategory(cat.id);
+                            }
+                          }}
+                          className={`text-[10px] font-medium px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1 ${
+                            isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                          }`}
+                        />
+                        <button
+                          onClick={() => handleAddSubcategory(cat.id)}
+                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                        >
+                          + Add
+                        </button>
                       </div>
                     </div>
-
-                    {/* Add Inline Subcategory form */}
-                    <div className="border-t border-dashed border-zinc-800/60 pt-3 flex gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="Nova subcategoria..."
-                        value={newSubcategoryName[cat.id] || ''}
-                        onChange={(e) => setNewSubcategoryName({
-                          ...newSubcategoryName,
-                          [cat.id]: e.target.value
-                        })}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddSubcategory(cat.id);
-                          }
-                        }}
-                        className={`text-[10px] font-medium px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 flex-1 ${
-                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                        }`}
-                      />
-                      <button
-                        onClick={() => handleAddSubcategory(cat.id)}
-                        className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer"
-                      >
-                        + Add
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               // --- LIST VIEW FORMATTED AS: Código / Categoria / Tipo / Grupo / Categoria Pai / Descrição ---
               <div className="p-5">
                 <div className={`border rounded-xl overflow-x-auto scrollbar-thin ${isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'}`}>
-                  <table className="w-full text-left border-collapse min-w-[950px]">
+                  <table className="w-full text-left border-collapse min-w-[1000px]">
                     <thead>
                       <tr className={`border-b text-[9px] font-bold uppercase tracking-wider ${isHighContrast ? 'bg-zinc-50 text-zinc-500 border-zinc-200' : 'bg-zinc-900/40 text-zinc-400 border-zinc-800'}`}>
+                        {/* Checkbox Header for Mass Selection */}
+                        <th className="p-4 w-10 text-center select-none">
+                          <input
+                            type="checkbox"
+                            checked={isAllCategoriesSelected}
+                            ref={el => {
+                              if (el) el.indeterminate = isSomeCategoriesSelected;
+                            }}
+                            onChange={toggleSelectAllCategories}
+                            className="w-4 h-4 rounded border-zinc-700 text-indigo-600 focus:ring-indigo-500/30 accent-indigo-600 cursor-pointer"
+                            title={isAllCategoriesSelected ? "Desmarcar todas as categorias" : "Selecionar todas as categorias"}
+                          />
+                        </th>
                         <th className="p-4 w-24">Código</th>
                         <th className="p-4 min-w-[180px]">Categoria</th>
                         <th className="p-4 w-28">Tipo</th>
@@ -6267,151 +6437,167 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/40">
-                      {categories.map((cat, cIdx) => (
-                        <tr 
-                          key={cat.id} 
-                          className={`hover:bg-zinc-500/5 transition-colors text-xs ${
-                            isHighContrast ? 'text-zinc-800' : 'text-zinc-200'
-                          }`}
-                        >
-                          {/* 1. Código */}
-                          <td className="p-4 font-mono font-bold text-[11px] text-indigo-400 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded border ${
-                              isHighContrast ? 'bg-zinc-100 border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-indigo-400'
-                            }`}>
-                              {cat.code || `${cIdx + 1}`.padStart(2, '0')}
-                            </span>
-                          </td>
+                      {categories.map((cat, cIdx) => {
+                        const isSelected = selectedCategoryIds.includes(cat.id);
+                        return (
+                          <tr 
+                            key={cat.id} 
+                            className={`hover:bg-zinc-500/5 transition-colors text-xs ${
+                              isSelected
+                                ? (isHighContrast ? 'bg-indigo-50/70 text-zinc-900' : 'bg-indigo-950/25 text-zinc-100')
+                                : (isHighContrast ? 'text-zinc-800' : 'text-zinc-200')
+                            }`}
+                          >
+                            {/* Checkbox column */}
+                            <td className="p-4 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectCategory(cat.id)}
+                                className="w-4 h-4 rounded border-zinc-700 text-indigo-600 focus:ring-indigo-500/30 accent-indigo-600 cursor-pointer"
+                                title={`Selecionar categoria ${cat.name}`}
+                              />
+                            </td>
 
-                          {/* 2. Categoria */}
-                          <td className="p-4 font-semibold">
-                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
-                              {cat.name}
-                            </span>
-                          </td>
-
-                          {/* 3. Tipo */}
-                          <td className="p-4 capitalize font-semibold text-[11px] whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                              cat.type === 'entrada'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : cat.type === 'saida'
-                                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                            }`}>
-                              {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receita' : 'Despesa'}
-                            </span>
-                          </td>
-
-                          {/* 4. Grupo */}
-                          <td className="p-4">
-                            <span className={`text-[11px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
-                              {cat.group || cat.mainCategory || '—'}
-                            </span>
-                          </td>
-
-                          {/* 5. Categoria Pai */}
-                          <td className="p-4 text-[11px]">
-                            {cat.parentCategory ? (
-                              <span className={`font-semibold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>
-                                {cat.parentCategory}
+                            {/* 1. Código */}
+                            <td className="p-4 font-mono font-bold text-[11px] text-indigo-400 whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded border ${
+                                isHighContrast ? 'bg-zinc-100 border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-indigo-400'
+                              }`}>
+                                {cat.code || `${cIdx + 1}`.padStart(2, '0')}
                               </span>
-                            ) : (
-                              <span className="text-zinc-500 italic text-[10px]">— (Raiz)</span>
-                            )}
-                          </td>
+                            </td>
 
-                          {/* 6. Descrição */}
-                          <td className="p-4 text-[11px] text-zinc-400 max-w-xs">
-                            {cat.description ? (
-                              <p className="line-clamp-2 leading-tight">{cat.description}</p>
-                            ) : (
-                              <span className="text-zinc-600 italic text-[10px]">—</span>
-                            )}
-                          </td>
+                            {/* 2. Categoria */}
+                            <td className="p-4 font-semibold">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cat.color}`}>
+                                {cat.name}
+                              </span>
+                            </td>
 
-                          {/* Subcategorias List & Inline Adder */}
-                          <td className="p-4">
-                            <div className="space-y-1.5">
-                              <div className="flex flex-wrap gap-1 max-w-sm">
-                                {(cat.subcategories || []).length === 0 ? (
-                                  <span className="text-[10px] text-zinc-500 italic">Sem subcategorias</span>
-                                ) : (
-                                  (cat.subcategories || []).map(sub => (
-                                    <span 
-                                      key={sub} 
-                                      className={`inline-flex items-center gap-1.5 text-[9px] font-semibold border px-1.5 py-0.5 rounded transition-colors ${
-                                        isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-850 border-zinc-700/80 text-zinc-300'
-                                      }`}
-                                    >
-                                      <span>{sub}</span>
-                                      <button 
-                                        type="button"
-                                        onClick={() => handleDeleteSubcategory(cat.id, sub)}
-                                        className="text-zinc-400 hover:text-rose-500 cursor-pointer"
-                                        title={`Excluir "${sub}"`}
+                            {/* 3. Tipo */}
+                            <td className="p-4 capitalize font-semibold text-[11px] whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                cat.type === 'entrada'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                  : cat.type === 'saida'
+                                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                    : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                              }`}>
+                                {cat.type === 'ambas' ? 'Ambos fluxos' : cat.type === 'entrada' ? 'Receita' : 'Despesa'}
+                              </span>
+                            </td>
+
+                            {/* 4. Grupo */}
+                            <td className="p-4">
+                              <span className={`text-[11px] font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                {cat.group || cat.mainCategory || '—'}
+                              </span>
+                            </td>
+
+                            {/* 5. Categoria Pai */}
+                            <td className="p-4 text-[11px]">
+                              {cat.parentCategory ? (
+                                <span className={`font-semibold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>
+                                  {cat.parentCategory}
+                                </span>
+                              ) : (
+                                <span className="text-zinc-500 italic text-[10px]">— (Raiz)</span>
+                              )}
+                            </td>
+
+                            {/* 6. Descrição */}
+                            <td className="p-4 text-[11px] text-zinc-400 max-w-xs">
+                              {cat.description ? (
+                                <p className="line-clamp-2 leading-tight">{cat.description}</p>
+                              ) : (
+                                <span className="text-zinc-600 italic text-[10px]">—</span>
+                              )}
+                            </td>
+
+                            {/* Subcategorias List & Inline Adder */}
+                            <td className="p-4">
+                              <div className="space-y-1.5">
+                                <div className="flex flex-wrap gap-1 max-w-sm">
+                                  {(cat.subcategories || []).length === 0 ? (
+                                    <span className="text-[10px] text-zinc-500 italic">Sem subcategorias</span>
+                                  ) : (
+                                    (cat.subcategories || []).map(sub => (
+                                      <span 
+                                        key={sub} 
+                                        className={`inline-flex items-center gap-1.5 text-[9px] font-semibold border px-1.5 py-0.5 rounded transition-colors ${
+                                          isHighContrast ? 'bg-zinc-100 border-zinc-250 text-zinc-800' : 'bg-zinc-850 border-zinc-700/80 text-zinc-300'
+                                        }`}
                                       >
-                                        <X size={10} />
-                                      </button>
-                                    </span>
-                                  ))
-                                )}
-                              </div>
+                                        <span>{sub}</span>
+                                        <button 
+                                          type="button"
+                                          onClick={() => handleDeleteSubcategory(cat.id, sub)}
+                                          className="text-zinc-400 hover:text-rose-500 cursor-pointer"
+                                          title={`Excluir "${sub}"`}
+                                        >
+                                          <X size={10} />
+                                        </button>
+                                      </span>
+                                    ))
+                                  )}
+                                </div>
 
-                              <div className="flex gap-1 items-center max-w-[150px]">
-                                <input
-                                  type="text"
-                                  placeholder="+ sub..."
-                                  value={newSubcategoryName[cat.id] || ''}
-                                  onChange={(e) => setNewSubcategoryName({
-                                    ...newSubcategoryName,
-                                    [cat.id]: e.target.value
-                                  })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleAddSubcategory(cat.id);
-                                    }
-                                  }}
-                                  className={`text-[9px] font-medium px-1.5 py-0.5 rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 w-20 ${
-                                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                                  }`}
-                                />
+                                <div className="flex gap-1 items-center max-w-[150px]">
+                                  <input
+                                    type="text"
+                                    placeholder="+ sub..."
+                                    value={newSubcategoryName[cat.id] || ''}
+                                    onChange={(e) => setNewSubcategoryName({
+                                      ...newSubcategoryName,
+                                      [cat.id]: e.target.value
+                                    })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddSubcategory(cat.id);
+                                      }
+                                    }}
+                                    className={`text-[9px] font-medium px-1.5 py-0.5 rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 w-20 ${
+                                      isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                                    }`}
+                                  />
+                                  <button
+                                    onClick={() => handleAddSubcategory(cat.id)}
+                                    className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-bold cursor-pointer"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
                                 <button
-                                  onClick={() => handleAddSubcategory(cat.id)}
-                                  className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-bold cursor-pointer"
+                                  onClick={() => handleOpenCategoryModal(cat)}
+                                  className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                    isHighContrast ? 'hover:bg-zinc-100 text-zinc-600' : 'hover:bg-zinc-800 text-zinc-400'
+                                  }`}
+                                  title="Editar Categoria"
                                 >
-                                  +
+                                  <Edit3 size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCategory(cat.id)}
+                                  className={`p-1.5 rounded transition-colors cursor-pointer ${
+                                    isHighContrast ? 'hover:bg-rose-50 text-rose-600' : 'hover:bg-rose-500/10 text-rose-400'
+                                  }`}
+                                  title="Excluir Categoria"
+                                >
+                                  <Trash2 size={13} />
                                 </button>
                               </div>
-                            </div>
-                          </td>
-
-                          {/* Actions */}
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => handleOpenCategoryModal(cat)}
-                                className={`p-1.5 rounded transition-colors cursor-pointer ${
-                                  isHighContrast ? 'hover:bg-zinc-100 text-zinc-600' : 'hover:bg-zinc-800 text-zinc-400'
-                                }`}
-                                title="Editar Categoria"
-                              >
-                                <Edit3 size={13} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCategory(cat.id)}
-                                className={`p-1.5 rounded transition-colors cursor-pointer ${
-                                  isHighContrast ? 'hover:bg-rose-50 text-rose-600' : 'hover:bg-rose-500/10 text-rose-400'
-                                }`}
-                                title="Excluir Categoria"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
