@@ -3369,7 +3369,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       const bankSlice = accounts.slice(0, 5);
       const bCardW = (297 - 28 - (bankSlice.length - 1) * 3) / bankSlice.length;
       const bStartY = 54;
-      const bCardH = 14;
+      const bCardH = 17;
 
       bankSlice.forEach((acc, idx) => {
         const bx = 14 + idx * (bCardW + 3);
@@ -3386,18 +3386,21 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
         doc.setFontSize(5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(16, 185, 129);
-        doc.text(`Entradas: +${formatCurrency(stats.totalEntradas)}`, bx + 2, bStartY + 7);
+        doc.text(`Entradas: +${formatCurrency(stats.totalEntradas)}`, bx + 2, bStartY + 6.5);
 
         doc.setTextColor(239, 68, 68);
-        doc.text(`Saídas: -${formatCurrency(stats.totalSaidas)}`, bx + 2, bStartY + 10);
+        doc.text(`Saídas: -${formatCurrency(stats.totalSaidas)}`, bx + 2, bStartY + 9.5);
+
+        doc.setTextColor(stats.diff >= 0 ? 16 : 239, stats.diff >= 0 ? 185 : 68, stats.diff >= 0 ? 129 : 68);
+        doc.text(`Diferença: ${stats.diff >= 0 ? '+' : ''}${formatCurrency(stats.diff)}`, bx + 2, bStartY + 12.5);
 
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(stats.finalBalanceForPeriod >= 0 ? 79 : 239, stats.finalBalanceForPeriod >= 0 ? 70 : 68, stats.finalBalanceForPeriod >= 0 ? 229 : 68);
-        doc.text(`Saldo: ${formatCurrency(stats.finalBalanceForPeriod)}`, bx + 2, bStartY + 13);
+        doc.text(`Saldo: ${formatCurrency(stats.finalBalanceForPeriod)}`, bx + 2, bStartY + 15.5);
       });
 
       // Section: Lançamentos
-      const tableStartY = 72;
+      const tableStartY = 74;
 
       if (txFilterType === 'transfer') {
         const tableData = displayTransfers.map(tf => {
@@ -10461,16 +10464,24 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             </div>
                           </div>
 
-                          <div className="pt-1.5 border-t border-dashed border-zinc-200 flex justify-between items-baseline text-[7px]">
-                            <div>
-                              <span className="text-zinc-400 uppercase text-[6px] block">Inicial</span>
-                              <span className="text-zinc-600 font-mono block truncate">{formatCurrency(stats.initialBalanceForPeriod)}</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-zinc-400 uppercase text-[6px] block">Atual</span>
-                              <span className={`font-mono font-bold block text-[8px] truncate ${stats.finalBalanceForPeriod >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-                                {formatCurrency(stats.finalBalanceForPeriod)}
+                          <div className="pt-1.5 border-t border-dashed border-zinc-200 space-y-1 text-[7px]">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-zinc-500 uppercase text-[6px] font-bold">Diferença (Mês)</span>
+                              <span className={`font-mono font-bold text-[7.5px] truncate ${stats.diff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {stats.diff >= 0 ? '+' : ''}{formatCurrency(stats.diff)}
                               </span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1 border-t border-zinc-100">
+                              <div>
+                                <span className="text-zinc-400 uppercase text-[6px] block">Inicial</span>
+                                <span className="text-zinc-600 font-mono block truncate">{formatCurrency(stats.initialBalanceForPeriod)}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-zinc-400 uppercase text-[6px] block">Atual</span>
+                                <span className={`font-mono font-bold block text-[8px] truncate ${stats.finalBalanceForPeriod >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
+                                  {formatCurrency(stats.finalBalanceForPeriod)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
