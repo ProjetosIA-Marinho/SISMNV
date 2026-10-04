@@ -50,6 +50,10 @@ interface ParsedTransactionRow {
   status: 'concluido' | 'pendente';
   entidade: string; // recebidoDe ou vaiPagarQuem
   observation: string;
+  parcelamento: 'sim' | 'nao' | 'recorrente';
+  numeroParcelas?: number;
+  frequenciaParcelas?: 'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | '';
+  dataVencimento?: string;
   errors: string[];
 }
 
@@ -266,7 +270,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         return undefined;
       };
 
-      const rawDate = getVal(['data', 'datalancamento', 'dt', 'date', 'datavencimento']);
+      const rawDate = getVal(['data', 'datalancamento', 'dt', 'date']);
       const rawType = getVal(['tipo', 'tipotransacao', 'natureza', 'es', 'type', 'movimento']);
       const rawDesc = getVal(['descricao', 'historico', 'nome', 'detalhes', 'titulo', 'description', 'memo']) || '';
       const rawVal = getVal(['valor', 'valorrs', 'valortotal', 'quantia', 'value', 'amount', 'preco']);
@@ -277,6 +281,12 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       const rawStatus = getVal(['status', 'situacao', 'pago', 'recebido', 'liquidado']) || '';
       const rawPerson = getVal(['recebidode', 'pagoa', 'vaipagarquem', 'fornecedor', 'membro', 'pessoa', 'cliente', 'origem', 'destino']) || '';
       const rawObs = getVal(['observacao', 'obs', 'detalhesadicionais', 'observacoes', 'notes']) || '';
+
+      // Parcelamento & Recorrência headers
+      const rawParcelamento = getVal(['parcelamento', 'parcelado', 'eparcelado', 'recorrente', 'recorrencia', 'recorrenteparcelado', 'tipoparcelamento', 'parcelar']);
+      const rawNumParcelas = getVal(['numeroparcelas', 'numerodeparcelas', 'qtdparcelas', 'quantidadeparcelas', 'parcelas', 'parcela', 'totalparcelas', 'nparcelas', 'installments', 'numparcelas']);
+      const rawFreqParcelas = getVal(['frequenciaparcelas', 'frequencia', 'frequenciadeparcelas', 'periodicidade', 'intervalo', 'frequency', 'frequenciarecorrencia']);
+      const rawVencimento = getVal(['datavencimento', 'vencimento', 'dtvencimento', 'duedate', 'datadevencimento']);
 
       // Determine value & polarity
       const { value, isNegative } = parseCurrencyValue(rawVal);
@@ -325,6 +335,49 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         }
       }
 
+      // Parse Parcelamento & Recorrência
+      let parcelamento: 'sim' | 'nao' | 'recorrente' = 'nao';
+      let numeroParcelas: number | undefined = undefined;
+      let frequenciaParcelas: 'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | '' = 'mensal';
+      const dataVencimento = rawVencimento ? parseDateValue(rawVencimento) : parsedDate;
+
+      // Extract number of installments if provided
+      if (rawNumParcelas !== undefined && rawNumParcelas !== null && rawNumParcelas !== '') {
+        if (typeof rawNumParcelas === 'number') {
+          numeroParcelas = Math.max(1, Math.floor(rawNumParcelas));
+        } else {
+          const numMatch = String(rawNumParcelas).match(/(\d+)/);
+          if (numMatch) {
+            numeroParcelas = Math.max(1, parseInt(numMatch[1], 10));
+          }
+        }
+      }
+
+      // Parcelamento string detection
+      if (rawParcelamento !== undefined && rawParcelamento !== null && rawParcelamento !== '') {
+        const pNorm = normalizeHeader(String(rawParcelamento));
+        if (pNorm.includes('rec') || pNorm.includes('fix')) {
+          parcelamento = 'recorrente';
+        } else if (pNorm.includes('sim') || pNorm.startsWith('s') || pNorm === '1' || pNorm.includes('parc') || pNorm === 'true') {
+          parcelamento = 'sim';
+        } else if (pNorm.includes('nao') || pNorm.startsWith('n') || pNorm === '0' || pNorm === 'false') {
+          parcelamento = 'nao';
+        }
+      } else if (numeroParcelas && numeroParcelas > 1) {
+        // Auto-detect parcelamento if number of parcels > 1
+        parcelamento = 'sim';
+      }
+
+      // Frequency normalization
+      if (rawFreqParcelas) {
+        const freqNorm = normalizeHeader(String(rawFreqParcelas));
+        if (freqNorm.includes('anu')) frequenciaParcelas = 'anual';
+        else if (freqNorm.includes('quin')) frequenciaParcelas = 'quinzenal';
+        else if (freqNorm.includes('sem')) frequenciaParcelas = 'semanal';
+        else if (freqNorm.includes('dia')) frequenciaParcelas = 'diario';
+        else if (freqNorm.includes('men')) frequenciaParcelas = 'mensal';
+      }
+
       const rowCandidate: Omit<ParsedTransactionRow, 'errors' | 'selected' | 'id'> = {
         type,
         date: parsedDate,
@@ -336,7 +389,11 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         formaPagamento,
         status,
         entidade: String(rawPerson || '').trim(),
-        observation: String(rawObs || '').trim()
+        observation: String(rawObs || '').trim(),
+        parcelamento,
+        numeroParcelas: parcelamento === 'sim' ? (numeroParcelas || 1) : undefined,
+        frequenciaParcelas: (parcelamento === 'sim' || parcelamento === 'recorrente') ? frequenciaParcelas : undefined,
+        dataVencimento
       };
 
       const errors = validateRow(rowCandidate);
@@ -453,34 +510,46 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
           'Conta': accounts[0]?.name || 'Conta Corrente',
           'Forma de Pagamento': 'PIX',
           'Status': 'Recebido',
+          'Parcelamento': 'Não',
+          'Nº Parcelas': 1,
+          'Frequência': 'Mensal',
+          'Data Vencimento': '05/10/2026',
           'Recebido de / Pago a': 'Membros da Igreja',
           'Observação': 'Culto de celebração'
         },
         {
           'Data': '10/10/2026',
           'Tipo': 'Despesa',
-          'Descrição': 'Conta de Energia Elétrica (Enel)',
-          'Valor': 380.50,
-          'Categoria': categories.find(c => c.type === 'saida')?.name || 'Despesas Fixas',
-          'Subcategoria': 'Energia',
+          'Descrição': 'Reforma do Telhado e Forro',
+          'Valor': 600.00,
+          'Categoria': categories.find(c => c.type === 'saida')?.name || 'Manutenção',
+          'Subcategoria': 'Obras',
           'Conta': accounts[0]?.name || 'Conta Corrente',
           'Forma de Pagamento': 'Boleto',
-          'Status': 'Pago',
-          'Recebido de / Pago a': 'Enel Distribuição',
-          'Observação': 'Vencimento 10/10'
+          'Status': 'Pendente',
+          'Parcelamento': 'Sim',
+          'Nº Parcelas': 6,
+          'Frequência': 'Mensal',
+          'Data Vencimento': '10/10/2026',
+          'Recebido de / Pago a': 'Construtora Vale',
+          'Observação': 'Parcela 1 de 6'
         },
         {
           'Data': '12/10/2026',
-          'Tipo': 'Receita',
-          'Descrição': 'Doação para Departamento Infantil',
-          'Valor': 500.00,
-          'Categoria': categories.find(c => c.type === 'entrada')?.name || 'Doações',
-          'Subcategoria': 'Infantil',
+          'Tipo': 'Despesa',
+          'Descrição': 'Aluguel do Espaço / Anexo',
+          'Valor': 1800.00,
+          'Categoria': categories.find(c => c.type === 'saida')?.name || 'Despesas Fixas',
+          'Subcategoria': 'Aluguel',
           'Conta': accounts[0]?.name || 'Conta Corrente',
-          'Forma de Pagamento': 'Dinheiro',
-          'Status': 'Recebido',
-          'Recebido de / Pago a': 'Família Santos',
-          'Observação': 'Para festividade das crianças'
+          'Forma de Pagamento': 'Transferência',
+          'Status': 'Pendente',
+          'Parcelamento': 'Recorrente',
+          'Nº Parcelas': 1,
+          'Frequência': 'Mensal',
+          'Data Vencimento': '12/10/2026',
+          'Recebido de / Pago a': 'Imobiliária Central',
+          'Observação': 'Despesa fixa mensal'
         },
         {
           'Data': '15/10/2026',
@@ -492,6 +561,10 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
           'Conta': accounts[0]?.name || 'Caixa Físico',
           'Forma de Pagamento': 'Cartão',
           'Status': 'Pago',
+          'Parcelamento': 'Não',
+          'Nº Parcelas': 1,
+          'Frequência': 'Mensal',
+          'Data Vencimento': '15/10/2026',
           'Recebido de / Pago a': 'Supermercado Central',
           'Observação': 'Produtos para os banheiros e templo'
         }
@@ -508,6 +581,10 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         { wch: 24 }, // Conta
         { wch: 20 }, // Forma de Pagamento
         { wch: 14 }, // Status
+        { wch: 16 }, // Parcelamento
+        { wch: 14 }, // Nº Parcelas
+        { wch: 16 }, // Frequência
+        { wch: 16 }, // Data Vencimento
         { wch: 26 }, // Recebido de / Pago a
         { wch: 30 }  // Observação
       ];
@@ -520,8 +597,11 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         { 'Instruções': '1. Preencha as colunas conforme o modelo da primeira aba.' },
         { 'Instruções': '2. Tipos aceitos: "Receita" (Entrada) ou "Despesa" (Saída).' },
         { 'Instruções': '3. Formatos de Data aceitos: DD/MM/AAAA ou AAAA-MM-DD.' },
-        { 'Instruções': '4. Formas de Pagamento: PIX, Boleto, Cartão, Dinheiro, Transferência, Cheque, Débito Automático.' },
-        { 'Instruções': '5. Você poderá revisar, alterar ou excluir qualquer linha antes de confirmar a importação no sistema.' }
+        { 'Instruções': '4. Parcelamento aceita: "Não" (Único), "Sim" (Parcelado) ou "Recorrente" (Mensal/Fixo).' },
+        { 'Instruções': '5. Nº Parcelas: Número total de parcelas (ex: 1, 6, 12).' },
+        { 'Instruções': '6. Frequência aceita: Mensal, Anual, Quinzenal, Semanal, Diário.' },
+        { 'Instruções': '7. Formas de Pagamento: PIX, Boleto, Cartão, Dinheiro, Transferência, Cheque, Débito Automático.' },
+        { 'Instruções': '8. Você poderá revisar, alterar ou excluir qualquer linha antes de confirmar a importação no sistema.' }
       ];
       const wsHelp = XLSX.utils.json_to_sheet(instructions);
       XLSX.utils.book_append_sheet(wb, wsHelp, 'Como Preencher');
@@ -659,11 +739,13 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         recebidoDe: isEntrada ? (row.entidade || undefined) : undefined,
         dataRecebido: isEntrada && row.status === 'concluido' ? row.date : undefined,
         dataLancamento: row.date,
-        parcelamento: 'nao',
+        parcelamento: row.parcelamento || 'nao',
+        numeroParcelas: row.parcelamento === 'sim' ? (row.numeroParcelas || 1) : undefined,
+        frequenciaParcelas: (row.parcelamento === 'sim' || row.parcelamento === 'recorrente') ? (row.frequenciaParcelas || 'mensal') : undefined,
         formaPagamento: row.formaPagamento || undefined,
         pago: !isEntrada ? (row.status === 'concluido' ? 'sim' : 'nao') : undefined,
         vaiPagarQuem: !isEntrada ? (row.entidade || undefined) : undefined,
-        dataVencimento: !isEntrada ? row.date : undefined
+        dataVencimento: row.dataVencimento || row.date
       };
     });
 
@@ -1187,11 +1269,15 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                       </th>
                       <th className="py-3 px-2 w-28 font-bold uppercase tracking-wider text-[10px]">Tipo</th>
                       <th className="py-3 px-2 w-32 font-bold uppercase tracking-wider text-[10px]">Data</th>
-                      <th className="py-3 px-2 min-w-[200px] font-bold uppercase tracking-wider text-[10px]">Descrição</th>
+                      <th className="py-3 px-2 min-w-[180px] font-bold uppercase tracking-wider text-[10px]">Descrição</th>
                       <th className="py-3 px-2 w-32 font-bold uppercase tracking-wider text-[10px]">Valor (R$)</th>
-                      <th className="py-3 px-2 min-w-[150px] font-bold uppercase tracking-wider text-[10px]">Categoria</th>
-                      <th className="py-3 px-2 min-w-[150px] font-bold uppercase tracking-wider text-[10px]">Conta</th>
-                      <th className="py-3 px-2 min-w-[130px] font-bold uppercase tracking-wider text-[10px]">Pagamento</th>
+                      <th className="py-3 px-2 min-w-[140px] font-bold uppercase tracking-wider text-[10px]">Categoria</th>
+                      <th className="py-3 px-2 min-w-[140px] font-bold uppercase tracking-wider text-[10px]">Conta</th>
+                      <th className="py-3 px-2 min-w-[120px] font-bold uppercase tracking-wider text-[10px]">Pagamento</th>
+                      <th className="py-3 px-2 min-w-[120px] font-bold uppercase tracking-wider text-[10px]">Parcelamento</th>
+                      <th className="py-3 px-2 w-20 font-bold uppercase tracking-wider text-[10px]">Parcelas</th>
+                      <th className="py-3 px-2 min-w-[110px] font-bold uppercase tracking-wider text-[10px]">Frequência</th>
+                      <th className="py-3 px-2 w-32 font-bold uppercase tracking-wider text-[10px]">Vencimento</th>
                       <th className="py-3 px-2 min-w-[140px] font-bold uppercase tracking-wider text-[10px]">Origem / Destino</th>
                       <th className="py-3 px-2 w-12 text-center">Ações</th>
                     </tr>
@@ -1200,7 +1286,6 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                     {filteredRows.map((row) => {
                       const hasError = row.errors.length > 0;
                       const isEntrada = row.type === 'entrada';
-                      const selectedCat = categories.find(c => c.id === row.categoryId);
 
                       return (
                         <tr
@@ -1352,6 +1437,81 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
                               <option value="débito automático">Débito Aut.</option>
                               <option value="cheque">Cheque</option>
                             </select>
+                          </td>
+
+                          {/* Parcelamento */}
+                          <td className="py-2 px-2">
+                            <select
+                              value={row.parcelamento}
+                              onChange={e => {
+                                const val = e.target.value as 'sim' | 'nao' | 'recorrente';
+                                updateRow(row.id, {
+                                  parcelamento: val,
+                                  numeroParcelas: val === 'sim' ? (row.numeroParcelas || 2) : undefined,
+                                  frequenciaParcelas: val !== 'nao' ? (row.frequenciaParcelas || 'mensal') : undefined
+                                });
+                              }}
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                row.parcelamento === 'sim'
+                                  ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300 font-bold'
+                                  : row.parcelamento === 'recorrente'
+                                    ? 'border-amber-500/50 bg-amber-500/10 text-amber-300 font-bold'
+                                    : isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            >
+                              <option value="nao">Não (Único)</option>
+                              <option value="sim">Sim (Parcelado)</option>
+                              <option value="recorrente">Recorrente (Fixo)</option>
+                            </select>
+                          </td>
+
+                          {/* Nº Parcelas */}
+                          <td className="py-2 px-2">
+                            <input
+                              type="number"
+                              min="1"
+                              max="120"
+                              disabled={row.parcelamento !== 'sim'}
+                              value={row.parcelamento === 'sim' ? (row.numeroParcelas || 1) : 1}
+                              onChange={e => updateRow(row.id, { numeroParcelas: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center font-mono ${
+                                row.parcelamento !== 'sim'
+                                  ? 'opacity-30 cursor-not-allowed bg-zinc-900/40 border-zinc-800'
+                                  : isHighContrast ? 'bg-white border-zinc-300 text-zinc-800 font-bold' : 'bg-zinc-900 border-zinc-800 text-zinc-200 font-bold'
+                              }`}
+                            />
+                          </td>
+
+                          {/* Frequência */}
+                          <td className="py-2 px-2">
+                            <select
+                              disabled={row.parcelamento === 'nao'}
+                              value={row.frequenciaParcelas || 'mensal'}
+                              onChange={e => updateRow(row.id, { frequenciaParcelas: e.target.value as any })}
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                row.parcelamento === 'nao'
+                                  ? 'opacity-30 cursor-not-allowed bg-zinc-900/40 border-zinc-800'
+                                  : isHighContrast ? 'bg-white border-zinc-300 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            >
+                              <option value="mensal">Mensal</option>
+                              <option value="anual">Anual</option>
+                              <option value="quinzenal">Quinzenal</option>
+                              <option value="semanal">Semanal</option>
+                              <option value="diario">Diário</option>
+                            </select>
+                          </td>
+
+                          {/* Vencimento */}
+                          <td className="py-2 px-2">
+                            <input
+                              type="date"
+                              value={row.dataVencimento || row.date}
+                              onChange={e => updateRow(row.id, { dataVencimento: e.target.value })}
+                              className={`w-full px-2 py-1 text-xs rounded border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono ${
+                                isHighContrast ? 'bg-white border-zinc-300' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
                           </td>
 
                           {/* Origem / Destino */}
