@@ -56,6 +56,7 @@ import { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfe
 import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 import { BulkImportModal } from './BulkImportModal';
 import { BulkCategoryImportModal } from './BulkCategoryImportModal';
+import { BulkTransferImportModal } from './BulkTransferImportModal';
 
 export const getAccountTypeLabel = (type?: BankAccountType | string) => {
   switch (type) {
@@ -491,6 +492,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [showBulkCategoryImportModal, setShowBulkCategoryImportModal] = useState(false);
+  const [showBulkTransferImportModal, setShowBulkTransferImportModal] = useState(false);
   const [bulkImportSuccessMsg, setBulkImportSuccessMsg] = useState<{
     count: number;
     totalReceitas: number;
@@ -499,6 +501,10 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [categoryImportSuccessMsg, setCategoryImportSuccessMsg] = useState<{
     count: number;
     subcategoriesCount: number;
+  } | null>(null);
+  const [transferImportSuccessMsg, setTransferImportSuccessMsg] = useState<{
+    count: number;
+    totalValue: number;
   } | null>(null);
 
   const handleBulkImportCategories = (updatedCategories: TransactionCategory[], _mergeStrategy: 'merge' | 'replace') => {
@@ -524,6 +530,18 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     });
     setTimeout(() => {
       setBulkImportSuccessMsg(null);
+    }, 7000);
+  };
+
+  const handleBulkImportTransfers = (newTransfers: Transfer[]) => {
+    setTransfers(prev => [...newTransfers, ...prev]);
+    const totalValue = newTransfers.reduce((sum, t) => sum + t.value, 0);
+    setTransferImportSuccessMsg({
+      count: newTransfers.length,
+      totalValue
+    });
+    setTimeout(() => {
+      setTransferImportSuccessMsg(null);
     }, 7000);
   };
 
@@ -4875,6 +4893,41 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   </button>
                 </motion.div>
               )}
+
+              {/* Notification Banner for Bulk Transfer Import Success */}
+              {transferImportSuccessMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  className={`mx-5 mt-4 p-4 rounded-xl border flex items-center justify-between gap-3 shadow-lg ${
+                    isHighContrast
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-900 shadow-indigo-100'
+                      : 'bg-indigo-950/80 border-indigo-500/40 text-indigo-100 backdrop-blur-md shadow-indigo-950/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 shrink-0 border border-indigo-500/30">
+                      <RefreshCw size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-bold text-indigo-400">
+                        {transferImportSuccessMsg.count} {transferImportSuccessMsg.count === 1 ? 'transferência importada com sucesso!' : 'transferências importadas com sucesso!'}
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        Volume total transferido: <span className="text-indigo-400 font-bold font-mono">{formatCurrency(transferImportSuccessMsg.totalValue)}</span> entre as contas da igreja.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTransferImportSuccessMsg(null)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </motion.div>
+              )}
             </AnimatePresence>
 
             {/* Bank account cards in transactions */}
@@ -5217,8 +5270,29 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               <Upload size={14} />
                             </div>
                             <div className="text-left flex-1 min-w-0">
-                              <p className="font-bold text-[11px] leading-tight text-indigo-400">Importar em Massa</p>
-                              <p className="text-[9px] text-zinc-500 truncate">Planilha Excel (.xlsx) ou CSV</p>
+                              <p className="font-bold text-[11px] leading-tight text-indigo-400">Importar Lançamentos</p>
+                              <p className="text-[9px] text-zinc-500 truncate">Receitas e Despesas (.xlsx / .csv)</p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              setShowBulkTransferImportModal(true);
+                            }}
+                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                              isHighContrast
+                                ? 'hover:bg-indigo-50 text-zinc-800 hover:text-indigo-700'
+                                : 'hover:bg-indigo-500/10 text-zinc-200 hover:text-indigo-300'
+                            }`}
+                          >
+                            <div className="p-1.5 rounded-md bg-indigo-500/15 text-indigo-400 shrink-0">
+                              <RefreshCw size={14} />
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                              <p className="font-bold text-[11px] leading-tight text-indigo-400">Importar Transferências</p>
+                              <p className="text-[9px] text-zinc-500 truncate">Entre contas e caixas (.xlsx / .csv)</p>
                             </div>
                           </button>
                         </motion.div>
@@ -5228,19 +5302,35 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 </div>
 
                 {/* Botão de Importar em Massa dedicado */}
-                <button
-                  type="button"
-                  onClick={() => setShowBulkImportModal(true)}
-                  className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer shadow-sm ${
-                    isHighContrast
-                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 shadow-indigo-100'
-                      : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border-indigo-500/40 hover:border-indigo-400'
-                  }`}
-                  title="Importar receitas e despesas em lote via Excel ou CSV"
-                >
-                  <Upload size={12} className="text-indigo-400" />
-                  <span>Importar em Massa</span>
-                </button>
+                {txFilterType === 'transfer' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkTransferImportModal(true)}
+                    className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer shadow-sm ${
+                      isHighContrast
+                        ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 shadow-indigo-100'
+                        : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border-indigo-500/40 hover:border-indigo-400'
+                    }`}
+                    title="Importar transferências entre contas em lote via Excel ou CSV"
+                  >
+                    <Upload size={12} className="text-indigo-400" />
+                    <span>Importar Transferências em Massa</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkImportModal(true)}
+                    className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer shadow-sm ${
+                      isHighContrast
+                        ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 shadow-indigo-100'
+                        : 'bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border-indigo-500/40 hover:border-indigo-400'
+                    }`}
+                    title="Importar receitas e despesas em lote via Excel ou CSV"
+                  >
+                    <Upload size={12} className="text-indigo-400" />
+                    <span>Importar em Massa</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => { setEditingTx(null); setTxType('entrada'); setShowTxModal(true); }}
@@ -5913,9 +6003,33 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               )
             ) : (
               displayTransfers.length === 0 ? (
-                <div className="p-16 text-center space-y-3">
-                  <RefreshCw size={24} className="mx-auto text-zinc-500" />
-                  <p className="text-xs font-bold text-zinc-400">Nenhuma transferência localizada</p>
+                <div className="p-16 text-center space-y-4">
+                  <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 w-fit mx-auto border border-indigo-500/20">
+                    <RefreshCw size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-zinc-300">Nenhuma transferência localizada no período</p>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">Realize uma nova transferência entre contas ou importe uma planilha em massa.</p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowTransferModal(true)}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+                    >
+                      <Plus size={12} /> Nova Transferência
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkTransferImportModal(true)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                        isHighContrast ? 'bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200' : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
+                      }`}
+                    >
+                      <Upload size={12} className="text-indigo-400" />
+                      <span>Importar em Massa</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto scrollbar-thin">
@@ -11770,6 +11884,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
           onClose={() => setShowBulkCategoryImportModal(false)}
           existingCategories={categories}
           onImport={handleBulkImportCategories}
+          isHighContrast={isHighContrast}
+        />
+
+        {/* Modal: Bulk Import Transfers (Excel / CSV) */}
+        <BulkTransferImportModal
+          isOpen={showBulkTransferImportModal}
+          onClose={() => setShowBulkTransferImportModal(false)}
+          accounts={accounts}
+          onImport={handleBulkImportTransfers}
           isHighContrast={isHighContrast}
         />
 
