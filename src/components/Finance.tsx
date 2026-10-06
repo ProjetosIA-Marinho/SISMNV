@@ -719,6 +719,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [tfValue, setTfValue] = useState('');
   const [tfDate, setTfDate] = useState(new Date().toISOString().split('T')[0]);
   const [tfObservation, setTfObservation] = useState('');
+  const [editingTransfer, setEditingTransfer] = useState<Transfer | null>(null);
 
   const [catCode, setCatCode] = useState('');
   const [catName, setCatName] = useState('');
@@ -1363,6 +1364,26 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setShowAccountModal(true);
   };
 
+  const handleOpenNewTransfer = () => {
+    setEditingTransfer(null);
+    setTfSourceId('');
+    setTfDestId('');
+    setTfValue('');
+    setTfDate(new Date().toISOString().split('T')[0]);
+    setTfObservation('');
+    setShowTransferModal(true);
+  };
+
+  const handleEditTransfer = (tf: Transfer) => {
+    setEditingTransfer(tf);
+    setTfSourceId(tf.sourceAccountId);
+    setTfDestId(tf.destinationAccountId);
+    setTfValue(tf.value.toString());
+    setTfDate(tf.date);
+    setTfObservation(tf.observation || '');
+    setShowTransferModal(true);
+  };
+
   const handleAddTransfer = (e: React.FormEvent) => {
     e.preventDefault();
     const valNum = parseFloat(tfValue);
@@ -1375,17 +1396,30 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       return;
     }
 
-    const newTransfer: Transfer = {
-      id: `tf-${Date.now()}`,
-      sourceAccountId: tfSourceId,
-      destinationAccountId: tfDestId,
-      value: valNum,
-      date: tfDate,
-      observation: tfObservation.trim() || undefined
-    };
+    if (editingTransfer) {
+      const updatedTransfer: Transfer = {
+        ...editingTransfer,
+        sourceAccountId: tfSourceId,
+        destinationAccountId: tfDestId,
+        value: valNum,
+        date: tfDate,
+        observation: tfObservation.trim() || undefined
+      };
+      setTransfers(transfers.map(t => t.id === editingTransfer.id ? updatedTransfer : t));
+    } else {
+      const newTransfer: Transfer = {
+        id: `tf-${Date.now()}`,
+        sourceAccountId: tfSourceId,
+        destinationAccountId: tfDestId,
+        value: valNum,
+        date: tfDate,
+        observation: tfObservation.trim() || undefined
+      };
+      setTransfers([newTransfer, ...transfers]);
+    }
 
-    setTransfers([newTransfer, ...transfers]);
     setShowTransferModal(false);
+    setEditingTransfer(null);
 
     // Reset Form
     setTfSourceId('');
@@ -5434,7 +5468,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   <Plus size={12} /> Despesa
                 </button>
                 <button
-                  onClick={() => setShowTransferModal(true)}
+                  onClick={handleOpenNewTransfer}
                   className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded-lg cursor-pointer uppercase tracking-wider"
                 >
                   <RefreshCw size={12} /> Transferência
@@ -6103,7 +6137,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   <div className="flex items-center justify-center gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowTransferModal(true)}
+                      onClick={handleOpenNewTransfer}
                       className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
                     >
                       <Plus size={12} /> Nova Transferência
@@ -6189,13 +6223,24 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                             {/* 6. Ações */}
                             <td className="py-4 px-6 text-right whitespace-nowrap">
-                              <button
-                                onClick={() => handleDeleteTransfer(tf.id)}
-                                className="p-1.5 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/10 cursor-pointer transition-colors"
-                                title="Excluir Transferência"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditTransfer(tf)}
+                                  className="p-1.5 text-zinc-500 hover:text-indigo-400 rounded hover:bg-indigo-500/10 cursor-pointer transition-colors"
+                                  title="Editar Transferência"
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTransfer(tf.id)}
+                                  className="p-1.5 text-zinc-500 hover:text-red-500 rounded hover:bg-red-500/10 cursor-pointer transition-colors"
+                                  title="Excluir Transferência"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -9948,14 +9993,17 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
           </motion.div>
         )}
 
-        {/* Modal: New Transfer */}
+        {/* Modal: New / Edit Transfer */}
         {showTransferModal && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={() => setShowTransferModal(false)}
+            onClick={() => {
+              setShowTransferModal(false);
+              setEditingTransfer(null);
+            }}
           >
             <motion.div 
               initial={{ scale: 0.95 }}
@@ -9967,8 +10015,19 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               }`}
             >
               <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20">
-                <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>Transferência entre Contas Bancárias</h3>
-                <button onClick={() => setShowTransferModal(false)} className="text-zinc-500 hover:text-white cursor-pointer"><X size={16} /></button>
+                <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                  {editingTransfer ? 'Editar Transferência entre Contas' : 'Transferência entre Contas Bancárias'}
+                </h3>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowTransferModal(false);
+                    setEditingTransfer(null);
+                  }} 
+                  className="text-zinc-500 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
               <form onSubmit={handleAddTransfer} className="p-6 space-y-4">
@@ -10135,7 +10194,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 </div>
 
                 <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">
-                  Confirmar Transferência
+                  {editingTransfer ? 'Salvar Alterações' : 'Confirmar Transferência'}
                 </button>
               </form>
             </motion.div>
