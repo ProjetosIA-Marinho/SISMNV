@@ -46,17 +46,117 @@ import {
   ChevronsRight,
   CheckSquare,
   Square,
-  CheckCircle2
+  CheckCircle2,
+  Image as ImageIcon,
+  Sparkles,
+  Wifi,
+  SlidersHorizontal,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas-pro';
 import * as XLSX from 'xlsx';
-import { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset } from '../types';
+import type { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset, CreditCard } from '../types';
 import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 import { BulkImportModal } from './BulkImportModal';
 import { BulkCategoryImportModal } from './BulkCategoryImportModal';
 import { BulkTransferImportModal } from './BulkTransferImportModal';
+
+export const INITIAL_CREDIT_CARDS: CreditCard[] = [
+  {
+    id: 'card-1',
+    name: 'Itaú Corporate Black',
+    cardholderName: 'MINISTÉRIO NOVA VIDA',
+    lastFourDigits: '8842',
+    brand: 'mastercard',
+    bankName: 'Itaú Unibanco',
+    bankAccountId: 'acc-2',
+    limit: 25000,
+    usedLimit: 4850.30,
+    closingDay: 20,
+    dueDay: 28,
+    color: 'from-zinc-950 via-neutral-900 to-black',
+    status: 'active',
+    notes: 'Cartão corporativo para despesas ministeriais e compras da diretoria'
+  },
+  {
+    id: 'card-2',
+    name: 'Nubank Ultravioleta PJ',
+    cardholderName: 'MINISTÉRIO NOVA VIDA',
+    lastFourDigits: '3419',
+    brand: 'mastercard',
+    bankName: 'Nubank',
+    bankAccountId: 'acc-6',
+    limit: 12000,
+    usedLimit: 1920.00,
+    closingDay: 15,
+    dueDay: 22,
+    color: 'from-purple-950 via-indigo-950 to-zinc-950',
+    status: 'active',
+    notes: 'Assinaturas de software, mídias e serviços digitais'
+  },
+  {
+    id: 'card-3',
+    name: 'Bradesco Visa Infinite',
+    cardholderName: 'MINISTÉRIO NOVA VIDA',
+    lastFourDigits: '6014',
+    brand: 'visa',
+    bankName: 'Banco Bradesco',
+    bankAccountId: 'acc-4',
+    limit: 18000,
+    usedLimit: 0,
+    closingDay: 5,
+    dueDay: 12,
+    color: 'from-rose-950 via-red-950 to-zinc-950',
+    status: 'active',
+    notes: 'Cartão para manutenção predial e contingências'
+  }
+];
+
+export function CreditCardBrandLogo({ brand, size = 28 }: { brand?: string; size?: number }) {
+  const b = (brand || '').toLowerCase();
+  if (b === 'visa') {
+    return (
+      <span className="font-black italic tracking-tighter text-white font-sans text-sm select-none drop-shadow">
+        VISA
+      </span>
+    );
+  }
+  if (b === 'mastercard') {
+    return (
+      <div className="flex items-center -space-x-2 select-none drop-shadow">
+        <div className="w-5 h-5 rounded-full bg-red-600/90 shadow-inner" />
+        <div className="w-5 h-5 rounded-full bg-amber-400/90 shadow-inner mix-blend-screen" />
+      </div>
+    );
+  }
+  if (b === 'elo') {
+    return (
+      <div className="flex items-center gap-0.5 font-black text-xs text-white tracking-tight select-none drop-shadow">
+        <span className="text-yellow-400">e</span>
+        <span className="text-red-500">l</span>
+        <span className="text-sky-400">o</span>
+      </div>
+    );
+  }
+  if (b === 'amex') {
+    return (
+      <span className="font-black text-[9px] tracking-widest text-sky-200 border border-sky-400/50 px-1 py-0.5 rounded bg-sky-950/70 select-none">
+        AMEX
+      </span>
+    );
+  }
+  if (b === 'hipercard') {
+    return (
+      <span className="font-black text-[10px] text-red-400 italic tracking-tighter select-none">
+        HIPERCARD
+      </span>
+    );
+  }
+  return <CreditCard size={size * 0.65} className="text-zinc-300" />;
+}
 
 export const getAccountTypeLabel = (type?: BankAccountType | string) => {
   switch (type) {
@@ -166,7 +266,7 @@ interface FinanceProps {
 
 export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   // --- SUB-TABS NAVIGATION ---
-  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'transactions' | 'accounts' | 'categories' | 'reports'>('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'transactions' | 'cards' | 'accounts' | 'categories' | 'reports'>('dashboard');
   const [categoryViewMode, setCategoryViewMode] = useState<'list' | 'grid'>('grid');
 
   // --- STATE WITH LOCAL STORAGE PERSISTENCE ---
@@ -202,6 +302,23 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       { id: 'acc-6', name: 'Conta Digital Nubank', bankName: 'Nubank', agency: '0001', accountNumber: '99887-1', initialBalance: 4350, currentBalance: 4350, accountType: 'conta_corrente', initialBalanceDate: '2026-01-01' },
     ];
   });
+
+  // --- CREDIT CARDS STATE ---
+  const [creditCards, setCreditCards] = useState<CreditCard[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_credit_cards');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_CREDIT_CARDS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('admmnv_finance_credit_cards', JSON.stringify(creditCards));
+  }, [creditCards]);
 
   // Dashboard Bank Accounts Horizontal View state
   const [accountsViewMode, setAccountsViewMode] = useState<'horizontal' | 'grid'>('horizontal');
@@ -621,11 +738,37 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [txParcelamento, setTxParcelamento] = useState<'sim' | 'nao' | 'recorrente'>('nao');
   const [txFrequenciaParcelas, setTxFrequenciaParcelas] = useState<'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | ''>('mensal');
   const [txNumeroParcelas, setTxNumeroParcelas] = useState('1');
+  const [txParcelaAtual, setTxParcelaAtual] = useState('1');
   const [txFormaPagamento, setTxFormaPagamento] = useState<'pix' | 'boleto' | 'cartão' | 'dinheiro' | 'débito automático' | 'transferência' | 'cheque' | ''>('pix');
+  const [txCreditCardId, setTxCreditCardId] = useState('');
 
   const [txPago, setTxPago] = useState<'sim' | 'nao'>('sim');
   const [txVaiPagarQuem, setTxVaiPagarQuem] = useState('');
   const [txDataVencimento, setTxDataVencimento] = useState(new Date().toISOString().split('T')[0]);
+  
+  // --- CREDIT CARDS FORM & FILTER STATES ---
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+  const [cardName, setCardName] = useState('');
+  const [cardCardholderName, setCardCardholderName] = useState('MINISTÉRIO NOVA VIDA');
+  const [cardLastFourDigits, setCardLastFourDigits] = useState('');
+  const [cardBrand, setCardBrand] = useState<'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | 'outro'>('mastercard');
+  const [cardBankName, setCardBankName] = useState('');
+  const [cardBankAccountId, setCardBankAccountId] = useState('');
+  const [cardLimit, setCardLimit] = useState('');
+  const [cardUsedLimit, setCardUsedLimit] = useState('0');
+  const [cardClosingDay, setCardClosingDay] = useState('20');
+  const [cardDueDay, setCardDueDay] = useState('28');
+  const [cardColor, setCardColor] = useState('from-zinc-950 via-neutral-900 to-black');
+  const [cardImage, setCardImage] = useState('');
+  const [cardStatus, setCardStatus] = useState<'active' | 'blocked' | 'inactive'>('active');
+  const [cardNotes, setCardNotes] = useState('');
+  const [cardSearchQuery, setCardSearchQuery] = useState('');
+  const [cardBrandFilter, setCardBrandFilter] = useState('todos');
+  const [cardFilterByAccount, setCardFilterByAccount] = useState('todos');
+  const [selectedCardForView, setSelectedCardForView] = useState<CreditCard | null>(null);
+  const [selectedCardPreviewImage, setSelectedCardPreviewImage] = useState<string | null>(null);
+  const [selectedCardForExpense, setSelectedCardForExpense] = useState<CreditCard | null>(null);
   
   const [txReceiptImage, setTxReceiptImage] = useState<string | null>(null);
   const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
@@ -1197,7 +1340,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setTxParcelamento('nao');
     setTxFrequenciaParcelas('mensal');
     setTxNumeroParcelas('1');
+    setTxParcelaAtual('1');
     setTxFormaPagamento('pix');
+    setTxCreditCardId('');
     setTxPago('sim');
     setTxVaiPagarQuem('');
     setTxDataVencimento(new Date().toISOString().split('T')[0]);
@@ -1218,6 +1363,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       return;
     }
 
+    const curParcelaNum = parseInt(txParcelaAtual) || 1;
+    const totalParcelasNum = parseInt(txNumeroParcelas) || 1;
+
     if (editingTx) {
       setTransactions(transactions.map(t => {
         if (t.id === editingTx.id) {
@@ -1237,8 +1385,10 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             dataLancamento: txDataLancamento,
             parcelamento: txParcelamento,
             frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
-            numeroParcelas: txParcelamento === 'sim' ? parseInt(txNumeroParcelas) || 1 : undefined,
+            numeroParcelas: txParcelamento === 'sim' ? totalParcelasNum : undefined,
+            parcelaAtual: txParcelamento === 'sim' ? curParcelaNum : undefined,
             formaPagamento: txFormaPagamento || undefined,
+            creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
             pago: txType === 'saida' ? txPago : undefined,
             vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
             dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
@@ -1265,8 +1415,10 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
         dataLancamento: txDataLancamento,
         parcelamento: txParcelamento,
         frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
-        numeroParcelas: txParcelamento === 'sim' ? parseInt(txNumeroParcelas) || 1 : undefined,
+        numeroParcelas: txParcelamento === 'sim' ? totalParcelasNum : undefined,
+        parcelaAtual: txParcelamento === 'sim' ? curParcelaNum : undefined,
         formaPagamento: txFormaPagamento || undefined,
+        creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
         pago: txType === 'saida' ? txPago : undefined,
         vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
         dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
@@ -1286,8 +1438,103 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       setTxRecebidoDe('');
       setTxVaiPagarQuem('');
       setTxReceiptImage(null);
-      // Keep category/account/dates for faster entry if they are typing similar records
     }
+  };
+
+  // --- CREDIT CARD HANDLERS ---
+  const resetCardForm = () => {
+    setEditingCard(null);
+    setCardName('');
+    setCardCardholderName('MINISTÉRIO NOVA VIDA');
+    setCardLastFourDigits('');
+    setCardBrand('mastercard');
+    setCardBankName('');
+    setCardBankAccountId('');
+    setCardLimit('');
+    setCardUsedLimit('0');
+    setCardClosingDay('20');
+    setCardDueDay('28');
+    setCardColor('from-zinc-950 via-neutral-900 to-black');
+    setCardImage('');
+    setCardStatus('active');
+    setCardNotes('');
+  };
+
+  const handleEditCard = (card: CreditCard) => {
+    setEditingCard(card);
+    setCardName(card.name);
+    setCardCardholderName(card.cardholderName || 'MINISTÉRIO NOVA VIDA');
+    setCardLastFourDigits(card.lastFourDigits);
+    setCardBrand(card.brand || 'mastercard');
+    setCardBankName(card.bankName);
+    setCardBankAccountId(card.bankAccountId || '');
+    setCardLimit(card.limit.toString());
+    setCardUsedLimit((card.usedLimit || 0).toString());
+    setCardClosingDay((card.closingDay || 20).toString());
+    setCardDueDay((card.dueDay || 28).toString());
+    setCardColor(card.color || 'from-zinc-950 via-neutral-900 to-black');
+    setCardImage(card.image || '');
+    setCardStatus(card.status || 'active');
+    setCardNotes(card.notes || '');
+    setShowCardModal(true);
+  };
+
+  const handleDeleteCard = (cardId: string) => {
+    if (window.confirm('Tem certeza que deseja remover este cartão de crédito?')) {
+      setCreditCards(prev => prev.filter(c => c.id !== cardId));
+    }
+  };
+
+  const handleToggleCardStatus = (cardId: string) => {
+    setCreditCards(prev => prev.map(c => {
+      if (c.id === cardId) {
+        return {
+          ...c,
+          status: c.status === 'blocked' ? 'active' : 'blocked'
+        };
+      }
+      return c;
+    }));
+  };
+
+  const handleSaveCard = (e: React.FormEvent) => {
+    e.preventDefault();
+    const limitNum = parseFloat(cardLimit);
+    const usedLimitNum = parseFloat(cardUsedLimit) || 0;
+    const closingNum = parseInt(cardClosingDay) || 20;
+    const dueNum = parseInt(cardDueDay) || 28;
+
+    if (!cardName.trim() || !cardBankName.trim() || isNaN(limitNum) || limitNum < 0) {
+      alert('Por favor, preencha os campos obrigatórios do cartão (Nome, Banco e Limite).');
+      return;
+    }
+
+    const cardData: CreditCard = {
+      id: editingCard ? editingCard.id : `card-${Date.now()}`,
+      name: cardName.trim(),
+      cardholderName: cardCardholderName.trim() || 'MINISTÉRIO NOVA VIDA',
+      lastFourDigits: cardLastFourDigits.trim().replace(/\D/g, '').slice(-4) || '0000',
+      brand: cardBrand,
+      bankName: cardBankName.trim(),
+      bankAccountId: cardBankAccountId || undefined,
+      limit: limitNum,
+      usedLimit: usedLimitNum,
+      closingDay: Math.min(31, Math.max(1, closingNum)),
+      dueDay: Math.min(31, Math.max(1, dueNum)),
+      color: cardColor,
+      image: cardImage.trim() || undefined,
+      status: cardStatus,
+      notes: cardNotes.trim() || undefined
+    };
+
+    if (editingCard) {
+      setCreditCards(prev => prev.map(c => c.id === editingCard.id ? cardData : c));
+    } else {
+      setCreditCards(prev => [...prev, cardData]);
+    }
+
+    setShowCardModal(false);
+    resetCardForm();
   };
 
   const handleSaveAccount = (e: React.FormEvent) => {
@@ -3660,7 +3907,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             </div>
           )}
           
-          <div className={`flex items-center gap-1.5 p-1 rounded-xl border transition-colors ${
+          <div className={`flex items-center gap-1.5 p-1 rounded-xl border transition-colors flex-wrap ${
             isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950/80 p-1 border-zinc-900'
           }`}>
             <button
@@ -3682,6 +3929,17 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               }`}
             >
               Transações
+            </button>
+            <button
+              onClick={() => setActiveSubTab('cards')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeSubTab === 'cards' 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : (isHighContrast ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white')
+              }`}
+            >
+              <CreditCard size={12} />
+              Cartões de Crédito
             </button>
             <button
               onClick={() => setActiveSubTab('accounts')}
@@ -5905,9 +6163,16 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               {/* 10. Parcelamento */}
                               <td className="py-3.5 px-3 whitespace-nowrap text-xs">
                                 {tx.parcelamento === 'sim' ? (
-                                  <span className="font-semibold text-indigo-400">
-                                    {tx.numeroParcelas || 1}x {tx.frequenciaParcelas ? `(${tx.frequenciaParcelas})` : ''}
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-indigo-400">
+                                      {tx.parcelaAtual || 1}/{tx.numeroParcelas || 1}
+                                    </span>
+                                    {tx.frequenciaParcelas && (
+                                      <span className="text-[10px] text-zinc-500 capitalize">
+                                        {tx.frequenciaParcelas}
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : tx.parcelamento === 'recorrente' ? (
                                   <span className="font-semibold text-purple-400">Recorrente</span>
                                 ) : (
@@ -5943,7 +6208,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                       setTxParcelamento(tx.parcelamento || 'nao');
                                       setTxFrequenciaParcelas(tx.frequenciaParcelas || 'mensal');
                                       setTxNumeroParcelas(tx.numeroParcelas ? tx.numeroParcelas.toString() : '1');
+                                      setTxParcelaAtual(tx.parcelaAtual ? tx.parcelaAtual.toString() : '1');
                                       setTxFormaPagamento(tx.formaPagamento || 'pix');
+                                      setTxCreditCardId(tx.creditCardId || '');
                                       setTxPago(tx.pago || 'sim');
                                       setTxVaiPagarQuem(tx.vaiPagarQuem || '');
                                       setTxDataVencimento(tx.dataVencimento || tx.date);
@@ -6250,6 +6517,489 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 </div>
               )
             )}
+          </div>
+        )}
+
+        {/* 2.5 CREDIT CARDS LIST & MANAGEMENT SCREEN */}
+        {activeSubTab === 'cards' && (
+          <div className="space-y-6">
+            {/* Header / Actions Bar */}
+            <div className={`p-4 border-b flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-900'}`}>
+              <div>
+                <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>
+                  <CreditCard size={15} className="text-indigo-400" />
+                  Cartões de Crédito Corporativos
+                </h3>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  Gerencie limites, faturas, datas de fechamento/vencimento e fotos dos cartões.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    resetCardForm();
+                    setShowCardModal(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold cursor-pointer uppercase tracking-wider shadow transition-colors"
+                >
+                  <Plus size={12} /> Novo Cartão de Crédito
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics for Credit Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-5">
+              <div className={`p-4 rounded-xl border ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Limite Total Concedido</span>
+                  <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                    <CreditCard size={13} />
+                  </div>
+                </div>
+                <p className="text-lg font-bold font-mono text-indigo-400 mt-2">
+                  {formatCurrency(creditCards.reduce((sum, c) => sum + (c.limit || 0), 0))}
+                </p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Soma de todos os cartões cadastrados</p>
+              </div>
+
+              <div className={`p-4 rounded-xl border ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Fatura Atual Comprometida</span>
+                  <div className="w-6 h-6 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                    <ArrowDownRight size={13} />
+                  </div>
+                </div>
+                <p className="text-lg font-bold font-mono text-rose-500 mt-2">
+                  {formatCurrency(creditCards.reduce((sum, c) => sum + (c.usedLimit || 0), 0))}
+                </p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Total de compras / limite em uso</p>
+              </div>
+
+              <div className={`p-4 rounded-xl border ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Limite Disponível</span>
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <ArrowUpRight size={13} />
+                  </div>
+                </div>
+                <p className="text-lg font-bold font-mono text-emerald-500 mt-2">
+                  {formatCurrency(
+                    Math.max(0, creditCards.reduce((sum, c) => sum + (c.limit || 0) - (c.usedLimit || 0), 0))
+                  )}
+                </p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Saldo livre para novas despesas</p>
+              </div>
+
+              <div className={`p-4 rounded-xl border ${isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/40 border-zinc-800'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Cartões Ativos</span>
+                  <div className="w-6 h-6 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                    <ShieldCheck size={13} />
+                  </div>
+                </div>
+                <p className={`text-lg font-bold font-mono mt-2 ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                  {creditCards.filter(c => c.status !== 'blocked').length} / {creditCards.length}
+                </p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Cartões corporativos habilitados</p>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="px-5 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border flex-1 ${
+                  isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900/60 border-zinc-800'
+                }`}>
+                  <Search size={14} className="text-zinc-500" />
+                  <input
+                    type="text"
+                    value={cardSearchQuery}
+                    onChange={(e) => setCardSearchQuery(e.target.value)}
+                    placeholder="Buscar por nome do cartão, banco ou final..."
+                    className="w-full bg-transparent text-xs focus:outline-none text-zinc-200 placeholder-zinc-500"
+                  />
+                  {cardSearchQuery && (
+                    <button onClick={() => setCardSearchQuery('')} className="text-zinc-500 hover:text-white">
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={cardBrandFilter}
+                  onChange={(e) => setCardBrandFilter(e.target.value)}
+                  className={`text-xs px-3 py-2 rounded-xl border font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                    isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  <option value="todos">Todas Bandeiras</option>
+                  <option value="mastercard">Mastercard</option>
+                  <option value="visa">Visa</option>
+                  <option value="elo">Elo</option>
+                  <option value="amex">Amex</option>
+                  <option value="hipercard">Hipercard</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Cards Showcase Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-5">
+              {creditCards
+                .filter(card => {
+                  const matchSearch = !cardSearchQuery.trim() || 
+                    card.name.toLowerCase().includes(cardSearchQuery.toLowerCase()) ||
+                    card.bankName.toLowerCase().includes(cardSearchQuery.toLowerCase()) ||
+                    card.lastFourDigits.includes(cardSearchQuery) ||
+                    (card.cardholderName || '').toLowerCase().includes(cardSearchQuery.toLowerCase());
+                  const matchBrand = cardBrandFilter === 'todos' || card.brand === cardBrandFilter;
+                  return matchSearch && matchBrand;
+                })
+                .map(card => {
+                  const used = card.usedLimit || 0;
+                  const limit = card.limit || 1;
+                  const usagePct = Math.min(100, Math.round((used / limit) * 100));
+                  const available = Math.max(0, limit - used);
+
+                  return (
+                    <div 
+                      key={card.id} 
+                      className={`p-5 rounded-2xl border flex flex-col justify-between relative group transition-all duration-300 ${
+                        isHighContrast ? 'bg-white border-zinc-200 shadow-md' : 'bg-zinc-900/30 border-zinc-800/80 hover:border-zinc-700'
+                      }`}
+                    >
+                      {/* Realistic Visual Credit Card */}
+                      <div className={`w-full aspect-[1.586/1] rounded-2xl relative p-5 overflow-hidden shadow-2xl flex flex-col justify-between border select-none transition-transform duration-300 group-hover:scale-[1.01] ${
+                        card.image ? 'border-zinc-700/60' : 'border-white/10'
+                      }`}>
+                        {/* Background: Custom Image or Color Gradient */}
+                        {card.image ? (
+                          <div className="absolute inset-0 z-0">
+                            <img 
+                              src={card.image} 
+                              alt={card.name} 
+                              className="w-full h-full object-cover"
+                            />
+                            {/* Glassmorphic lighting gradient overlay for high readability */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
+                          </div>
+                        ) : (
+                          <div className={`absolute inset-0 z-0 bg-gradient-to-br ${card.color || 'from-zinc-950 via-neutral-900 to-black'}`}>
+                            {/* Subtle geometric lines */}
+                            <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                            <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                          </div>
+                        )}
+
+                        {/* Card Top Row: EMV Chip, Contactless Icon & Bank Logo */}
+                        <div className="relative z-10 flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            {/* Golden EMV Smart Chip */}
+                            <div className="w-10 h-7 rounded-md bg-gradient-to-tr from-amber-400 via-amber-200 to-yellow-500 border border-amber-600/40 shadow-inner grid grid-cols-2 gap-0.5 p-1">
+                              <div className="border border-amber-800/30 rounded-xs" />
+                              <div className="border border-amber-800/30 rounded-xs" />
+                              <div className="border border-amber-800/30 rounded-xs" />
+                              <div className="border border-amber-800/30 rounded-xs" />
+                            </div>
+
+                            {/* Contactless Wifi Icon */}
+                            <Wifi size={17} className="rotate-90 text-white/70" />
+                          </div>
+
+                          {/* Bank Name / Logo */}
+                          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                            <BankLogo bankName={card.bankName} size={20} />
+                            <span className="text-[11px] font-bold text-white tracking-wide truncate max-w-[120px]">
+                              {card.bankName}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Card Middle Row: Masked Number */}
+                        <div className="relative z-10 py-1">
+                          <p className="font-mono text-base tracking-[0.25em] text-white font-black drop-shadow-md">
+                            ••••  ••••  ••••  {card.lastFourDigits}
+                          </p>
+                        </div>
+
+                        {/* Card Bottom Row: Cardholder, Dates & Brand Logo */}
+                        <div className="relative z-10 flex justify-between items-end">
+                          <div className="space-y-0.5 min-w-0 flex-1 mr-2">
+                            <p className="text-[8px] uppercase tracking-widest text-zinc-400 font-bold">Titular</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow">
+                              {card.cardholderName || 'MINISTÉRIO NOVA VIDA'}
+                            </p>
+                            <div className="flex items-center gap-2 text-[8px] font-semibold text-zinc-300 pt-0.5">
+                              <span>FECH: Dia {card.closingDay}</span>
+                              <span>•</span>
+                              <span>VENC: Dia {card.dueDay}</span>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex flex-col items-end">
+                            <CreditCardBrandLogo brand={card.brand} size={32} />
+                          </div>
+                        </div>
+
+                        {/* Custom Image Badge Overlay (if card has custom uploaded photo) */}
+                        {card.image && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCardPreviewImage(card.image || null)}
+                            className="absolute right-3 bottom-3 z-20 p-1 rounded-md bg-black/60 hover:bg-black/80 text-white text-[9px] font-bold flex items-center gap-1 border border-white/20 transition-colors cursor-pointer"
+                            title="Visualizar foto ampliada do cartão"
+                          >
+                            <Eye size={10} /> Foto
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Financial Info & Limit Progress Bar */}
+                      <div className="mt-4 space-y-3">
+                        {/* Limit usage progress bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                              Limite Usado ({usagePct}%)
+                            </span>
+                            <span className="font-mono font-bold text-xs text-rose-400">
+                              {formatCurrency(used)}
+                            </span>
+                          </div>
+                          <div className={`w-full h-2 rounded-full overflow-hidden ${isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800'}`}>
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                usagePct > 80 ? 'bg-rose-500' : usagePct > 50 ? 'bg-amber-500' : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${usagePct}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Numbers Grid */}
+                        <div className="grid grid-cols-2 gap-2 pt-1 text-xs border-t border-dashed border-zinc-800/60">
+                          <div>
+                            <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block">Disponível</span>
+                            <span className="font-mono font-bold text-emerald-500 text-xs">{formatCurrency(available)}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block">Limite Total</span>
+                            <span className={`font-mono font-bold text-xs ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                              {formatCurrency(card.limit)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Dates info & Status */}
+                        <div className="flex items-center justify-between pt-2 border-t border-zinc-800/40 text-[10px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-zinc-500 font-bold">Fechamento:</span>
+                            <span className="font-semibold text-zinc-300">Dia {card.closingDay}</span>
+                            <span className="text-zinc-600">•</span>
+                            <span className="text-zinc-500 font-bold">Vence:</span>
+                            <span className="font-semibold text-zinc-300">Dia {card.dueDay}</span>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[8px] tracking-wider border ${
+                            card.status === 'blocked' 
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          }`}>
+                            {card.status === 'blocked' ? 'Bloqueado' : 'Ativo'}
+                          </span>
+                        </div>
+
+                        {/* Actions Toolbar */}
+                        <div className="grid grid-cols-4 gap-1.5 pt-3 border-t border-zinc-800/50">
+                          {/* 1. Quick Image Upload / Change button */}
+                          <label 
+                            className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer text-center ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700' 
+                                : 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+                            }`}
+                            title="Inserir / Alterar Imagem do Cartão"
+                          >
+                            <ImageIcon size={12} className="text-indigo-400 shrink-0" />
+                            <span className="truncate">{card.image ? 'Foto' : '+ Foto'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const base64 = reader.result as string;
+                                    setCreditCards(prev => prev.map(c => c.id === card.id ? { ...c, image: base64 } : c));
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+
+                          {/* 2. Lançar Compra no Cartão */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              resetTxForm();
+                              setTxType('saida');
+                              setTxFormaPagamento('cartão');
+                              setTxCreditCardId(card.id);
+                              if (card.bankAccountId) {
+                                setTxAccountId(card.bankAccountId);
+                              }
+                              setEditingTx(null);
+                              setShowTxModal(true);
+                            }}
+                            className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                              isHighContrast
+                                ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                                : 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
+                            }`}
+                            title="Lançar Nova Despesa neste Cartão"
+                          >
+                            <Plus size={12} className="shrink-0" />
+                            <span className="truncate">Despesa</span>
+                          </button>
+
+                          {/* 3. Editar Dados */}
+                          <button
+                            type="button"
+                            onClick={() => handleEditCard(card)}
+                            className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700' 
+                                : 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700 text-zinc-200'
+                            }`}
+                            title="Editar Dados do Cartão"
+                          >
+                            <Edit3 size={12} className="shrink-0" />
+                            <span className="truncate">Editar</span>
+                          </button>
+
+                          {/* 4. Excluir */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCard(card.id)}
+                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                            title="Excluir Cartão"
+                          >
+                            <Trash2 size={12} className="shrink-0" />
+                            <span className="truncate">Excluir</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Extrato de Lançamentos dos Cartões */}
+            <div className="px-5 pb-6">
+              <div className={`rounded-2xl border overflow-hidden ${
+                isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/30 border-zinc-800'
+              }`}>
+                <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20">
+                  <div>
+                    <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
+                      isHighContrast ? 'text-zinc-800' : 'text-zinc-200'
+                    }`}>
+                      <FileText size={14} className="text-indigo-400" />
+                      Extrato de Compras nos Cartões
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">
+                      Transações realizadas via Cartão de Crédito
+                    </p>
+                  </div>
+
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    {transactions.filter(t => t.formaPagamento === 'cartão' || t.creditCardId).length} lançamentos encontrados
+                  </span>
+                </div>
+
+                {transactions.filter(t => t.formaPagamento === 'cartão' || t.creditCardId).length === 0 ? (
+                  <div className="p-10 text-center text-zinc-500 text-xs">
+                    Nenhuma despesa ou compra com cartão registrada até o momento.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800'
+                        }`}>
+                          <th className="py-3 px-4">Data</th>
+                          <th className="py-3 px-4">Descrição</th>
+                          <th className="py-3 px-4">Cartão Utilizado</th>
+                          <th className="py-3 px-4">Categoria</th>
+                          <th className="py-3 px-4">Parcelamento</th>
+                          <th className="py-3 px-4 text-right">Valor</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/40">
+                        {transactions
+                          .filter(t => t.formaPagamento === 'cartão' || t.creditCardId)
+                          .map(tx => {
+                            const cardMatch = creditCards.find(c => c.id === tx.creditCardId);
+                            const catMatch = categories.find(c => c.id === tx.categoryId);
+
+                            return (
+                              <tr key={tx.id} className="hover:bg-zinc-800/20 transition-colors">
+                                <td className="py-3 px-4 font-mono text-zinc-400 whitespace-nowrap">
+                                  {tx.date.split('-').reverse().join('/')}
+                                </td>
+                                <td className="py-3 px-4 font-semibold text-zinc-200">
+                                  {tx.description}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  {cardMatch ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-[10px]">
+                                      <CreditCardBrandLogo brand={cardMatch.brand} size={16} />
+                                      {cardMatch.name} (•••• {cardMatch.lastFourDigits})
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-500 text-[11px]">Cartão Geral</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-zinc-400">
+                                  {catMatch?.name || '—'}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  {tx.parcelamento === 'sim' ? (
+                                    <span className="font-bold text-indigo-400">
+                                      {tx.parcelaAtual || 1}/{tx.numeroParcelas || 1}
+                                    </span>
+                                  ) : tx.parcelamento === 'recorrente' ? (
+                                    <span className="text-purple-400 font-semibold">Recorrente</span>
+                                  ) : (
+                                    <span className="text-zinc-500">À Vista</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono font-bold text-rose-400 whitespace-nowrap">
+                                  - {formatCurrency(tx.value)}
+                                </td>
+                                <td className="py-3 px-4 text-center whitespace-nowrap">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
+                                    tx.pago === 'sim' 
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                      : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  }`}>
+                                    {tx.pago === 'sim' ? 'Pago' : 'Pendente'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -9311,13 +10061,34 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         >
                           <option value="pix">Pix</option>
                           <option value="boleto">Boleto</option>
-                          <option value="cartão">Cartão</option>
+                          <option value="cartão">Cartão de Crédito / Débito</option>
                           <option value="dinheiro">Dinheiro</option>
                           <option value="débito automático">Débito Automático</option>
                           <option value="transferência">Transferência</option>
                           <option value="cheque">Cheque</option>
                         </select>
                       </div>
+
+                      {/* SELEÇÃO DO CARTÃO QUANDO FOR CARTÃO */}
+                      {txFormaPagamento === 'cartão' && creditCards.length > 0 && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Cartão de Crédito Utilizado</label>
+                          <select
+                            value={txCreditCardId}
+                            onChange={(e) => setTxCreditCardId(e.target.value)}
+                            className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                              isHighContrast ? 'bg-indigo-50/60 border-indigo-200 text-zinc-900' : 'bg-indigo-950/20 border-indigo-800/60 text-zinc-200'
+                            }`}
+                          >
+                            <option value="">Selecione o Cartão...</option>
+                            {creditCards.map(card => (
+                              <option key={card.id} value={card.id}>
+                                {card.name} (•••• {card.lastFourDigits}) - {card.bankName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* COMMON - BANCO */}
@@ -9721,38 +10492,62 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                     {/* PARCELAMENTO FREQUENCY & COUNT (ONLY FOR 'SIM') */}
                     {txParcelamento === 'sim' && (
-                      <div className={`grid grid-cols-2 gap-4 p-4 rounded-xl border ${
+                      <div className={`p-4 rounded-xl border space-y-3 ${
                         isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950/40 border-zinc-850'
                       }`}>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Frequência *</label>
-                          <select
-                            required
-                            value={txFrequenciaParcelas}
-                            onChange={(e: any) => setTxFrequenciaParcelas(e.target.value)}
-                            className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
-                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
-                            }`}
-                          >
-                            <option value="diario">Diário</option>
-                            <option value="semanal">Semanal</option>
-                            <option value="quinzenal">Quinzenal</option>
-                            <option value="mensal">Mensal</option>
-                            <option value="anual">Anual</option>
-                          </select>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Frequência *</label>
+                            <select
+                              required
+                              value={txFrequenciaParcelas}
+                              onChange={(e: any) => setTxFrequenciaParcelas(e.target.value)}
+                              className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            >
+                              <option value="diario">Diário</option>
+                              <option value="semanal">Semanal</option>
+                              <option value="quinzenal">Quinzenal</option>
+                              <option value="mensal">Mensal</option>
+                              <option value="anual">Anual</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Parcela Atual</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max={txNumeroParcelas || 1}
+                              required
+                              value={txParcelaAtual}
+                              onChange={(e) => setTxParcelaAtual(e.target.value)}
+                              placeholder="1"
+                              className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total de Parcelas *</label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={txNumeroParcelas}
+                              onChange={(e) => setTxNumeroParcelas(e.target.value)}
+                              placeholder="10"
+                              className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nº de Parcelas *</label>
-                          <input
-                            type="number"
-                            min="1"
-                            required
-                            value={txNumeroParcelas}
-                            onChange={(e) => setTxNumeroParcelas(e.target.value)}
-                            className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
-                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
-                            }`}
-                          />
+                        <div className="flex items-center justify-between text-[11px] pt-1.5 text-indigo-400 font-semibold border-t border-zinc-800/40">
+                          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Exibição na Tabela:</span>
+                          <span className="bg-indigo-500/15 px-2.5 py-0.5 rounded-md border border-indigo-500/30 font-mono text-xs font-bold text-indigo-400">
+                            {txParcelaAtual || 1}/{txNumeroParcelas || 1} ({txFrequenciaParcelas || 'mensal'})
+                          </span>
                         </div>
                       </div>
                     )}
@@ -9781,6 +10576,418 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Credit Card (Create / Edit) */}
+        {showCardModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowCardModal(false);
+              resetCardForm();
+            }}
+          >
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl text-left max-h-[92vh] flex flex-col ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20 shrink-0">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-indigo-500" />
+                  <h3 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                    {editingCard ? 'Editar Cartão de Crédito' : 'Cadastrar Novo Cartão de Crédito'}
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowCardModal(false);
+                    resetCardForm();
+                  }} 
+                  className="text-zinc-500 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCard} className="p-6 space-y-4 overflow-y-auto scrollbar-thin">
+                {/* Real-time Card Visual Preview */}
+                <div className="w-full aspect-[2.2/1] rounded-xl relative p-4 overflow-hidden shadow-xl flex flex-col justify-between border border-white/10 select-none">
+                  {cardImage ? (
+                    <div className="absolute inset-0 z-0">
+                      <img src={cardImage} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-tr from-black/85 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
+                    </div>
+                  ) : (
+                    <div className={`absolute inset-0 z-0 bg-gradient-to-br ${cardColor}`} />
+                  )}
+
+                  <div className="relative z-10 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-5 rounded bg-gradient-to-tr from-amber-400 to-yellow-500 border border-amber-600/40 shadow-inner" />
+                      <Wifi size={14} className="rotate-90 text-white/70" />
+                    </div>
+                    <span className="text-[10px] font-bold text-white bg-black/40 px-2 py-0.5 rounded-full border border-white/10 truncate max-w-[120px]">
+                      {cardBankName || 'Nome do Banco'}
+                    </span>
+                  </div>
+
+                  <div className="relative z-10">
+                    <p className="font-mono text-sm tracking-widest text-white font-black drop-shadow">
+                      ••••  ••••  ••••  {cardLastFourDigits.replace(/\D/g, '').slice(-4) || '0000'}
+                    </p>
+                  </div>
+
+                  <div className="relative z-10 flex justify-between items-end">
+                    <div>
+                      <p className="text-[7px] uppercase tracking-wider text-zinc-400 font-bold">Titular</p>
+                      <p className="text-[10px] font-bold uppercase text-white truncate max-w-[180px] font-mono">
+                        {cardCardholderName || 'MINISTÉRIO NOVA VIDA'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[8px] text-zinc-300 font-mono">F:{cardClosingDay || 20} V:{cardDueDay || 28}</span>
+                      <CreditCardBrandLogo brand={cardBrand} size={24} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome do Cartão *</label>
+                    <input
+                      type="text"
+                      required
+                      value={cardName}
+                      onChange={(e) => setCardName(e.target.value)}
+                      placeholder="Ex: Nubank PJ Ultravioleta"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Banco Emissor *</label>
+                    <input
+                      type="text"
+                      required
+                      value={cardBankName}
+                      onChange={(e) => setCardBankName(e.target.value)}
+                      placeholder="Ex: Nubank, Itaú, Bradesco"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">4 Últimos Dígitos *</label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      required
+                      value={cardLastFourDigits}
+                      onChange={(e) => setCardLastFourDigits(e.target.value.replace(/\D/g, ''))}
+                      placeholder="8842"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Bandeira *</label>
+                    <select
+                      value={cardBrand}
+                      onChange={(e: any) => setCardBrand(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="mastercard">Mastercard</option>
+                      <option value="visa">Visa</option>
+                      <option value="elo">Elo</option>
+                      <option value="amex">American Express</option>
+                      <option value="hipercard">Hipercard</option>
+                      <option value="outro">Outra</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Status</label>
+                    <select
+                      value={cardStatus}
+                      onChange={(e: any) => setCardStatus(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="active">Ativo / Habilitado</option>
+                      <option value="blocked">Bloqueado</option>
+                      <option value="inactive">Inativo</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Nome do Titular Impresso</label>
+                    <input
+                      type="text"
+                      value={cardCardholderName}
+                      onChange={(e) => setCardCardholderName(e.target.value)}
+                      placeholder="MINISTÉRIO NOVA VIDA"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium uppercase ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Conta Bancária de Débito (Opcional)</label>
+                    <select
+                      value={cardBankAccountId}
+                      onChange={(e) => setCardBankAccountId(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    >
+                      <option value="">Nenhuma conta vinculada</option>
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({acc.bankName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Limite Total (R$) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={cardLimit}
+                      onChange={(e) => setCardLimit(e.target.value)}
+                      placeholder="15000"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Fatura Atual (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={cardUsedLimit}
+                      onChange={(e) => setCardUsedLimit(e.target.value)}
+                      placeholder="0"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Dia Fechamento *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      required
+                      value={cardClosingDay}
+                      onChange={(e) => setCardClosingDay(e.target.value)}
+                      placeholder="20"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Dia Vencimento *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      required
+                      value={cardDueDay}
+                      onChange={(e) => setCardDueDay(e.target.value)}
+                      placeholder="28"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* IMAGEM DO CARTÃO (UPLOAD DE FOTO OU ARTE) */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center justify-between">
+                    <span>Imagem / Foto do Cartão</span>
+                    <span className="text-indigo-400 font-normal text-[9px] lowercase">foto do cartão físico ou arte personalizada</span>
+                  </label>
+                  
+                  <div className={`p-4 rounded-xl border space-y-3 ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-10 rounded-lg border border-zinc-700/60 overflow-hidden bg-zinc-800 flex items-center justify-center shrink-0">
+                        {cardImage ? (
+                          <img src={cardImage} alt="Preview do Cartão" className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon size={20} className="text-zinc-500" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 space-y-2 min-w-0">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setCardImage(reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="w-full text-[10px] text-zinc-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={cardImage}
+                          onChange={(e) => setCardImage(e.target.value)}
+                          placeholder="Ou insira a URL da imagem do cartão..."
+                          className={`w-full text-[10px] px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                            isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                          }`}
+                        />
+                      </div>
+
+                      {cardImage && (
+                        <button
+                          type="button"
+                          onClick={() => setCardImage('')}
+                          className="px-2.5 py-1.5 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Color Theme Presets (used when no custom image is uploaded) */}
+                {!cardImage && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Estilo de Gradiente do Cartão</label>
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                      {[
+                        { label: 'Black Ônix', color: 'from-zinc-950 via-neutral-900 to-black' },
+                        { label: 'Roxo Nu', color: 'from-purple-950 via-indigo-950 to-zinc-950' },
+                        { label: 'Azul Real', color: 'from-blue-950 via-indigo-950 to-slate-950' },
+                        { label: 'Ruby', color: 'from-rose-950 via-red-950 to-zinc-950' },
+                        { label: 'Esmeralda', color: 'from-emerald-950 via-teal-950 to-zinc-950' },
+                        { label: 'Dourado', color: 'from-amber-900 via-yellow-950 to-zinc-950' },
+                        { label: 'Grafite', color: 'from-slate-800 via-zinc-900 to-black' }
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setCardColor(preset.color)}
+                          className={`h-8 rounded-lg bg-gradient-to-br ${preset.color} border transition-all cursor-pointer relative ${
+                            cardColor === preset.color ? 'ring-2 ring-indigo-500 border-white' : 'border-zinc-700/60'
+                          }`}
+                          title={preset.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Observações */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Observações / Notas</label>
+                  <textarea
+                    rows={2}
+                    value={cardNotes}
+                    onChange={(e) => setCardNotes(e.target.value)}
+                    placeholder="Informações adicionais sobre o cartão corporativo..."
+                    className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-lg mt-2"
+                >
+                  {editingCard ? 'Salvar Alterações do Cartão' : 'Cadastrar Cartão de Crédito'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Full Size Card Image Preview */}
+        {selectedCardPreviewImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50"
+            onClick={() => setSelectedCardPreviewImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full max-h-[85vh] rounded-2xl overflow-hidden border border-zinc-700 shadow-2xl bg-zinc-950 flex flex-col"
+            >
+              <div className="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                <span className="text-xs font-bold text-zinc-200 flex items-center gap-2">
+                  <ImageIcon size={14} className="text-indigo-400" />
+                  Visualização da Imagem do Cartão
+                </span>
+                <button
+                  onClick={() => setSelectedCardPreviewImage(null)}
+                  className="p-1 rounded text-zinc-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-4 flex items-center justify-center bg-black/50 overflow-auto">
+                <img
+                  src={selectedCardPreviewImage}
+                  alt="Foto do Cartão"
+                  className="max-h-[70vh] w-auto object-contain rounded-xl shadow-lg border border-zinc-800"
+                />
+              </div>
             </motion.div>
           </motion.div>
         )}

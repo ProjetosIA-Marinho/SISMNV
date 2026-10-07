@@ -124,11 +124,31 @@ export interface Transaction {
   parcelamento?: 'sim' | 'nao' | 'recorrente';
   frequenciaParcelas?: 'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | '';
   numeroParcelas?: number;
+  parcelaAtual?: number;
+  creditCardId?: string;
   formaPagamento?: 'pix' | 'boleto' | 'cartão' | 'dinheiro' | 'débito automático' | 'transferência' | 'cheque' | '';
   pago?: 'sim' | 'nao';
   vaiPagarQuem?: string;
   dataVencimento?: string;
   receiptImage?: string; // Imagem do recibo digitalizado em Base64
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  cardholderName: string;
+  lastFourDigits: string;
+  brand: 'visa' | 'mastercard' | 'elo' | 'amex' | 'hipercard' | 'outro';
+  bankAccountId?: string;
+  bankName: string;
+  limit: number;
+  usedLimit?: number;
+  closingDay: number;
+  dueDay: number;
+  color?: string;
+  image?: string;
+  status?: 'active' | 'blocked' | 'inactive';
+  notes?: string;
 }
 
 export interface Transfer {

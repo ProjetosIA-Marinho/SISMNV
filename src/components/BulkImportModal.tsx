@@ -52,6 +52,7 @@ interface ParsedTransactionRow {
   observation: string;
   parcelamento: 'sim' | 'nao' | 'recorrente';
   numeroParcelas?: number;
+  parcelaAtual?: number;
   frequenciaParcelas?: 'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | '';
   dataVencimento?: string;
   errors: string[];
@@ -338,6 +339,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       // Parse Parcelamento & Recorrência
       let parcelamento: 'sim' | 'nao' | 'recorrente' = 'nao';
       let numeroParcelas: number | undefined = undefined;
+      let parcelaAtual: number | undefined = undefined;
       let frequenciaParcelas: 'anual' | 'mensal' | 'quinzenal' | 'semanal' | 'diario' | '' = 'mensal';
       const dataVencimento = rawVencimento ? parseDateValue(rawVencimento) : parsedDate;
 
@@ -345,10 +347,24 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       if (rawNumParcelas !== undefined && rawNumParcelas !== null && rawNumParcelas !== '') {
         if (typeof rawNumParcelas === 'number') {
           numeroParcelas = Math.max(1, Math.floor(rawNumParcelas));
+          parcelaAtual = 1;
         } else {
-          const numMatch = String(rawNumParcelas).match(/(\d+)/);
-          if (numMatch) {
-            numeroParcelas = Math.max(1, parseInt(numMatch[1], 10));
+          const strVal = String(rawNumParcelas).trim();
+          if (strVal.includes('/')) {
+            const parts = strVal.split('/');
+            const pCur = parseInt(parts[0].trim(), 10);
+            const pTot = parseInt(parts[1].trim(), 10);
+            if (!isNaN(pTot) && pTot > 0) {
+              numeroParcelas = pTot;
+              parcelaAtual = !isNaN(pCur) && pCur > 0 ? pCur : 1;
+              parcelamento = 'sim';
+            }
+          } else {
+            const numMatch = strVal.match(/(\d+)/);
+            if (numMatch) {
+              numeroParcelas = Math.max(1, parseInt(numMatch[1], 10));
+              parcelaAtual = 1;
+            }
           }
         }
       }
@@ -392,6 +408,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         observation: String(rawObs || '').trim(),
         parcelamento,
         numeroParcelas: parcelamento === 'sim' ? (numeroParcelas || 1) : undefined,
+        parcelaAtual: parcelamento === 'sim' ? (parcelaAtual || 1) : undefined,
         frequenciaParcelas: (parcelamento === 'sim' || parcelamento === 'recorrente') ? frequenciaParcelas : undefined,
         dataVencimento
       };
@@ -741,6 +758,7 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
         dataLancamento: row.date,
         parcelamento: row.parcelamento || 'nao',
         numeroParcelas: row.parcelamento === 'sim' ? (row.numeroParcelas || 1) : undefined,
+        parcelaAtual: row.parcelamento === 'sim' ? (row.parcelaAtual || 1) : undefined,
         frequenciaParcelas: (row.parcelamento === 'sim' || row.parcelamento === 'recorrente') ? (row.frequenciaParcelas || 'mensal') : undefined,
         formaPagamento: row.formaPagamento || undefined,
         pago: !isEntrada ? (row.status === 'concluido' ? 'sim' : 'nao') : undefined,
