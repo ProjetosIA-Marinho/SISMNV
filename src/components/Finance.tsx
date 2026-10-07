@@ -1399,6 +1399,45 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setAutoFillFeedback(null);
   };
 
+  const calculateInstallmentDate = (baseDateStr: string, index: number, freq: string = 'mensal') => {
+    if (!baseDateStr || index === 0) return baseDateStr;
+    const parts = baseDateStr.split('-');
+    if (parts.length < 3) return baseDateStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-indexed (0 to 11)
+    const day = parseInt(parts[2], 10);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return baseDateStr;
+
+    if (freq === 'diario') {
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + index);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (freq === 'semanal') {
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + index * 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (freq === 'quinzenal') {
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + index * 15);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (freq === 'anual') {
+      const targetYear = year + index;
+      const targetMonth = month;
+      const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const targetDay = Math.min(day, daysInTargetMonth);
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    } else {
+      // mensal (default)
+      const totalMonths = month + index;
+      const targetYear = year + Math.floor(totalMonths / 12);
+      const targetMonth = totalMonths % 12;
+      const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const targetDay = Math.min(day, daysInTargetMonth);
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    }
+  };
+
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     const valueNum = parseFloat(txValue);
@@ -1443,32 +1482,72 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       }));
       setEditingTx(null);
     } else {
-      const newTx: Transaction = {
-        id: `tx-${Date.now()}`,
-        description: txDescription,
-        value: valueNum,
-        type: txType,
-        categoryId: txCategoryId,
-        subcategory: txSubcategory || undefined,
-        accountId: txAccountId,
-        date: txDataLancamento,
-        observation: txObservation.trim() || undefined,
-        recebido: txType === 'entrada' ? txRecebido : undefined,
-        recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
-        dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
-        dataLancamento: txDataLancamento,
-        parcelamento: txParcelamento,
-        frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
-        numeroParcelas: txParcelamento === 'sim' ? totalParcelasNum : undefined,
-        parcelaAtual: txParcelamento === 'sim' ? curParcelaNum : undefined,
-        formaPagamento: txFormaPagamento || undefined,
-        creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
-        pago: txType === 'saida' ? txPago : undefined,
-        vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
-        dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
-        receiptImage: txReceiptImage || undefined,
-      };
-      setTransactions([newTx, ...transactions]);
+      if (txParcelamento === 'sim' && totalParcelasNum > 1) {
+        const remainingCount = Math.max(1, totalParcelasNum - curParcelaNum + 1);
+        const newInstallmentTxs: Transaction[] = [];
+        const baseTimestamp = Date.now();
+
+        for (let i = 0; i < remainingCount; i++) {
+          const installmentIndex = curParcelaNum + i;
+          const installmentLancamentoDate = calculateInstallmentDate(txDataLancamento, i, txFrequenciaParcelas || 'mensal');
+          const installmentRecebidoDate = txDataRecebido ? calculateInstallmentDate(txDataRecebido, i, txFrequenciaParcelas || 'mensal') : undefined;
+          const installmentVencimentoDate = txDataVencimento ? calculateInstallmentDate(txDataVencimento, i, txFrequenciaParcelas || 'mensal') : undefined;
+
+          newInstallmentTxs.push({
+            id: `tx-${baseTimestamp}-${i}`,
+            description: txDescription,
+            value: valueNum,
+            type: txType,
+            categoryId: txCategoryId,
+            subcategory: txSubcategory || undefined,
+            accountId: txAccountId,
+            date: installmentLancamentoDate,
+            observation: txObservation.trim() || undefined,
+            recebido: txType === 'entrada' ? (i === 0 ? txRecebido : 'nao') : undefined,
+            recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
+            dataRecebido: txType === 'entrada' ? (i === 0 ? txDataRecebido : installmentRecebidoDate) : undefined,
+            dataLancamento: installmentLancamentoDate,
+            parcelamento: 'sim',
+            frequenciaParcelas: txFrequenciaParcelas || 'mensal',
+            numeroParcelas: totalParcelasNum,
+            parcelaAtual: installmentIndex,
+            formaPagamento: txFormaPagamento || undefined,
+            creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
+            pago: txType === 'saida' ? (i === 0 ? txPago : 'nao') : undefined,
+            vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
+            dataVencimento: txType === 'saida' ? (i === 0 ? txDataVencimento : installmentVencimentoDate) : undefined,
+            receiptImage: i === 0 ? (txReceiptImage || undefined) : undefined,
+          });
+        }
+        setTransactions(prev => [...newInstallmentTxs, ...prev]);
+      } else {
+        const newTx: Transaction = {
+          id: `tx-${Date.now()}`,
+          description: txDescription,
+          value: valueNum,
+          type: txType,
+          categoryId: txCategoryId,
+          subcategory: txSubcategory || undefined,
+          accountId: txAccountId,
+          date: txDataLancamento,
+          observation: txObservation.trim() || undefined,
+          recebido: txType === 'entrada' ? txRecebido : undefined,
+          recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
+          dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
+          dataLancamento: txDataLancamento,
+          parcelamento: txParcelamento,
+          frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
+          numeroParcelas: txParcelamento === 'sim' ? totalParcelasNum : undefined,
+          parcelaAtual: txParcelamento === 'sim' ? curParcelaNum : undefined,
+          formaPagamento: txFormaPagamento || undefined,
+          creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
+          pago: txType === 'saida' ? txPago : undefined,
+          vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
+          dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
+          receiptImage: txReceiptImage || undefined,
+        };
+        setTransactions(prev => [newTx, ...prev]);
+      }
     }
     
     if (closeOnSave) {
@@ -10622,6 +10701,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             {txParcelaAtual || 1}/{txNumeroParcelas || 1} ({txFrequenciaParcelas || 'mensal'})
                           </span>
                         </div>
+
+                        {parseInt(txNumeroParcelas) > 1 && (
+                          <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-300 flex items-start gap-1.5">
+                            <span className="text-xs shrink-0">⚡</span>
+                            <span>
+                              Ao salvar, o sistema criará automaticamente <strong>{Math.max(1, parseInt(txNumeroParcelas) - (parseInt(txParcelaAtual) || 1) + 1)} lançamentos</strong> nos meses seguintes ({txFrequenciaParcelas || 'mensal'}) com as datas calculadas e status pendente para as parcelas futuras.
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
