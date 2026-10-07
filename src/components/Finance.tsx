@@ -846,6 +846,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showTfSuggestions, setShowTfSuggestions] = useState(false);
+  const [autoFillFeedback, setAutoFillFeedback] = useState<string | null>(null);
 
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [accName, setAccName] = useState('');
@@ -1322,6 +1323,48 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setShowInlineCategory(false);
   };
 
+  const applySmartAutoFill = (match: Transaction) => {
+    setTxDescription(match.description);
+    if (match.value !== undefined && match.value !== null) {
+      setTxValue(match.value.toString());
+    }
+    if (match.categoryId) {
+      setTxCategoryId(match.categoryId);
+    }
+    setTxSubcategory(match.subcategory || '');
+    if (match.accountId) {
+      setTxAccountId(match.accountId);
+    }
+    if (match.formaPagamento) {
+      setTxFormaPagamento(match.formaPagamento);
+    }
+    if (match.creditCardId) {
+      setTxCreditCardId(match.creditCardId);
+    }
+    if (match.observation) {
+      setTxObservation(match.observation);
+    }
+    if (txType === 'entrada') {
+      if (match.recebidoDe) {
+        setTxRecebidoDe(match.recebidoDe);
+      }
+    } else {
+      if (match.vaiPagarQuem) {
+        setTxVaiPagarQuem(match.vaiPagarQuem);
+      }
+    }
+    // IMPORTANTE (conforme solicitado):
+    // Os campos data (dataLancamento, dataRecebido, dataVencimento),
+    // status de pagamento (pago, recebido) e parcelamento (parcelamento, numeroParcelas, parcelaAtual, frequenciaParcelas)
+    // permanecem inalterados e NÃO são sobrescritos.
+
+    setShowSuggestions(false);
+    setAutoFillFeedback(`Dados preenchidos com base no lançamento anterior de "${match.description}"!`);
+    setTimeout(() => {
+      setAutoFillFeedback(null);
+    }, 4500);
+  };
+
   const resetTxForm = () => {
     setTxDescription('');
     setTxValue('');
@@ -1353,6 +1396,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     setShowInlineSubcategory(false);
     setInlineSubcategoryName('');
     setShowSuggestions(false);
+    setAutoFillFeedback(null);
   };
 
   const handleAddTransaction = (e: React.FormEvent) => {
@@ -9761,29 +9805,94 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                   {/* Left Column: Core fields & status */}
                   <div className="space-y-4">
-                    {/* COMMON - DESCRICAO */}
+                    {/* COMMON - DESCRICAO COM PREENCHIMENTO INTELIGENTE */}
                     <div className="space-y-1 relative">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex justify-between items-center">
                         <span>Descrição / Histórico *</span>
                         {transactions.some(t => t.type === txType && t.description.toLowerCase().trim() === txDescription.toLowerCase().trim()) && (
-                          <span className="text-[9px] text-indigo-400 font-bold bg-indigo-500/10 px-1.5 py-0.5 rounded-full">✨ Memória Ativa</span>
+                          <span className="text-[9px] text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 border border-indigo-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                            ✨ Memória Inteligente
+                          </span>
                         )}
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={txDescription}
-                        onChange={(e) => {
-                          setTxDescription(e.target.value);
-                          setShowSuggestions(true);
-                        }}
-                        onFocus={() => setShowSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        placeholder={txType === 'entrada' ? 'Ex: Dízimo Dominical Culto' : 'Ex: Compra de Lâmpadas para o Templo'}
-                        className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
-                          isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                        }`}
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={txDescription}
+                          onChange={(e) => {
+                            setTxDescription(e.target.value);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
+                          placeholder={txType === 'entrada' ? 'Ex: Dízimo Dominical Culto' : 'Ex: Compra de Lâmpadas para o Templo'}
+                          className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                            isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Feedback Toast de Preenchimento Automático */}
+                      {autoFillFeedback && (
+                        <div className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl flex items-center gap-2 animate-fadeIn shadow-sm">
+                          <span>✨</span>
+                          <span>{autoFillFeedback}</span>
+                        </div>
+                      )}
+
+                      {/* Banner Inteligente de Preenchimento Automático em Tempo Real */}
+                      {(() => {
+                        if (!txDescription || txDescription.trim().length < 2) return null;
+                        const term = txDescription.trim().toLowerCase();
+                        const activeMatch = [...transactions].reverse().find(t => 
+                          t.type === txType && t.description.toLowerCase().trim() === term
+                        ) || (term.length >= 3 ? [...transactions].reverse().find(t => 
+                          t.type === txType && t.description.toLowerCase().includes(term)
+                        ) : undefined);
+
+                        if (!activeMatch) return null;
+
+                        const matchCat = categories.find(c => c.id === activeMatch.categoryId);
+                        const matchAcc = accounts.find(a => a.id === activeMatch.accountId);
+
+                        return (
+                          <div className={`mt-2 p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                            isHighContrast 
+                              ? 'bg-indigo-50/90 border-indigo-200 text-indigo-950 shadow-sm' 
+                              : 'bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-zinc-950 border-indigo-500/40 text-zinc-200 shadow-md'
+                          }`}>
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs">⚡</span>
+                                <span className="text-[11px] font-bold text-indigo-400">Sugestão de Preenchimento Automático</span>
+                                <span className="text-[9px] text-zinc-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Lançamento anterior</span>
+                              </div>
+                              <p className="text-[11px] text-zinc-300 truncate">
+                                <strong>{activeMatch.description}</strong>
+                                {activeMatch.value ? ` • ${formatCurrency(activeMatch.value)}` : ''}
+                                {matchCat ? ` • ${matchCat.name}` : ''}
+                                {activeMatch.subcategory ? ` › ${activeMatch.subcategory}` : ''}
+                                {matchAcc ? ` • ${matchAcc.name}` : ''}
+                                {txType === 'entrada' && activeMatch.recebidoDe ? ` • Recebido de: ${activeMatch.recebidoDe}` : ''}
+                                {txType === 'saida' && activeMatch.vaiPagarQuem ? ` • Favorecido: ${activeMatch.vaiPagarQuem}` : ''}
+                                {activeMatch.formaPagamento ? ` • ${activeMatch.formaPagamento}` : ''}
+                              </p>
+                              <p className="text-[9px] text-zinc-500">
+                                ℹ️ Preenche quem pagou/recebeu, categoria, subcategoria, valor, forma de pgto e banco. Data, status e parcelamento permanecem sem alteração.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => applySmartAutoFill(activeMatch)}
+                              className="shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <span>✨ Preencher Dados</span>
+                            </button>
+                          </div>
+                        );
+                      })()}
 
                       {/* Auto-fill/Suggestions Dropdown */}
                       {showSuggestions && (
@@ -9798,11 +9907,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           if (matches.length === 0) return null;
 
                           return (
-                            <div className={`absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border shadow-xl backdrop-blur-md ${
+                            <div className={`absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border shadow-2xl backdrop-blur-md ${
                               isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
                             }`}>
-                              <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-800/10 flex justify-between items-center">
-                                <span>Lançamentos anteriores (Memória rápida)</span>
+                              <div className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-800/10 flex justify-between items-center bg-zinc-900/40">
+                                <span>Lançamentos anteriores (Memória Inteligente)</span>
                                 <span className="text-[8px] text-indigo-400 font-semibold">Clique para autocompletar</span>
                               </div>
                               {matches.map((desc, idx) => {
@@ -9819,31 +9928,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     onMouseDown={(e) => {
                                       e.preventDefault();
                                       if (match) {
-                                        setTxDescription(match.description);
-                                        setTxValue(match.value.toString());
-                                        setTxCategoryId(match.categoryId);
-                                        setTxSubcategory(match.subcategory || '');
-                                        setTxAccountId(match.accountId);
-                                        setTxFormaPagamento(match.formaPagamento || 'pix');
-                                        setTxObservation(match.observation || '');
-                                        
-                                        if (txType === 'entrada') {
-                                          setTxRecebido(match.recebido || 'sim');
-                                          setTxRecebidoDe(match.recebidoDe || '');
-                                          setTxDataRecebido(match.dataRecebido || new Date().toISOString().split('T')[0]);
-                                        } else {
-                                          setTxPago(match.pago || 'sim');
-                                          setTxVaiPagarQuem(match.vaiPagarQuem || '');
-                                          setTxDataVencimento(match.dataVencimento || new Date().toISOString().split('T')[0]);
-                                        }
-                                        
-                                        setTxParcelamento(match.parcelamento || 'nao');
-                                        setTxFrequenciaParcelas(match.frequenciaParcelas || 'mensal');
-                                        setTxNumeroParcelas(match.numeroParcelas ? match.numeroParcelas.toString() : '1');
+                                        applySmartAutoFill(match);
                                       } else {
                                         setTxDescription(desc);
+                                        setShowSuggestions(false);
                                       }
-                                      setShowSuggestions(false);
                                     }}
                                     className={`w-full text-left px-3.5 py-2.5 text-xs hover:bg-indigo-600/10 hover:text-indigo-400 font-medium cursor-pointer flex items-center justify-between border-b last:border-0 transition-colors ${
                                       isHighContrast ? 'border-zinc-100 text-zinc-800' : 'border-zinc-900 text-zinc-300'
@@ -9851,9 +9940,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                   >
                                     <div className="min-w-0 flex-1 mr-3">
                                       <p className="font-semibold text-xs truncate">{desc}</p>
-                                      {(cat || acc) && (
+                                      {(cat || acc || (match && (match.recebidoDe || match.vaiPagarQuem))) && (
                                         <p className="text-[10px] text-zinc-500 truncate mt-0.5">
                                           {cat?.name}{match?.subcategory ? ` › ${match.subcategory}` : ''}{acc ? ` • ${acc.name}` : ''}
+                                          {match?.recebidoDe ? ` • ${match.recebidoDe}` : ''}
+                                          {match?.vaiPagarQuem ? ` • ${match.vaiPagarQuem}` : ''}
                                         </p>
                                       )}
                                     </div>
@@ -9865,7 +9956,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                           {formatCurrency(match.value)}
                                         </span>
                                       )}
-                                      <span className="text-[9px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full font-bold">
+                                      <span className="text-[9px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full font-bold border border-indigo-500/20">
                                         Preencher
                                       </span>
                                     </div>
@@ -9886,7 +9977,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         if (quickChips.length === 0) return null;
 
                         return (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
                             <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500">Memória Rápida:</span>
                             {quickChips.map((chip, idx) => (
                               <button
@@ -9896,31 +9987,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                   e.preventDefault();
                                   const match = [...transactions].reverse().find(t => t.type === txType && t.description.toLowerCase() === chip.toLowerCase());
                                   if (match) {
-                                    setTxDescription(match.description);
-                                    setTxValue(match.value.toString());
-                                    setTxCategoryId(match.categoryId);
-                                    setTxSubcategory(match.subcategory || '');
-                                    setTxAccountId(match.accountId);
-                                    setTxFormaPagamento(match.formaPagamento || 'pix');
-                                    setTxObservation(match.observation || '');
-                                    if (txType === 'entrada') {
-                                      setTxRecebido(match.recebido || 'sim');
-                                      setTxRecebidoDe(match.recebidoDe || '');
-                                      setTxDataRecebido(match.dataRecebido || new Date().toISOString().split('T')[0]);
-                                    } else {
-                                      setTxPago(match.pago || 'sim');
-                                      setTxVaiPagarQuem(match.vaiPagarQuem || '');
-                                      setTxDataVencimento(match.dataVencimento || new Date().toISOString().split('T')[0]);
-                                    }
-                                    setTxParcelamento(match.parcelamento || 'nao');
-                                    setTxFrequenciaParcelas(match.frequenciaParcelas || 'mensal');
-                                    setTxNumeroParcelas(match.numeroParcelas ? match.numeroParcelas.toString() : '1');
+                                    applySmartAutoFill(match);
                                   } else {
                                     setTxDescription(chip);
+                                    setShowSuggestions(false);
                                   }
-                                  setShowSuggestions(false);
                                 }}
-                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer truncate max-w-[180px] ${
+                                className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border transition-all cursor-pointer truncate max-w-[180px] ${
                                   isHighContrast
                                     ? 'bg-zinc-100 hover:bg-indigo-50 hover:border-indigo-300 text-zinc-700 hover:text-indigo-600 border-zinc-200'
                                     : 'bg-zinc-900/60 hover:bg-indigo-500/10 hover:border-indigo-500/40 text-zinc-400 hover:text-indigo-300 border-zinc-800'
