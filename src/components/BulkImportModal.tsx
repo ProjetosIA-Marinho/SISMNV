@@ -249,6 +249,44 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
     return errors;
   };
 
+  const calculateInstallmentDate = (baseDateStr: string, index: number, freq: string = 'mensal') => {
+    if (!baseDateStr || index === 0) return baseDateStr;
+    const parts = baseDateStr.split('-');
+    if (parts.length < 3) return baseDateStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return baseDateStr;
+
+    if (freq === 'diario') {
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + index);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (freq === 'semanal') {
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + index * 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (freq === 'quinzenal') {
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + index * 15);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (freq === 'anual') {
+      const targetYear = year + index;
+      const targetMonth = month;
+      const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const targetDay = Math.min(day, daysInTargetMonth);
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    } else {
+      const totalMonths = month + index;
+      const targetYear = year + Math.floor(totalMonths / 12);
+      const targetMonth = totalMonths % 12;
+      const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const targetDay = Math.min(day, daysInTargetMonth);
+      return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
+    }
+  };
+
   // Process array of raw objects (from XLSX or parsed TSV/CSV)
   const processRawData = (data: Record<string, any>[]) => {
     if (!data || data.length === 0) {
@@ -738,33 +776,75 @@ export const BulkImportModal: React.FC<BulkImportModalProps> = ({
       return;
     }
 
-    const newTransactions: Transaction[] = toImport.map((row, idx) => {
-      const now = Date.now() + idx;
-      const isEntrada = row.type === 'entrada';
+    const newTransactions: Transaction[] = [];
 
-      return {
-        id: `tx-bulk-${now}-${Math.random().toString(36).substr(2, 6)}`,
-        description: row.description.trim(),
-        value: row.value,
-        type: row.type,
-        categoryId: row.categoryId,
-        subcategory: row.subcategory || undefined,
-        accountId: row.accountId,
-        date: row.date,
-        observation: row.observation ? row.observation.trim() : undefined,
-        recebido: isEntrada ? (row.status === 'concluido' ? 'sim' : 'nao') : undefined,
-        recebidoDe: isEntrada ? (row.entidade || undefined) : undefined,
-        dataRecebido: isEntrada && row.status === 'concluido' ? row.date : undefined,
-        dataLancamento: row.date,
-        parcelamento: row.parcelamento || 'nao',
-        numeroParcelas: row.parcelamento === 'sim' ? (row.numeroParcelas || 1) : undefined,
-        parcelaAtual: row.parcelamento === 'sim' ? (row.parcelaAtual || 1) : undefined,
-        frequenciaParcelas: (row.parcelamento === 'sim' || row.parcelamento === 'recorrente') ? (row.frequenciaParcelas || 'mensal') : undefined,
-        formaPagamento: row.formaPagamento || undefined,
-        pago: !isEntrada ? (row.status === 'concluido' ? 'sim' : 'nao') : undefined,
-        vaiPagarQuem: !isEntrada ? (row.entidade || undefined) : undefined,
-        dataVencimento: row.dataVencimento || row.date
-      };
+    toImport.forEach((row, idx) => {
+      const isEntrada = row.type === 'entrada';
+      const isParcelado = row.parcelamento === 'sim';
+      const isRecorrente = row.parcelamento === 'recorrente';
+      const totalParcelas = isParcelado ? (row.numeroParcelas || 1) : isRecorrente ? (row.numeroParcelas || 12) : 1;
+      const curParcela = isParcelado ? (row.parcelaAtual || 1) : 1;
+      const freq = row.frequenciaParcelas || 'mensal';
+
+      // Check if we should expand multiple installments
+      if ((isParcelado || isRecorrente) && totalParcelas > 1 && curParcela === 1) {
+        const baseNow = Date.now() + (idx * 100);
+        for (let i = 0; i < totalParcelas; i++) {
+          const installmentIndex = i + 1;
+          const installmentDate = calculateInstallmentDate(row.date, i, freq);
+          const installmentVencimentoDate = row.dataVencimento ? calculateInstallmentDate(row.dataVencimento, i, freq) : installmentDate;
+          const isFirst = i === 0;
+
+          newTransactions.push({
+            id: `tx-bulk-${baseNow}-${i}-${Math.random().toString(36).substr(2, 6)}`,
+            description: row.description.trim(),
+            value: row.value,
+            type: row.type,
+            categoryId: row.categoryId,
+            subcategory: row.subcategory || undefined,
+            accountId: row.accountId,
+            date: isEntrada ? installmentDate : installmentVencimentoDate,
+            observation: row.observation ? row.observation.trim() : undefined,
+            recebido: isEntrada ? (isFirst && row.status === 'concluido' ? 'sim' : 'nao') : undefined,
+            recebidoDe: isEntrada ? (row.entidade || undefined) : undefined,
+            dataRecebido: isEntrada ? (isFirst && row.status === 'concluido' ? installmentDate : undefined) : undefined,
+            dataLancamento: installmentDate,
+            parcelamento: row.parcelamento || 'nao',
+            numeroParcelas: totalParcelas,
+            parcelaAtual: installmentIndex,
+            frequenciaParcelas: freq,
+            formaPagamento: row.formaPagamento || undefined,
+            pago: !isEntrada ? (isFirst && row.status === 'concluido' ? 'sim' : 'nao') : undefined,
+            vaiPagarQuem: !isEntrada ? (row.entidade || undefined) : undefined,
+            dataVencimento: !isEntrada ? installmentVencimentoDate : undefined
+          });
+        }
+      } else {
+        const now = Date.now() + idx;
+        newTransactions.push({
+          id: `tx-bulk-${now}-${Math.random().toString(36).substr(2, 6)}`,
+          description: row.description.trim(),
+          value: row.value,
+          type: row.type,
+          categoryId: row.categoryId,
+          subcategory: row.subcategory || undefined,
+          accountId: row.accountId,
+          date: row.date,
+          observation: row.observation ? row.observation.trim() : undefined,
+          recebido: isEntrada ? (row.status === 'concluido' ? 'sim' : 'nao') : undefined,
+          recebidoDe: isEntrada ? (row.entidade || undefined) : undefined,
+          dataRecebido: isEntrada && row.status === 'concluido' ? row.date : undefined,
+          dataLancamento: row.date,
+          parcelamento: row.parcelamento || 'nao',
+          numeroParcelas: isParcelado ? (row.numeroParcelas || 1) : undefined,
+          parcelaAtual: isParcelado ? (row.parcelaAtual || 1) : undefined,
+          frequenciaParcelas: (isParcelado || isRecorrente) ? (row.frequenciaParcelas || 'mensal') : undefined,
+          formaPagamento: row.formaPagamento || undefined,
+          pago: !isEntrada ? (row.status === 'concluido' ? 'sim' : 'nao') : undefined,
+          vaiPagarQuem: !isEntrada ? (row.entidade || undefined) : undefined,
+          dataVencimento: row.dataVencimento || row.date
+        });
+      }
     });
 
     onImport(newTransactions);

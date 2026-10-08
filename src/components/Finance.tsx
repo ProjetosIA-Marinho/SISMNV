@@ -1357,9 +1357,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
   // --- FINANCIAL CALCULATIONS ---
   const filteredDashboardTxs = transactions.filter(tx => {
+    const effectiveDate = tx.type === 'entrada'
+      ? (tx.dataRecebido || tx.dataLancamento || tx.date)
+      : (tx.dataVencimento || tx.dataLancamento || tx.date);
+
     if (activeSubTab === 'dashboard') {
-      const txYear = tx.date.substring(0, 4);
-      const txMonth = tx.date.substring(5, 7);
+      const txYear = effectiveDate.substring(0, 4);
+      const txMonth = effectiveDate.substring(5, 7);
       if (dashSelectedYear !== 'all' && txYear !== dashSelectedYear) return false;
       if (dashSelectedMonth !== 'all' && txMonth !== dashSelectedMonth) return false;
     } else if (activeSubTab === 'transactions') {
@@ -1381,23 +1385,23 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
       // Filter by Year
       if (txSelectedYear !== 'all') {
-        const txYear = tx.date.substring(0, 4);
+        const txYear = effectiveDate.substring(0, 4);
         if (txYear !== txSelectedYear) return false;
       }
 
       // Filter by Month
       if (txSelectedMonth !== 'all') {
-        const txMonth = tx.date.substring(5, 7);
+        const txMonth = effectiveDate.substring(5, 7);
         if (txMonth !== txSelectedMonth) return false;
       }
 
       // Filter by Period
       if (txSelectedPeriod !== 'all') {
         if (txSelectedPeriod === 'custom') {
-          if (txStartDateFilter && tx.date < txStartDateFilter) return false;
-          if (txEndDateFilter && tx.date > txEndDateFilter) return false;
+          if (txStartDateFilter && effectiveDate < txStartDateFilter) return false;
+          if (txEndDateFilter && effectiveDate > txEndDateFilter) return false;
         } else {
-          const txDateObj = new Date(tx.date + 'T00:00:00');
+          const txDateObj = new Date(effectiveDate + 'T00:00:00');
           const now = new Date();
           const diffTime = now.getTime() - txDateObj.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -1635,52 +1639,103 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       return;
     }
 
-    const curParcelaNum = parseInt(txParcelaAtual) || 1;
-    const totalParcelasNum = parseInt(txNumeroParcelas) || 1;
+    const isParcelado = txParcelamento === 'sim';
+    const isRecorrente = txParcelamento === 'recorrente';
+    const curParcelaNum = isParcelado ? (parseInt(txParcelaAtual) || 1) : 1;
+    const totalParcelasNum = isParcelado 
+      ? (parseInt(txNumeroParcelas) || 1) 
+      : isRecorrente 
+      ? (parseInt(txNumeroParcelas) || 12) 
+      : 1;
 
     if (editingTx) {
-      setTransactions(transactions.map(t => {
-        if (t.id === editingTx.id) {
-          return {
-            ...t,
+      const effectiveDate = txType === 'entrada' 
+        ? (txDataRecebido || txDataLancamento) 
+        : (txDataVencimento || txDataLancamento);
+
+      const updatedTx: Transaction = {
+        ...editingTx,
+        description: txDescription,
+        value: valueNum,
+        type: txType,
+        categoryId: txCategoryId,
+        subcategory: txSubcategory || undefined,
+        accountId: txAccountId,
+        date: effectiveDate,
+        observation: txObservation.trim() || undefined,
+        recebido: txType === 'entrada' ? txRecebido : undefined,
+        recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
+        dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
+        dataLancamento: txDataLancamento,
+        parcelamento: txParcelamento,
+        frequenciaParcelas: (isParcelado || isRecorrente) ? (txFrequenciaParcelas || 'mensal') : undefined,
+        numeroParcelas: (isParcelado || isRecorrente) ? totalParcelasNum : undefined,
+        parcelaAtual: isParcelado ? curParcelaNum : (isRecorrente ? (editingTx.parcelaAtual || 1) : undefined),
+        formaPagamento: txFormaPagamento || undefined,
+        creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
+        pago: txType === 'saida' ? txPago : undefined,
+        vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
+        dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
+        receiptImage: txReceiptImage || undefined,
+      };
+
+      // If user converted a single tx into parcelado or recorrente with multiple occurrences, generate subsequent
+      let newExtraTxs: Transaction[] = [];
+      const remainingCount = (isParcelado || isRecorrente) && totalParcelasNum > curParcelaNum
+        ? (totalParcelasNum - curParcelaNum)
+        : 0;
+
+      if (remainingCount > 0 && editingTx.parcelamento === 'nao') {
+        const baseTimestamp = Date.now();
+        for (let i = 1; i <= remainingCount; i++) {
+          const installmentIndex = curParcelaNum + i;
+          const installmentLancamentoDate = calculateInstallmentDate(txDataLancamento, i, txFrequenciaParcelas || 'mensal');
+          const installmentRecebidoDate = txDataRecebido ? calculateInstallmentDate(txDataRecebido, i, txFrequenciaParcelas || 'mensal') : undefined;
+          const installmentVencimentoDate = txDataVencimento ? calculateInstallmentDate(txDataVencimento, i, txFrequenciaParcelas || 'mensal') : undefined;
+          const futureEffectiveDate = txType === 'entrada' ? (installmentRecebidoDate || installmentLancamentoDate) : (installmentVencimentoDate || installmentLancamentoDate);
+
+          newExtraTxs.push({
+            id: `tx-${baseTimestamp}-${i}`,
             description: txDescription,
             value: valueNum,
             type: txType,
             categoryId: txCategoryId,
             subcategory: txSubcategory || undefined,
             accountId: txAccountId,
-            date: txType === 'entrada' ? txDataLancamento : txDataLancamento, // default main date
+            date: futureEffectiveDate,
             observation: txObservation.trim() || undefined,
-            recebido: txType === 'entrada' ? txRecebido : undefined,
+            recebido: txType === 'entrada' ? 'nao' : undefined,
             recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
-            dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
-            dataLancamento: txDataLancamento,
+            dataRecebido: txType === 'entrada' ? installmentRecebidoDate : undefined,
+            dataLancamento: installmentLancamentoDate,
             parcelamento: txParcelamento,
-            frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
-            numeroParcelas: txParcelamento === 'sim' ? totalParcelasNum : undefined,
-            parcelaAtual: txParcelamento === 'sim' ? curParcelaNum : undefined,
+            frequenciaParcelas: txFrequenciaParcelas || 'mensal',
+            numeroParcelas: totalParcelasNum,
+            parcelaAtual: installmentIndex,
             formaPagamento: txFormaPagamento || undefined,
             creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
-            pago: txType === 'saida' ? txPago : undefined,
+            pago: txType === 'saida' ? 'nao' : undefined,
             vaiPagarQuem: txType === 'saida' ? txVaiPagarQuem : undefined,
-            dataVencimento: txType === 'saida' ? txDataVencimento : undefined,
-            receiptImage: txReceiptImage || undefined,
-          };
+            dataVencimento: txType === 'saida' ? installmentVencimentoDate : undefined,
+            receiptImage: undefined,
+          });
         }
-        return t;
-      }));
+      }
+
+      setTransactions(transactions.map(t => t.id === editingTx.id ? updatedTx : t).concat(newExtraTxs));
       setEditingTx(null);
     } else {
-      if (txParcelamento === 'sim' && totalParcelasNum > 1) {
-        const remainingCount = Math.max(1, totalParcelasNum - curParcelaNum + 1);
+      if ((isParcelado || isRecorrente) && totalParcelasNum > 1) {
+        const remainingCount = isParcelado ? Math.max(1, totalParcelasNum - curParcelaNum + 1) : totalParcelasNum;
         const newInstallmentTxs: Transaction[] = [];
         const baseTimestamp = Date.now();
 
         for (let i = 0; i < remainingCount; i++) {
-          const installmentIndex = curParcelaNum + i;
+          const installmentIndex = isParcelado ? (curParcelaNum + i) : (i + 1);
           const installmentLancamentoDate = calculateInstallmentDate(txDataLancamento, i, txFrequenciaParcelas || 'mensal');
           const installmentRecebidoDate = txDataRecebido ? calculateInstallmentDate(txDataRecebido, i, txFrequenciaParcelas || 'mensal') : undefined;
           const installmentVencimentoDate = txDataVencimento ? calculateInstallmentDate(txDataVencimento, i, txFrequenciaParcelas || 'mensal') : undefined;
+          const effectiveDate = txType === 'entrada' ? (installmentRecebidoDate || installmentLancamentoDate) : (installmentVencimentoDate || installmentLancamentoDate);
 
           newInstallmentTxs.push({
             id: `tx-${baseTimestamp}-${i}`,
@@ -1690,13 +1745,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             categoryId: txCategoryId,
             subcategory: txSubcategory || undefined,
             accountId: txAccountId,
-            date: installmentLancamentoDate,
+            date: effectiveDate,
             observation: txObservation.trim() || undefined,
             recebido: txType === 'entrada' ? (i === 0 ? txRecebido : 'nao') : undefined,
             recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
             dataRecebido: txType === 'entrada' ? (i === 0 ? txDataRecebido : installmentRecebidoDate) : undefined,
             dataLancamento: installmentLancamentoDate,
-            parcelamento: 'sim',
+            parcelamento: txParcelamento,
             frequenciaParcelas: txFrequenciaParcelas || 'mensal',
             numeroParcelas: totalParcelasNum,
             parcelaAtual: installmentIndex,
@@ -1710,6 +1765,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
         }
         setTransactions(prev => [...newInstallmentTxs, ...prev]);
       } else {
+        const effectiveDate = txType === 'entrada' ? (txDataRecebido || txDataLancamento) : (txDataVencimento || txDataLancamento);
         const newTx: Transaction = {
           id: `tx-${Date.now()}`,
           description: txDescription,
@@ -1718,16 +1774,16 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
           categoryId: txCategoryId,
           subcategory: txSubcategory || undefined,
           accountId: txAccountId,
-          date: txDataLancamento,
+          date: effectiveDate,
           observation: txObservation.trim() || undefined,
           recebido: txType === 'entrada' ? txRecebido : undefined,
           recebidoDe: txType === 'entrada' ? txRecebidoDe : undefined,
           dataRecebido: txType === 'entrada' ? txDataRecebido : undefined,
           dataLancamento: txDataLancamento,
           parcelamento: txParcelamento,
-          frequenciaParcelas: txParcelamento === 'sim' ? txFrequenciaParcelas : undefined,
-          numeroParcelas: txParcelamento === 'sim' ? totalParcelasNum : undefined,
-          parcelaAtual: txParcelamento === 'sim' ? curParcelaNum : undefined,
+          frequenciaParcelas: (isParcelado || isRecorrente) ? txFrequenciaParcelas : undefined,
+          numeroParcelas: (isParcelado || isRecorrente) ? totalParcelasNum : undefined,
+          parcelaAtual: isParcelado ? curParcelaNum : (isRecorrente ? 1 : undefined),
           formaPagamento: txFormaPagamento || undefined,
           creditCardId: txFormaPagamento === 'cartão' && txCreditCardId ? txCreditCardId : undefined,
           pago: txType === 'saida' ? txPago : undefined,
@@ -2674,25 +2730,30 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       }
     }
 
+    // Filter by Effective Date
+    const effectiveDate = tx.type === 'entrada' 
+      ? (tx.dataRecebido || tx.dataLancamento || tx.date) 
+      : (tx.dataVencimento || tx.dataLancamento || tx.date);
+
     // Filter by Year
     if (txSelectedYear !== 'all') {
-      const txYear = tx.date.substring(0, 4);
+      const txYear = effectiveDate.substring(0, 4);
       if (txYear !== txSelectedYear) return false;
     }
 
     // Filter by Month
     if (txSelectedMonth !== 'all') {
-      const txMonth = tx.date.substring(5, 7);
+      const txMonth = effectiveDate.substring(5, 7);
       if (txMonth !== txSelectedMonth) return false;
     }
 
     // Filter by Period
     if (txSelectedPeriod !== 'all') {
       if (txSelectedPeriod === 'custom') {
-        if (txStartDateFilter && tx.date < txStartDateFilter) return false;
-        if (txEndDateFilter && tx.date > txEndDateFilter) return false;
+        if (txStartDateFilter && effectiveDate < txStartDateFilter) return false;
+        if (txEndDateFilter && effectiveDate > txEndDateFilter) return false;
       } else {
-        const txDateObj = new Date(tx.date + 'T00:00:00');
+        const txDateObj = new Date(effectiveDate + 'T00:00:00');
         const now = new Date();
         const diffTime = now.getTime() - txDateObj.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -11441,6 +11502,26 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             />
                           </div>
                         </div>
+
+                        {/* Quick installment buttons */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mr-1">Atalhos:</span>
+                          {['2', '3', '6', '10', '12', '24'].map(pCount => (
+                            <button
+                              key={pCount}
+                              type="button"
+                              onClick={() => { setTxNumeroParcelas(pCount); setTxParcelaAtual('1'); }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all cursor-pointer ${
+                                txNumeroParcelas === pCount
+                                  ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold'
+                                  : isHighContrast ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
+                              }`}
+                            >
+                              {pCount}x
+                            </button>
+                          ))}
+                        </div>
+
                         <div className="flex items-center justify-between text-[11px] pt-1.5 text-indigo-400 font-semibold border-t border-zinc-800/40">
                           <span className="text-[10px] uppercase tracking-wider text-zinc-500">Exibição na Tabela:</span>
                           <span className="bg-indigo-500/15 px-2.5 py-0.5 rounded-md border border-indigo-500/30 font-mono text-xs font-bold text-indigo-400">
@@ -11456,6 +11537,83 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             </span>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* RECORRÊNCIA FREQUENCY & DURATION (FOR 'RECORRENTE') */}
+                    {txParcelamento === 'recorrente' && (
+                      <div className={`p-4 rounded-xl border space-y-3 ${
+                        isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-zinc-950/40 border-zinc-850'
+                      }`}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Periodicidade *</label>
+                            <select
+                              required
+                              value={txFrequenciaParcelas || 'mensal'}
+                              onChange={(e: any) => setTxFrequenciaParcelas(e.target.value)}
+                              className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                              }`}
+                            >
+                              <option value="mensal">Mensal (todo mês)</option>
+                              <option value="quinzenal">Quinzenal (a cada 15 dias)</option>
+                              <option value="semanal">Semanal (toda semana)</option>
+                              <option value="anual">Anual (uma vez ao ano)</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Gerar Lançamentos Para (Repetições) *</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="2"
+                                max="120"
+                                required
+                                value={txNumeroParcelas === '1' || !txNumeroParcelas ? '12' : txNumeroParcelas}
+                                onChange={(e) => setTxNumeroParcelas(e.target.value)}
+                                placeholder="12"
+                                className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                  isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                                }`}
+                              />
+                              <span className="text-[11px] text-zinc-400 font-medium shrink-0">
+                                {txFrequenciaParcelas === 'anual' ? 'anos' : txFrequenciaParcelas === 'semanal' ? 'semanas' : txFrequenciaParcelas === 'quinzenal' ? 'quinzenas' : 'meses'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Period Buttons */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mr-1">Atalhos:</span>
+                          {[
+                            { label: '6 Meses', val: '6' },
+                            { label: '12 Meses (1 Ano)', val: '12' },
+                            { label: '24 Meses (2 Anos)', val: '24' },
+                            { label: '36 Meses (3 Anos)', val: '36' },
+                          ].map(item => (
+                            <button
+                              key={item.val}
+                              type="button"
+                              onClick={() => setTxNumeroParcelas(item.val)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                                (txNumeroParcelas === item.val || (!txNumeroParcelas && item.val === '12'))
+                                  ? 'bg-purple-600/20 border-purple-500 text-purple-300 font-bold'
+                                  : isHighContrast ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 flex items-start gap-2">
+                          <span className="text-xs shrink-0">⚡</span>
+                          <span>
+                            Ao salvar, o sistema criará automaticamente <strong>{parseInt(txNumeroParcelas) || 12} lançamentos</strong> nos meses subsequentes ({txFrequenciaParcelas || 'mensal'}) com as datas projetadas. O 1º lançamento receberá o status informado e os futuros ficarão <strong>pendentes</strong> para acompanhamento no fluxo de caixa e no filtro mensal.
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
