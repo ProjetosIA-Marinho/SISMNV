@@ -52,13 +52,21 @@ import {
   Wifi,
   SlidersHorizontal,
   Lock,
-  Unlock
+  Unlock,
+  Users,
+  UserCheck,
+  UserPlus,
+  Contact,
+  Phone,
+  Mail,
+  BookmarkPlus,
+  BookmarkCheck
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas-pro';
 import * as XLSX from 'xlsx';
-import type { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset, CreditCard } from '../types';
+import type { BankAccount, BankAccountType, TransactionCategory, Transaction, Transfer, FixedAsset, CreditCard, FinancialEntity } from '../types';
 import { MNV_LOGO_BASE64 } from '../assets/logoMnvBase64';
 import { BulkImportModal } from './BulkImportModal';
 import { BulkCategoryImportModal } from './BulkCategoryImportModal';
@@ -112,6 +120,147 @@ export const INITIAL_CREDIT_CARDS: CreditCard[] = [
     color: 'from-rose-950 via-red-950 to-zinc-950',
     status: 'active',
     notes: 'Cartão para manutenção predial e contingências'
+  }
+];
+
+export const INITIAL_FINANCIAL_ENTITIES: FinancialEntity[] = [
+  // Favorecidos / Fornecedores (Quem irá receber)
+  {
+    id: 'ent-1',
+    name: 'CPFL Companhia Paulista de Força e Luz',
+    type: 'recebedor',
+    document: '02.429.980/0001-40',
+    category: 'cat-5',
+    subcategory: 'Energia Elétrica',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'débito automático',
+    phone: '0800 010 1010',
+    notes: 'Concessionária de energia elétrica do templo sede'
+  },
+  {
+    id: 'ent-2',
+    name: 'SAEP - Serviço de Água e Esgoto de Pirassununga',
+    type: 'recebedor',
+    document: '45.123.456/0001-78',
+    category: 'cat-5',
+    subcategory: 'Saneamento Água',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'débito automático',
+    phone: '(19) 3565-9000',
+    notes: 'Abastecimento de água e saneamento'
+  },
+  {
+    id: 'ent-3',
+    name: 'Imobiliária Central (Aluguel Templo)',
+    type: 'recebedor',
+    document: '12.345.678/0001-90',
+    category: 'cat-4',
+    subcategory: 'Sede Principal',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'transferência',
+    phone: '(19) 3561-1234',
+    notes: 'Locação predial templo sede - vencimento dia 10'
+  },
+  {
+    id: 'ent-4',
+    name: 'Pr. Ítalo Diego Mariano Da Silva Marinho',
+    type: 'ambos',
+    document: '123.456.789-00',
+    category: 'cat-6',
+    subcategory: 'Prebenda Pastoral',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'pix',
+    phone: '(19) 99876-5432',
+    notes: 'Pastor Presidente e dízimos/ofertas ministeriais'
+  },
+  {
+    id: 'ent-5',
+    name: 'Supermercado Paulistão Ltda',
+    type: 'recebedor',
+    document: '55.666.777/0001-88',
+    category: 'cat-7',
+    subcategory: 'Cestas Básicas',
+    defaultAccountId: 'acc-1',
+    defaultPaymentMethod: 'pix',
+    notes: 'Alimentos para cestas básicas da Ação Social'
+  },
+  {
+    id: 'ent-6',
+    name: 'Livraria e Distribuidora Cristã Fonte de Vida',
+    type: 'recebedor',
+    category: 'cat-7',
+    defaultPaymentMethod: 'boleto',
+    notes: 'Materiais de estudo, revistas de EBD e Bíblias'
+  },
+  {
+    id: 'ent-7',
+    name: 'Posto São Pedro de Pirassununga',
+    type: 'recebedor',
+    category: 'cat-7',
+    defaultPaymentMethod: 'cartão',
+    notes: 'Combustível da Van e veículos ministeriais'
+  },
+  // Pagadores / Contribuintes / Doadores (Quem irá pagar)
+  {
+    id: 'ent-8',
+    name: 'Dízimos Culto Geral (Membros Diversos)',
+    type: 'pagador',
+    category: 'cat-1',
+    subcategory: 'Membros',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'pix',
+    notes: 'Entrada coletiva de dízimos nos cultos'
+  },
+  {
+    id: 'ent-9',
+    name: 'Ofertas Voluntárias dos Cultos',
+    type: 'pagador',
+    category: 'cat-2',
+    subcategory: 'Culto de Domingo',
+    defaultAccountId: 'acc-1',
+    defaultPaymentMethod: 'dinheiro',
+    notes: 'Coleta de ofertas dos cultos de domingo e semanais'
+  },
+  {
+    id: 'ent-10',
+    name: 'Patrícia Gonçalves Rombe Marinho',
+    type: 'ambos',
+    document: '234.567.890-11',
+    category: 'cat-1',
+    subcategory: 'Membros',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'pix',
+    phone: '(19) 98765-4321',
+    notes: 'Tesoureira do Ministério e doadora'
+  },
+  {
+    id: 'ent-11',
+    name: 'Ricardo Silva',
+    type: 'pagador',
+    category: 'cat-1',
+    subcategory: 'Membros',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'pix',
+    notes: 'Membro do Conselho'
+  },
+  {
+    id: 'ent-12',
+    name: 'Mariana Oliveira',
+    type: 'pagador',
+    category: 'cat-1',
+    subcategory: 'Membros',
+    defaultAccountId: 'acc-2',
+    defaultPaymentMethod: 'pix'
+  },
+  {
+    id: 'ent-13',
+    name: 'Campanha Missionária Sertão & África',
+    type: 'pagador',
+    category: 'cat-3',
+    subcategory: 'Projetos Globais',
+    defaultAccountId: 'acc-1',
+    defaultPaymentMethod: 'pix',
+    notes: 'Doações direcionadas às missões'
   }
 ];
 
@@ -319,6 +468,46 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   useEffect(() => {
     localStorage.setItem('admmnv_finance_credit_cards', JSON.stringify(creditCards));
   }, [creditCards]);
+
+  // --- FINANCIAL ENTITIES STATE (FAVORECIDOS / QUEM RECEBE & PAGADORES / QUEM PAGA) ---
+  const [financialEntities, setFinancialEntities] = useState<FinancialEntity[]>(() => {
+    const saved = localStorage.getItem('admmnv_finance_entities');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_FINANCIAL_ENTITIES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('admmnv_finance_entities', JSON.stringify(financialEntities));
+  }, [financialEntities]);
+
+  // Modals & filters for entities (Favorecidos / Pagadores)
+  const [showEntitiesManagerModal, setShowEntitiesManagerModal] = useState(false);
+  const [showEntityModal, setShowEntityModal] = useState(false);
+  const [editingEntity, setEditingEntity] = useState<FinancialEntity | null>(null);
+  const [entityFilterType, setEntityFilterType] = useState<'todos' | 'recebedor' | 'pagador'>('todos');
+  const [entitySearchQuery, setEntitySearchQuery] = useState('');
+
+  // Form states for Entity
+  const [entityFormName, setEntityFormName] = useState('');
+  const [entityFormType, setEntityFormType] = useState<'recebedor' | 'pagador' | 'ambos'>('recebedor');
+  const [entityFormDocument, setEntityFormDocument] = useState('');
+  const [entityFormCategory, setEntityFormCategory] = useState('');
+  const [entityFormSubcategory, setEntityFormSubcategory] = useState('');
+  const [entityFormAccountId, setEntityFormAccountId] = useState('');
+  const [entityFormPaymentMethod, setEntityFormPaymentMethod] = useState<'pix' | 'boleto' | 'cartão' | 'dinheiro' | 'débito automático' | 'transferência' | 'cheque' | ''>('pix');
+  const [entityFormPhone, setEntityFormPhone] = useState('');
+  const [entityFormEmail, setEntityFormEmail] = useState('');
+  const [entityFormNotes, setEntityFormNotes] = useState('');
+
+  // Dropdown / quick feedback states for transaction modal
+  const [showEntitySuggestions, setShowEntitySuggestions] = useState(false);
+  const [entityQuickSuccessMsg, setEntityQuickSuccessMsg] = useState<string | null>(null);
 
   // Dashboard Bank Accounts Horizontal View state
   const [accountsViewMode, setAccountsViewMode] = useState<'horizontal' | 'grid'>('horizontal');
@@ -1562,6 +1751,171 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       setTxVaiPagarQuem('');
       setTxReceiptImage(null);
     }
+  };
+
+  // --- FINANCIAL ENTITY (FAVORECIDOS / PAGADORES) HANDLERS ---
+  const handleSelectEntity = (ent: FinancialEntity) => {
+    if (txType === 'entrada') {
+      setTxRecebidoDe(ent.name);
+    } else {
+      setTxVaiPagarQuem(ent.name);
+    }
+    setShowEntitySuggestions(false);
+
+    // Auto-fill default presets if configured
+    let appliedDetails: string[] = [];
+    if (ent.category) {
+      setTxCategoryId(ent.category);
+      const catObj = categories.find(c => c.id === ent.category);
+      if (catObj) appliedDetails.push(`Categoria: ${catObj.name}`);
+    }
+    if (ent.subcategory) {
+      setTxSubcategory(ent.subcategory);
+      appliedDetails.push(`Subcategoria: ${ent.subcategory}`);
+    }
+    if (ent.defaultAccountId) {
+      setTxAccountId(ent.defaultAccountId);
+      const accObj = accounts.find(a => a.id === ent.defaultAccountId);
+      if (accObj) appliedDetails.push(`Conta: ${accObj.name}`);
+    }
+    if (ent.defaultPaymentMethod) {
+      setTxFormaPagamento(ent.defaultPaymentMethod);
+      appliedDetails.push(`Forma: ${ent.defaultPaymentMethod.toUpperCase()}`);
+    }
+
+    if (appliedDetails.length > 0) {
+      setAutoFillFeedback(`Dados preenchidos do cadastro de "${ent.name}": ${appliedDetails.join(' • ')}`);
+      setTimeout(() => setAutoFillFeedback(null), 4000);
+    }
+  };
+
+  const handleQuickSaveCurrentEntity = () => {
+    const nameToSave = (txType === 'entrada' ? txRecebidoDe : txVaiPagarQuem).trim();
+    if (!nameToSave) return;
+
+    const exists = financialEntities.some(e => e.name.toLowerCase() === nameToSave.toLowerCase());
+    if (exists) {
+      setEntityQuickSuccessMsg(`"${nameToSave}" já está salvo nos seus cadastros.`);
+      setTimeout(() => setEntityQuickSuccessMsg(null), 3000);
+      return;
+    }
+
+    const newEnt: FinancialEntity = {
+      id: `ent-${Date.now()}`,
+      name: nameToSave,
+      type: txType === 'entrada' ? 'pagador' : 'recebedor',
+      category: txCategoryId || undefined,
+      subcategory: txSubcategory || undefined,
+      defaultAccountId: txAccountId || undefined,
+      defaultPaymentMethod: txFormaPagamento || undefined,
+      createdAt: new Date().toISOString()
+    };
+
+    setFinancialEntities(prev => [newEnt, ...prev]);
+    setEntityQuickSuccessMsg(`"${nameToSave}" gravado com sucesso para preenchimento rápido!`);
+    setTimeout(() => setEntityQuickSuccessMsg(null), 4000);
+  };
+
+  const resetEntityForm = () => {
+    setEditingEntity(null);
+    setEntityFormName('');
+    setEntityFormType(txType === 'entrada' ? 'pagador' : 'recebedor');
+    setEntityFormDocument('');
+    setEntityFormCategory('');
+    setEntityFormSubcategory('');
+    setEntityFormAccountId('');
+    setEntityFormPaymentMethod('pix');
+    setEntityFormPhone('');
+    setEntityFormEmail('');
+    setEntityFormNotes('');
+  };
+
+  const handleOpenAddEntityModal = (prefillName?: string, defaultType?: 'recebedor' | 'pagador' | 'ambos') => {
+    resetEntityForm();
+    if (prefillName) setEntityFormName(prefillName);
+    if (defaultType) setEntityFormType(defaultType);
+    else setEntityFormType(txType === 'entrada' ? 'pagador' : 'recebedor');
+    if (txCategoryId) setEntityFormCategory(txCategoryId);
+    if (txSubcategory) setEntityFormSubcategory(txSubcategory);
+    if (txAccountId) setEntityFormAccountId(txAccountId);
+    if (txFormaPagamento) setEntityFormPaymentMethod(txFormaPagamento);
+    setShowEntityModal(true);
+  };
+
+  const handleEditEntity = (ent: FinancialEntity) => {
+    setEditingEntity(ent);
+    setEntityFormName(ent.name);
+    setEntityFormType(ent.type);
+    setEntityFormDocument(ent.document || '');
+    setEntityFormCategory(ent.category || '');
+    setEntityFormSubcategory(ent.subcategory || '');
+    setEntityFormAccountId(ent.defaultAccountId || '');
+    setEntityFormPaymentMethod(ent.defaultPaymentMethod || 'pix');
+    setEntityFormPhone(ent.phone || '');
+    setEntityFormEmail(ent.email || '');
+    setEntityFormNotes(ent.notes || '');
+    setShowEntityModal(true);
+  };
+
+  const handleSaveEntity = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!entityFormName.trim()) return;
+
+    if (editingEntity) {
+      setFinancialEntities(prev => prev.map(item => item.id === editingEntity.id ? {
+        ...item,
+        name: entityFormName.trim(),
+        type: entityFormType,
+        document: entityFormDocument.trim() || undefined,
+        category: entityFormCategory || undefined,
+        subcategory: entityFormSubcategory || undefined,
+        defaultAccountId: entityFormAccountId || undefined,
+        defaultPaymentMethod: entityFormPaymentMethod || undefined,
+        phone: entityFormPhone.trim() || undefined,
+        email: entityFormEmail.trim() || undefined,
+        notes: entityFormNotes.trim() || undefined
+      } : item));
+    } else {
+      const newEnt: FinancialEntity = {
+        id: `ent-${Date.now()}`,
+        name: entityFormName.trim(),
+        type: entityFormType,
+        document: entityFormDocument.trim() || undefined,
+        category: entityFormCategory || undefined,
+        subcategory: entityFormSubcategory || undefined,
+        defaultAccountId: entityFormAccountId || undefined,
+        defaultPaymentMethod: entityFormPaymentMethod || undefined,
+        phone: entityFormPhone.trim() || undefined,
+        email: entityFormEmail.trim() || undefined,
+        notes: entityFormNotes.trim() || undefined,
+        createdAt: new Date().toISOString()
+      };
+      setFinancialEntities(prev => [newEnt, ...prev]);
+
+      if (showTxModal) {
+        if (entityFormType === 'pagador' || (entityFormType === 'ambos' && txType === 'entrada')) {
+          setTxRecebidoDe(newEnt.name);
+        } else {
+          setTxVaiPagarQuem(newEnt.name);
+        }
+      }
+    }
+
+    setShowEntityModal(false);
+    resetEntityForm();
+  };
+
+  const handleDeleteEntity = (id: string, name: string) => {
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Excluir Contato / Favorecido',
+      description: `Tem certeza que deseja excluir "${name}" da lista de contatos salvos?`,
+      confirmButtonText: 'Excluir Contato',
+      onConfirm: () => {
+        setFinancialEntities(prev => prev.filter(e => e.id !== id));
+        setDeleteConfirmState(null);
+      }
+    });
   };
 
   // --- CREDIT CARD HANDLERS ---
@@ -5835,6 +6189,28 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     <span>Importar em Massa</span>
                   </button>
                 )}
+
+                {/* Botão de Gestão de Favorecidos & Pagadores */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntityFilterType('todos');
+                    setEntitySearchQuery('');
+                    setShowEntitiesManagerModal(true);
+                  }}
+                  className={`w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all cursor-pointer shadow-sm ${
+                    isHighContrast
+                      ? 'bg-white hover:bg-zinc-100 text-zinc-800 border-zinc-300'
+                      : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-500'
+                  }`}
+                  title="Gerenciar cadastro de quem irá receber (favorecidos) ou quem irá pagar (membros/doadores)"
+                >
+                  <Users size={12} className="text-indigo-400" />
+                  <span>Favorecidos & Pagadores</span>
+                  <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-500/20 text-indigo-400 font-bold">
+                    {financialEntities.length}
+                  </span>
+                </button>
 
                 <button
                   onClick={() => { setEditingTx(null); setTxType('entrada'); setShowTxModal(true); }}
@@ -10119,18 +10495,203 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         </div>
 
                         {/* ENTRADA - RECEBIDO DE */}
-                        <div className="space-y-1 sm:col-span-2">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recebido de *</label>
-                          <input
-                            type="text"
-                            required
-                            value={txRecebidoDe}
-                            onChange={(e) => setTxRecebidoDe(e.target.value)}
-                            placeholder="Ex: Nome do membro, doador, ou instituição"
-                            className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
-                              isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                            }`}
-                          />
+                        <div className="space-y-1 sm:col-span-2 relative">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                              <Users size={11} className="text-emerald-500" />
+                              <span>Recebido de (Doador / Pagador) *</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAddEntityModal(txRecebidoDe, 'pagador')}
+                                className="text-[9px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/20 cursor-pointer transition-colors flex items-center gap-1"
+                                title="Cadastrar novo pagador com dados completos"
+                              >
+                                <UserPlus size={10} />
+                                <span>+ Novo Pagador</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEntityFilterType('pagador');
+                                  setShowEntitiesManagerModal(true);
+                                }}
+                                className="text-[9px] text-zinc-400 hover:text-zinc-200 cursor-pointer transition-colors underline"
+                                title="Ver todos os pagadores e favorecidos cadastrados"
+                              >
+                                Ver todos ({financialEntities.filter(e => e.type === 'pagador' || e.type === 'ambos').length})
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="relative">
+                            <input
+                              type="text"
+                              required
+                              value={txRecebidoDe}
+                              onChange={(e) => {
+                                setTxRecebidoDe(e.target.value);
+                                setShowEntitySuggestions(true);
+                              }}
+                              onFocus={() => setShowEntitySuggestions(true)}
+                              onBlur={() => setTimeout(() => setShowEntitySuggestions(false), 250)}
+                              placeholder="Digite ou escolha quem está pagando (ex: Nome do membro, doador)..."
+                              className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                            {txRecebidoDe && (
+                              <button
+                                type="button"
+                                onClick={() => setTxRecebidoDe('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs cursor-pointer p-0.5"
+                                title="Limpar campo"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Quick Save Prompt if typed name is not yet in financialEntities */}
+                          {txRecebidoDe.trim().length >= 2 && !financialEntities.some(e => e.name.toLowerCase() === txRecebidoDe.trim().toLowerCase()) && (
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                              <span className="text-[9.5px] text-zinc-400 italic truncate">
+                                Nome novo: "{txRecebidoDe.trim()}"
+                              </span>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleQuickSaveCurrentEntity();
+                                }}
+                                className="text-[9px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all shrink-0 active:scale-95"
+                                title="Salvar para que este nome apareça automaticamente nas próximas transações"
+                              >
+                                <BookmarkPlus size={10} />
+                                <span>Salvar nos Cadastros Rápidos</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Toast feedback after quick save */}
+                          {entityQuickSuccessMsg && (
+                            <div className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1.5 animate-fadeIn mt-1">
+                              <CheckCircle2 size={11} className="shrink-0" />
+                              <span>{entityQuickSuccessMsg}</span>
+                            </div>
+                          )}
+
+                          {/* Autocomplete dropdown for Payers */}
+                          {showEntitySuggestions && (() => {
+                            const availablePayers = financialEntities.filter(e => e.type === 'pagador' || e.type === 'ambos');
+                            const term = txRecebidoDe.trim().toLowerCase();
+                            const matches = term.length > 0
+                              ? availablePayers.filter(e => e.name.toLowerCase().includes(term) || (e.document && e.document.includes(term)))
+                              : availablePayers.slice(0, 7);
+
+                            if (matches.length === 0 && term.length === 0) return null;
+
+                            return (
+                              <div className={`absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border shadow-2xl backdrop-blur-md ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}>
+                                <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-800/20 flex justify-between items-center bg-zinc-900/50">
+                                  <span>Pagadores & Doadores Cadastrados</span>
+                                  <span className="text-[8px] text-emerald-400 font-bold">Clique para selecionar</span>
+                                </div>
+                                {matches.length === 0 ? (
+                                  <div className="p-3 text-center space-y-1.5">
+                                    <p className="text-[11px] text-zinc-400">Nenhum pagador cadastrado com "{txRecebidoDe}".</p>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        handleOpenAddEntityModal(txRecebidoDe, 'pagador');
+                                      }}
+                                      className="text-xs font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
+                                    >
+                                      <UserPlus size={11} /> + Cadastrar "{txRecebidoDe}" agora
+                                    </button>
+                                  </div>
+                                ) : (
+                                  matches.map((ent) => {
+                                    const catObj = categories.find(c => c.id === ent.category);
+                                    const accObj = accounts.find(a => a.id === ent.defaultAccountId);
+
+                                    return (
+                                      <button
+                                        key={ent.id}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          handleSelectEntity(ent);
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-emerald-600/10 hover:text-emerald-400 font-medium cursor-pointer flex items-center justify-between border-b last:border-0 transition-colors ${
+                                          isHighContrast ? 'border-zinc-100 text-zinc-800' : 'border-zinc-900 text-zinc-200'
+                                        }`}
+                                      >
+                                        <div className="min-w-0 flex-1 mr-2">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-xs truncate">{ent.name}</span>
+                                            {ent.document && (
+                                              <span className="text-[9px] text-zinc-500 font-mono">({ent.document})</span>
+                                            )}
+                                          </div>
+                                          {(catObj || accObj || ent.defaultPaymentMethod) && (
+                                            <p className="text-[9.5px] text-zinc-500 truncate mt-0.5">
+                                              {catObj ? `Cat: ${catObj.name}` : ''}
+                                              {ent.subcategory ? ` › ${ent.subcategory}` : ''}
+                                              {accObj ? ` • ${accObj.name}` : ''}
+                                              {ent.defaultPaymentMethod ? ` • ${ent.defaultPaymentMethod.toUpperCase()}` : ''}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <span className="text-[8.5px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                                          Selecionar
+                                        </span>
+                                      </button>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Quick chips of frequent payers */}
+                          {(() => {
+                            const topPayers = financialEntities
+                              .filter(e => e.type === 'pagador' || e.type === 'ambos')
+                              .slice(0, 4);
+
+                            if (topPayers.length === 0) return null;
+
+                            return (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-500">Frequentes:</span>
+                                {topPayers.map((payer) => (
+                                  <button
+                                    key={payer.id}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleSelectEntity(payer);
+                                    }}
+                                    className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer truncate max-w-[170px] ${
+                                      txRecebidoDe.toLowerCase() === payer.name.toLowerCase()
+                                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 font-bold'
+                                        : isHighContrast
+                                        ? 'bg-zinc-100 hover:bg-emerald-50 hover:border-emerald-300 text-zinc-700 hover:text-emerald-700 border-zinc-200'
+                                        : 'bg-zinc-900/60 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-zinc-400 hover:text-emerald-300 border-zinc-800'
+                                    }`}
+                                    title={`Preencher como ${payer.name}`}
+                                  >
+                                    {payer.name}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     ) : (
@@ -10165,18 +10726,203 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         </div>
 
                         {/* DESPESA - VAI PAGAR QUEM */}
-                        <div className="space-y-1 sm:col-span-2">
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Vai pagar quem? *</label>
-                          <input
-                            type="text"
-                            required
-                            value={txVaiPagarQuem}
-                            onChange={(e) => setTxVaiPagarQuem(e.target.value)}
-                            placeholder="Ex: Fornecedor, prestador de serviço, pastor"
-                            className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
-                              isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
-                            }`}
-                          />
+                        <div className="space-y-1 sm:col-span-2 relative">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                              <Building2 size={11} className="text-red-500" />
+                              <span>Vai pagar quem? (Favorecido / Fornecedor) *</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAddEntityModal(txVaiPagarQuem, 'recebedor')}
+                                className="text-[9px] font-bold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2 py-0.5 rounded border border-red-500/20 cursor-pointer transition-colors flex items-center gap-1"
+                                title="Cadastrar novo favorecido ou fornecedor com dados completos"
+                              >
+                                <UserPlus size={10} />
+                                <span>+ Novo Favorecido</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEntityFilterType('recebedor');
+                                  setShowEntitiesManagerModal(true);
+                                }}
+                                className="text-[9px] text-zinc-400 hover:text-zinc-200 cursor-pointer transition-colors underline"
+                                title="Ver todos os favorecidos e pagadores cadastrados"
+                              >
+                                Ver todos ({financialEntities.filter(e => e.type === 'recebedor' || e.type === 'ambos').length})
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="relative">
+                            <input
+                              type="text"
+                              required
+                              value={txVaiPagarQuem}
+                              onChange={(e) => {
+                                setTxVaiPagarQuem(e.target.value);
+                                setShowEntitySuggestions(true);
+                              }}
+                              onFocus={() => setShowEntitySuggestions(true)}
+                              onBlur={() => setTimeout(() => setShowEntitySuggestions(false), 250)}
+                              placeholder="Digite ou escolha quem irá receber (ex: CPFL, SAEP, Pastor, Fornecedor)..."
+                              className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}
+                            />
+                            {txVaiPagarQuem && (
+                              <button
+                                type="button"
+                                onClick={() => setTxVaiPagarQuem('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs cursor-pointer p-0.5"
+                                title="Limpar campo"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Quick Save Prompt if typed name is not yet in financialEntities */}
+                          {txVaiPagarQuem.trim().length >= 2 && !financialEntities.some(e => e.name.toLowerCase() === txVaiPagarQuem.trim().toLowerCase()) && (
+                            <div className="flex items-center justify-between gap-2 pt-1">
+                              <span className="text-[9.5px] text-zinc-400 italic truncate">
+                                Nome novo: "{txVaiPagarQuem.trim()}"
+                              </span>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleQuickSaveCurrentEntity();
+                                }}
+                                className="text-[9px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all shrink-0 active:scale-95"
+                                title="Salvar para que este favorecido apareça automaticamente nas próximas transações"
+                              >
+                                <BookmarkPlus size={10} />
+                                <span>Salvar nos Cadastros Rápidos</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Toast feedback after quick save */}
+                          {entityQuickSuccessMsg && (
+                            <div className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1.5 animate-fadeIn mt-1">
+                              <CheckCircle2 size={11} className="shrink-0" />
+                              <span>{entityQuickSuccessMsg}</span>
+                            </div>
+                          )}
+
+                          {/* Autocomplete dropdown for Payees / Beneficiaries */}
+                          {showEntitySuggestions && (() => {
+                            const availablePayees = financialEntities.filter(e => e.type === 'recebedor' || e.type === 'ambos');
+                            const term = txVaiPagarQuem.trim().toLowerCase();
+                            const matches = term.length > 0
+                              ? availablePayees.filter(e => e.name.toLowerCase().includes(term) || (e.document && e.document.includes(term)))
+                              : availablePayees.slice(0, 7);
+
+                            if (matches.length === 0 && term.length === 0) return null;
+
+                            return (
+                              <div className={`absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border shadow-2xl backdrop-blur-md ${
+                                isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                              }`}>
+                                <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 border-b border-zinc-800/20 flex justify-between items-center bg-zinc-900/50">
+                                  <span>Favorecidos & Fornecedores Cadastrados</span>
+                                  <span className="text-[8px] text-red-400 font-bold">Clique para selecionar</span>
+                                </div>
+                                {matches.length === 0 ? (
+                                  <div className="p-3 text-center space-y-1.5">
+                                    <p className="text-[11px] text-zinc-400">Nenhum favorecido cadastrado com "{txVaiPagarQuem}".</p>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        handleOpenAddEntityModal(txVaiPagarQuem, 'recebedor');
+                                      }}
+                                      className="text-xs font-bold text-red-400 hover:underline inline-flex items-center gap-1"
+                                    >
+                                      <UserPlus size={11} /> + Cadastrar "{txVaiPagarQuem}" agora
+                                    </button>
+                                  </div>
+                                ) : (
+                                  matches.map((ent) => {
+                                    const catObj = categories.find(c => c.id === ent.category);
+                                    const accObj = accounts.find(a => a.id === ent.defaultAccountId);
+
+                                    return (
+                                      <button
+                                        key={ent.id}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          handleSelectEntity(ent);
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-red-600/10 hover:text-red-400 font-medium cursor-pointer flex items-center justify-between border-b last:border-0 transition-colors ${
+                                          isHighContrast ? 'border-zinc-100 text-zinc-800' : 'border-zinc-900 text-zinc-200'
+                                        }`}
+                                      >
+                                        <div className="min-w-0 flex-1 mr-2">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-xs truncate">{ent.name}</span>
+                                            {ent.document && (
+                                              <span className="text-[9px] text-zinc-500 font-mono">({ent.document})</span>
+                                            )}
+                                          </div>
+                                          {(catObj || accObj || ent.defaultPaymentMethod) && (
+                                            <p className="text-[9.5px] text-zinc-500 truncate mt-0.5">
+                                              {catObj ? `Cat: ${catObj.name}` : ''}
+                                              {ent.subcategory ? ` › ${ent.subcategory}` : ''}
+                                              {accObj ? ` • ${accObj.name}` : ''}
+                                              {ent.defaultPaymentMethod ? ` • ${ent.defaultPaymentMethod.toUpperCase()}` : ''}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <span className="text-[8.5px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 shrink-0">
+                                          Selecionar
+                                        </span>
+                                      </button>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Quick chips of frequent payees */}
+                          {(() => {
+                            const topPayees = financialEntities
+                              .filter(e => e.type === 'recebedor' || e.type === 'ambos')
+                              .slice(0, 4);
+
+                            if (topPayees.length === 0) return null;
+
+                            return (
+                              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span className="text-[8.5px] font-bold uppercase tracking-wider text-zinc-500">Frequentes:</span>
+                                {topPayees.map((payee) => (
+                                  <button
+                                    key={payee.id}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleSelectEntity(payee);
+                                    }}
+                                    className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full border transition-all cursor-pointer truncate max-w-[170px] ${
+                                      txVaiPagarQuem.toLowerCase() === payee.name.toLowerCase()
+                                        ? 'bg-red-600/20 border-red-500 text-red-400 font-bold'
+                                        : isHighContrast
+                                        ? 'bg-zinc-100 hover:bg-red-50 hover:border-red-300 text-zinc-700 hover:text-red-700 border-zinc-200'
+                                        : 'bg-zinc-900/60 hover:bg-red-500/10 hover:border-red-500/40 text-zinc-400 hover:text-red-300 border-zinc-800'
+                                    }`}
+                                    title={`Preencher como ${payee.name}`}
+                                  >
+                                    {payee.name}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}
@@ -11563,6 +12309,579 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                 <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow">
                   {editingTransfer ? 'Salvar Alterações' : 'Confirmar Transferência'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Gerenciador de Favorecidos & Pagadores Cadastrados */}
+        {showEntitiesManagerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 z-50"
+            onClick={() => setShowEntitiesManagerModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b flex justify-between items-center bg-zinc-950/30 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h3 className={`text-sm font-bold flex items-center gap-2 ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                      <span>Favorecidos & Pagadores Cadastrados</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-extrabold border border-indigo-500/20">
+                        {financialEntities.length} registros
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      Contatos pré-salvos para preenchimento ágil e inteligente de quem paga e quem recebe nas transações
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleOpenAddEntityModal();
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/20 active:scale-95"
+                  >
+                    <UserPlus size={13} />
+                    <span>+ Novo Cadastro</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowEntitiesManagerModal(false)}
+                    className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className={`p-3.5 border-b flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 shrink-0 ${
+                isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800/80'
+              }`}>
+                {/* Tabs */}
+                <div className="flex items-center gap-1 bg-zinc-900/60 p-1 rounded-xl border border-zinc-800/60 self-start">
+                  <button
+                    type="button"
+                    onClick={() => setEntityFilterType('todos')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      entityFilterType === 'todos'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Todos ({financialEntities.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntityFilterType('recebedor')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      entityFilterType === 'recebedor'
+                        ? 'bg-rose-600 text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Building2 size={11} />
+                    Quem irá Receber ({financialEntities.filter(e => e.type === 'recebedor' || e.type === 'ambos').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntityFilterType('pagador')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      entityFilterType === 'pagador'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Users size={11} />
+                    Quem irá Pagar ({financialEntities.filter(e => e.type === 'pagador' || e.type === 'ambos').length})
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="relative flex-1 sm:max-w-xs">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={entitySearchQuery}
+                    onChange={(e) => setEntitySearchQuery(e.target.value)}
+                    placeholder="Buscar por nome, documento ou telefone..."
+                    className={`w-full pl-8 pr-7 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                      isHighContrast
+                        ? 'bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-200 placeholder:text-zinc-500'
+                    }`}
+                  />
+                  {entitySearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setEntitySearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* List / Cards Content */}
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1 scrollbar-thin">
+                {(() => {
+                  const filtered = financialEntities.filter(ent => {
+                    if (entityFilterType === 'recebedor' && ent.type !== 'recebedor' && ent.type !== 'ambos') return false;
+                    if (entityFilterType === 'pagador' && ent.type !== 'pagador' && ent.type !== 'ambos') return false;
+
+                    const q = entitySearchQuery.trim().toLowerCase();
+                    if (!q) return true;
+
+                    return (
+                      ent.name.toLowerCase().includes(q) ||
+                      (ent.document && ent.document.toLowerCase().includes(q)) ||
+                      (ent.phone && ent.phone.includes(q)) ||
+                      (ent.email && ent.email.toLowerCase().includes(q)) ||
+                      (ent.notes && ent.notes.toLowerCase().includes(q))
+                    );
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-16 text-center space-y-3">
+                        <Users size={32} className="mx-auto text-zinc-600 opacity-60" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-zinc-300">Nenhum cadastro encontrado</p>
+                          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                            {entitySearchQuery
+                              ? `Nenhum contato coincide com a busca "${entitySearchQuery}".`
+                              : 'Cadastre pessoas, membros ou fornecedores para agilizar o lançamento das transações.'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAddEntityModal()}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                          <UserPlus size={13} />
+                          <span>Cadastrar Agora</span>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {filtered.map((ent) => {
+                        const catObj = categories.find(c => c.id === ent.category);
+                        const accObj = accounts.find(a => a.id === ent.defaultAccountId);
+                        const txCount = transactions.filter(t => 
+                          (ent.type === 'recebedor' && t.vaiPagarQuem?.toLowerCase() === ent.name.toLowerCase()) ||
+                          (ent.type === 'pagador' && t.recebidoDe?.toLowerCase() === ent.name.toLowerCase()) ||
+                          (ent.type === 'ambos' && (t.recebidoDe?.toLowerCase() === ent.name.toLowerCase() || t.vaiPagarQuem?.toLowerCase() === ent.name.toLowerCase()))
+                        ).length;
+
+                        return (
+                          <div
+                            key={ent.id}
+                            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+                              isHighContrast
+                                ? 'bg-white border-zinc-200 shadow-sm hover:border-indigo-300'
+                                : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-700'
+                            }`}
+                          >
+                            {/* Top info */}
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <h4 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}`} title={ent.name}>
+                                    {ent.name}
+                                  </h4>
+                                  {ent.document && (
+                                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                                      Doc: {ent.document}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Type Badge */}
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 border ${
+                                  ent.type === 'recebedor'
+                                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                    : ent.type === 'pagador'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                }`}>
+                                  {ent.type === 'recebedor' ? 'Quem recebe (Favorecido)' : ent.type === 'pagador' ? 'Quem paga (Doador)' : 'Ambos'}
+                                </span>
+                              </div>
+
+                              {/* Details Grid */}
+                              <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-zinc-800/40">
+                                {catObj && (
+                                  <div>
+                                    <span className="text-zinc-500 font-bold block">Categoria Padrão:</span>
+                                    <span className="text-zinc-300 font-medium truncate block">
+                                      {catObj.name}{ent.subcategory ? ` › ${ent.subcategory}` : ''}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {accObj && (
+                                  <div>
+                                    <span className="text-zinc-500 font-bold block">Conta Padrão:</span>
+                                    <span className="text-zinc-300 font-medium truncate block">
+                                      {accObj.name}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {ent.defaultPaymentMethod && (
+                                  <div>
+                                    <span className="text-zinc-500 font-bold block">Forma de Pgto:</span>
+                                    <span className="text-indigo-400 font-bold uppercase truncate block">
+                                      {ent.defaultPaymentMethod}
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div>
+                                  <span className="text-zinc-500 font-bold block">Histórico de Uso:</span>
+                                  <span className="text-zinc-400 font-medium block">
+                                    {txCount} {txCount === 1 ? 'transação' : 'transações'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {(ent.phone || ent.email || ent.notes) && (
+                                <div className="text-[10px] text-zinc-400 pt-1 space-y-0.5 border-t border-dashed border-zinc-800/30">
+                                  {ent.phone && <p className="truncate">📞 {ent.phone}</p>}
+                                  {ent.email && <p className="truncate">✉️ {ent.email}</p>}
+                                  {ent.notes && <p className="text-zinc-500 italic truncate">Obs: {ent.notes}</p>}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Actions toolbar */}
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/40">
+                              <div className="flex items-center gap-1.5">
+                                {(ent.type === 'pagador' || ent.type === 'ambos') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      resetTxForm();
+                                      setTxType('entrada');
+                                      handleSelectEntity(ent);
+                                      setShowEntitiesManagerModal(false);
+                                      setShowTxModal(true);
+                                    }}
+                                    className="px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 border border-emerald-500/20 cursor-pointer transition-colors"
+                                    title="Lançar nova receita recebida deste contato"
+                                  >
+                                    + Receita
+                                  </button>
+                                )}
+
+                                {(ent.type === 'recebedor' || ent.type === 'ambos') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      resetTxForm();
+                                      setTxType('saida');
+                                      handleSelectEntity(ent);
+                                      setShowEntitiesManagerModal(false);
+                                      setShowTxModal(true);
+                                    }}
+                                    className="px-2 py-1 rounded-lg text-[10px] font-bold bg-rose-600/15 hover:bg-rose-600/25 text-rose-400 border border-rose-500/20 cursor-pointer transition-colors"
+                                    title="Lançar nova despesa paga a este favorecido"
+                                  >
+                                    + Despesa
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditEntity(ent)}
+                                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                                  title="Editar cadastro"
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteEntity(ent.id, ent.name)}
+                                  className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                  title="Excluir cadastro"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Modal: Formulário de Cadastro / Edição de Favorecido ou Pagador */}
+        {showEntityModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[60]"
+            onClick={() => setShowEntityModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`border rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl text-left max-h-[90vh] flex flex-col ${
+                isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
+              }`}
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20 shrink-0">
+                <h3 className={`text-xs font-bold flex items-center gap-2 ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                  <Users size={14} className="text-indigo-400" />
+                  <span>{editingEntity ? 'Editar Cadastro de Favorecido / Pagador' : 'Novo Cadastro de Favorecido / Pagador'}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowEntityModal(false)}
+                  className="text-zinc-500 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEntity} className="p-6 space-y-4 overflow-y-auto scrollbar-thin">
+                {/* Nome completo */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    Nome Completo / Razão Social *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={entityFormName}
+                    onChange={(e) => setEntityFormName(e.target.value)}
+                    placeholder="Ex: CPFL, SAEP, Pastor Presidente, Membro..."
+                    className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+                </div>
+
+                {/* Tipo de Vínculo */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    Tipo de Vínculo Financeiro *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEntityFormType('recebedor')}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                        entityFormType === 'recebedor'
+                          ? 'bg-rose-600/20 border-rose-500 text-rose-400 shadow-sm'
+                          : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      Quem irá Receber (Favorecido/Fornecedor)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntityFormType('pagador')}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                        entityFormType === 'pagador'
+                          ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-sm'
+                          : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      Quem irá Pagar (Doador/Membro)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntityFormType('ambos')}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center cursor-pointer ${
+                        entityFormType === 'ambos'
+                          ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 shadow-sm'
+                          : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-600' : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      Ambos (Paga & Recebe)
+                    </button>
+                  </div>
+                </div>
+
+                {/* CPF ou CNPJ & Telefone */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      CPF ou CNPJ (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={entityFormDocument}
+                      onChange={(e) => setEntityFormDocument(e.target.value)}
+                      placeholder="Ex: 00.000.000/0001-00 ou CPF"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      Telefone / WhatsApp (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={entityFormPhone}
+                      onChange={(e) => setEntityFormPhone(e.target.value)}
+                      placeholder="Ex: (19) 99999-9999"
+                      className={`w-full text-xs px-3.5 py-2.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                        isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Predefinições automáticas para facilitar lançamento */}
+                <div className={`p-4 rounded-xl border space-y-3 ${
+                  isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800/80'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                      ⚡ Predefinições Automáticas ao Selecionar
+                    </span>
+                    <span className="text-[9px] text-zinc-500">Opcional para agilizar o preenchimento</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Categoria Padrão */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Categoria Padrão</label>
+                      <select
+                        value={entityFormCategory}
+                        onChange={(e) => {
+                          setEntityFormCategory(e.target.value);
+                          setEntityFormSubcategory('');
+                        }}
+                        className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                        }`}
+                      >
+                        <option value="">Nenhuma (escolher no lançamento)</option>
+                        {categories
+                          .filter(c => entityFormType === 'ambos' ? true : (entityFormType === 'pagador' ? (c.type === 'entrada' || c.type === 'ambas') : (c.type === 'saida' || c.type === 'ambas')))
+                          .map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Subcategoria Padrão */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Subcategoria Padrão</label>
+                      <select
+                        value={entityFormSubcategory}
+                        onChange={(e) => setEntityFormSubcategory(e.target.value)}
+                        disabled={!entityFormCategory}
+                        className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                        } disabled:opacity-50`}
+                      >
+                        <option value="">Nenhuma</option>
+                        {entityFormCategory && (categories.find(c => c.id === entityFormCategory)?.subcategories || []).map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Conta Padrão */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Conta / Caixa Padrão</label>
+                      <select
+                        value={entityFormAccountId}
+                        onChange={(e) => setEntityFormAccountId(e.target.value)}
+                        className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                        }`}
+                      >
+                        <option value="">Nenhuma (escolher no lançamento)</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Forma de Pgto Padrão */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Forma de Pagamento</label>
+                      <select
+                        value={entityFormPaymentMethod}
+                        onChange={(e: any) => setEntityFormPaymentMethod(e.target.value)}
+                        className={`w-full text-xs px-3 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${
+                          isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
+                        }`}
+                      >
+                        <option value="pix">Pix</option>
+                        <option value="boleto">Boleto</option>
+                        <option value="cartão">Cartão de Crédito / Débito</option>
+                        <option value="dinheiro">Dinheiro em Espécie</option>
+                        <option value="débito automático">Débito Automático</option>
+                        <option value="transferência">Transferência Bancária</option>
+                        <option value="cheque">Cheque</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observações */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Observações / Detalhes</label>
+                  <textarea
+                    rows={2}
+                    value={entityFormNotes}
+                    onChange={(e) => setEntityFormNotes(e.target.value)}
+                    placeholder="Informações adicionais sobre este favorecido ou pagador..."
+                    className={`w-full text-xs px-3.5 py-2 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium resize-none ${
+                      isHighContrast ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                    }`}
+                  />
+                </div>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-lg mt-2"
+                >
+                  {editingEntity ? 'Salvar Alterações' : 'Gravar Cadastro'}
                 </button>
               </form>
             </motion.div>

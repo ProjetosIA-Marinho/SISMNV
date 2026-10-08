@@ -133,6 +133,21 @@ export interface Transaction {
   receiptImage?: string; // Imagem do recibo digitalizado em Base64
 }
 
+export interface FinancialEntity {
+  id: string;
+  name: string;
+  type: 'recebedor' | 'pagador' | 'ambos'; // quem recebe (favorecido/fornecedor) ou quem paga (membro/doador/cliente) ou ambos
+  document?: string; // CPF ou CNPJ
+  category?: string; // Categoria padrão associada
+  subcategory?: string; // Subcategoria padrão
+  defaultAccountId?: string; // Conta bancária padrão
+  defaultPaymentMethod?: 'pix' | 'boleto' | 'cartão' | 'dinheiro' | 'débito automático' | 'transferência' | 'cheque' | '';
+  phone?: string;
+  email?: string;
+  notes?: string;
+  createdAt?: string;
+}
+
 export interface CreditCard {
   id: string;
   name: string;
