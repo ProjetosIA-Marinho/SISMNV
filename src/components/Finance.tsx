@@ -1429,7 +1429,49 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const totalInflow = filteredDashboardTxs.filter(tx => tx.type === 'entrada').reduce((sum, tx) => sum + tx.value, 0);
   const totalOutflow = filteredDashboardTxs.filter(tx => tx.type === 'saida').reduce((sum, tx) => sum + tx.value, 0);
   const netCashFlow = totalInflow - totalOutflow;
-  const totalBankBalance = accounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
+
+  const getAccountRealBalance = (accId: string) => {
+    const acc = accounts.find(a => a.id === accId);
+    if (!acc) return 0;
+    let bal = Number(acc.initialBalance || 0);
+    transactions.forEach(t => {
+      if (t.accountId === accId) {
+        if (t.type === 'entrada') bal += t.value;
+        else bal -= t.value;
+      }
+    });
+    transfers.forEach(tf => {
+      if (tf.destinationAccountId === accId) bal += tf.value;
+      if (tf.sourceAccountId === accId) bal -= tf.value;
+    });
+    return bal;
+  };
+
+  const totalBankBalance = accounts.reduce((sum, acc) => sum + getAccountRealBalance(acc.id), 0);
+
+  const getCardInvoiceForPeriod = (cardId: string) => {
+    const cardTxs = transactions.filter(t => {
+      const isThisCard = (t.creditCardId === cardId) || (t.formaPagamento === 'cartão' && t.creditCardId === cardId);
+      if (!isThisCard) return false;
+      if (t.type !== 'saida') return false;
+      
+      const effDate = t.dataVencimento || t.dataLancamento || t.date;
+      const txYear = effDate.substring(0, 4);
+      const txMonth = effDate.substring(5, 7);
+      
+      if (dashSelectedYear !== 'all' && txYear !== dashSelectedYear) return false;
+      if (dashSelectedMonth !== 'all' && txMonth !== dashSelectedMonth) return false;
+      
+      return true;
+    });
+    
+    const total = cardTxs.reduce((sum, t) => sum + t.value, 0);
+    const card = creditCards.find(c => c.id === cardId);
+    if (total === 0 && dashSelectedMonth === 'all' && dashSelectedYear === 'all' && card?.usedLimit) {
+      return card.usedLimit;
+    }
+    return total;
+  };
 
   // --- MINDMAP DATA & BRANCHES CALCULATIONS ---
   const totalDespesasFixas = filteredDashboardTxs
@@ -4703,47 +4745,47 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               {/* === LEFT / MAIN COLUMN (8 COLS) === */}
               <div className="lg:col-span-8 space-y-6">
 
-                {/* ROW 1: TOTAL BALANCE HERO CARD + INCOME/EXPENSE CARDS */}
+                {/* ROW 1: TOTAL BALANCE HERO CARD + INCOME/EXPENSE/SUPERÁVIT CARDS */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                   
                   {/* Hero Card: Total Balance (Vibrant Soft Neon Lime Gradient) */}
-                  <div className="md:col-span-7 bg-gradient-to-tr from-[#6ee7b7] via-[#a7f3d0] to-[#bef264] text-zinc-950 p-6 sm:p-7 rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[220px] select-none border border-emerald-300/40 group">
+                  <div className="md:col-span-6 bg-gradient-to-tr from-[#6ee7b7] via-[#a7f3d0] to-[#bef264] text-zinc-950 p-6 sm:p-7 rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[260px] select-none border border-emerald-300/40 group">
                     {/* Organic glow shapes in background */}
-                    <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-white/20 rounded-full blur-2xl pointer-events-none" />
-                    <div className="absolute left-1/3 -top-12 w-32 h-32 bg-emerald-300/30 rounded-full blur-xl pointer-events-none" />
+                    <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-white/25 rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute left-1/3 -top-12 w-32 h-32 bg-emerald-300/40 rounded-full blur-xl pointer-events-none" />
 
                     {/* Top row: Label */}
                     <div className="relative z-10 flex justify-between items-start">
                       <div>
-                        <span className="text-xs sm:text-sm font-bold text-black/75 tracking-tight block">
+                        <span className="text-xs sm:text-sm font-extrabold text-zinc-950 tracking-tight block">
                           Saldo Total em Contas
                         </span>
-                        <div className="flex items-center gap-1.5 text-[11px] text-black/60 font-semibold mt-0.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-800 font-bold mt-0.5">
                           <span>{accounts.length} contas bancárias ativas</span>
                         </div>
                       </div>
-                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-black/10 text-black border border-black/10 font-mono">
-                        BRL $
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-black/15 text-zinc-950 border border-black/15 font-mono">
+                        BRL R$
                       </span>
                     </div>
 
                     {/* Middle: Big Balance Value */}
-                    <div className="relative z-10 py-3">
-                      <h3 className="text-3xl sm:text-4xl lg:text-[40px] font-black tracking-tight text-black font-sans leading-none drop-shadow-xs">
+                    <div className="relative z-10 py-2">
+                      <h3 className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight text-zinc-950 font-sans leading-none drop-shadow-xs">
                         {formatCurrency(totalBankBalance)}
                       </h3>
-                      <p className="text-[11.5px] font-bold text-black/70 mt-2 flex items-center gap-1.5">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-black" />
+                      <p className="text-[11.5px] font-bold text-zinc-900 mt-2 flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-950" />
                         <span>+{formatCurrency(totalInflow)} receitas no período selecionado</span>
                       </p>
                     </div>
 
-                    {/* Bottom Row: Actions (Black Pill Transfer + White Pill Lançar + Icon Button) */}
+                    {/* Bottom Row: Actions */}
                     <div className="relative z-10 flex items-center gap-2 pt-2">
                       <button
                         type="button"
                         onClick={() => setShowTransferModal(true)}
-                        className="bg-black hover:bg-black/85 text-white px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
+                        className="bg-zinc-950 hover:bg-black text-white px-4 sm:px-5 py-2.5 rounded-full font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
                       >
                         <ArrowRightLeft size={13} />
                         <span>Transferir</span>
@@ -4757,7 +4799,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           setEditingTx(null);
                           setShowTxModal(true);
                         }}
-                        className="bg-white hover:bg-zinc-100 text-zinc-950 px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
+                        className="bg-white hover:bg-zinc-100 text-zinc-950 px-4 sm:px-5 py-2.5 rounded-full font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg border border-black/10 active:scale-95 transition-all"
                       >
                         <Plus size={14} />
                         <span>Lançar</span>
@@ -4771,7 +4813,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           setEditingTx(null);
                           setShowTxModal(true);
                         }}
-                        className="bg-black/90 hover:bg-black text-white p-2.5 rounded-full flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-all ml-auto"
+                        className="bg-zinc-950/90 hover:bg-black text-white p-2.5 rounded-full flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-all ml-auto"
                         title="Nova Despesa Rápida"
                       >
                         <DollarSign size={15} />
@@ -4779,61 +4821,96 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     </div>
                   </div>
 
-                  {/* Income & Expense Stacked Cards (Dark Sleek Cards) */}
-                  <div className="md:col-span-5 flex flex-col gap-4">
+                  {/* Income, Expense & Superávit Stacked KPI Cards */}
+                  <div className="md:col-span-6 flex flex-col gap-3">
+                    
                     {/* Income (Entradas) */}
-                    <div className={`p-5 rounded-[24px] border flex flex-col justify-between flex-1 transition-all shadow-md ${
+                    <div className={`p-4 rounded-[22px] border flex items-center justify-between transition-all shadow-md ${
                       isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
                     }`}>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                          Entradas
-                        </span>
-                        <div className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                          <ArrowUpRight size={13} />
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                          <ArrowUpRight size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                            isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                          }`}>
+                            Entradas (Receitas)
+                          </span>
+                          <h4 className="text-xl font-black text-white font-mono tracking-tight">
+                            +{formatCurrency(totalInflow)}
+                          </h4>
                         </div>
                       </div>
 
-                      <div className="my-2">
-                        <h4 className="text-2xl font-black text-white font-mono tracking-tight">
-                          +{formatCurrency(totalInflow)}
-                        </h4>
-                      </div>
-
-                      <div className="flex justify-between items-center text-[11px] pt-1">
-                        <span className="text-zinc-500 font-medium">Arrecadação do período</span>
-                        <span className="bg-[#bef264] text-black font-extrabold text-[10px] px-2.5 py-0.5 rounded-full shadow-xs">
-                          {totalInflow >= totalOutflow ? '+15.7%' : '+8.2%'}
-                        </span>
-                      </div>
+                      <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono">
+                        {totalInflow >= totalOutflow ? '+15.7%' : '+8.2%'}
+                      </span>
                     </div>
 
                     {/* Expense (Saídas) */}
-                    <div className={`p-5 rounded-[24px] border flex flex-col justify-between flex-1 transition-all shadow-md ${
+                    <div className={`p-4 rounded-[22px] border flex items-center justify-between transition-all shadow-md ${
                       isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
                     }`}>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                          Saídas
-                        </span>
-                        <div className="w-6 h-6 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center">
-                          <ArrowDownRight size={13} />
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                          <ArrowDownRight size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                            isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                          }`}>
+                            Saídas (Despesas)
+                          </span>
+                          <h4 className="text-xl font-black text-white font-mono tracking-tight">
+                            -{formatCurrency(totalOutflow)}
+                          </h4>
                         </div>
                       </div>
 
-                      <div className="my-2">
-                        <h4 className="text-2xl font-black text-white font-mono tracking-tight">
-                          -{formatCurrency(totalOutflow)}
-                        </h4>
+                      <span className="bg-rose-500/15 text-rose-400 border border-rose-500/25 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono">
+                        -10.7%
+                      </span>
+                    </div>
+
+                    {/* Superávit / Déficit Líquido (Novo Card Solicitado) */}
+                    <div className={`p-4 rounded-[22px] border flex items-center justify-between transition-all shadow-md ${
+                      netCashFlow >= 0 
+                        ? (isHighContrast ? 'bg-emerald-50/70 border-emerald-200' : 'bg-[#12141c] border-emerald-500/20 ring-1 ring-emerald-500/10') 
+                        : (isHighContrast ? 'bg-rose-50/70 border-rose-200' : 'bg-[#12141c] border-rose-500/20 ring-1 ring-rose-500/10')
+                    }`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                          netCashFlow >= 0 
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                            : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                        }`}>
+                          {netCashFlow >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                            isHighContrast ? 'text-zinc-700' : 'text-zinc-400'
+                          }`}>
+                            Superávit Líquido
+                          </span>
+                          <h4 className={`text-xl font-black font-mono tracking-tight ${
+                            netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          }`}>
+                            {netCashFlow >= 0 ? '+' : ''}{formatCurrency(netCashFlow)}
+                          </h4>
+                        </div>
                       </div>
 
-                      <div className="flex justify-between items-center text-[11px] pt-1">
-                        <span className="text-zinc-500 font-medium">Despesas do período</span>
-                        <span className="bg-[#f87171] text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full shadow-xs">
-                          -10.7%
-                        </span>
-                      </div>
+                      <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono border ${
+                        netCashFlow >= 0 
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                          : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                      }`}>
+                        {netCashFlow >= 0 ? 'Superávit' : 'Déficit'}
+                      </span>
                     </div>
+
                   </div>
 
                 </div>
@@ -4856,18 +4933,20 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             Entradas vs Saídas
                           </span>
                         </div>
-                        <p className="text-[10px] text-zinc-500 mt-0.5">Evolução mensal de receitas arrecadadas versus despesas</p>
+                        <p className={`text-[10px] mt-0.5 ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                          Evolução mensal de receitas arrecadadas versus despesas
+                        </p>
                       </div>
 
                       {/* Legend */}
                       <div className="flex items-center gap-3 self-start sm:self-auto">
                         <div className="flex items-center gap-1.5">
                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
-                          <span className="text-[10px] font-bold text-zinc-400">Entradas</span>
+                          <span className={`text-[10px] font-bold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>Entradas</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <div className="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-xs shadow-rose-400/50" />
-                          <span className="text-[10px] font-bold text-zinc-400">Saídas</span>
+                          <span className={`text-[10px] font-bold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>Saídas</span>
                         </div>
                       </div>
                     </div>
@@ -4877,7 +4956,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       {/* Active Tooltip / Aggregate Preview Callout */}
                       <div className="flex items-center justify-between mb-2 px-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-zinc-500 font-medium">Saldo Líquido do Período:</span>
+                          <span className={`text-[10px] font-medium ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                            Saldo Líquido do Período:
+                          </span>
                           <span className={`text-[11px] font-mono font-black ${
                             netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
                           }`}>
@@ -4962,7 +5043,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                               {/* Month label */}
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                isLast ? 'text-white font-extrabold' : 'text-zinc-500'
+                                isLast ? 'text-white font-extrabold' : (isHighContrast ? 'text-zinc-600' : 'text-zinc-400')
                               }`}>
                                 {d.label}
                               </span>
@@ -4973,7 +5054,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     </div>
                   </div>
 
-                  {/* Card 2: Expense Split (Divisão de Despesas por Categoria) */}
+                  {/* Card 2: Expense Split (Divisão de Despesas por Categoria com Valores Reais) */}
                   <div className={`md:col-span-5 p-6 rounded-[26px] border flex flex-col justify-between shadow-lg ${
                     isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
                   }`}>
@@ -4983,7 +5064,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         <h4 className={`text-sm font-extrabold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
                           Divisão de Despesas
                         </h4>
-                        <p className="text-[10px] text-zinc-500">Distribuição percentual por centro de custo</p>
+                        <p className={`text-[10px] ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                          Valores e percentuais por centro de custo
+                        </p>
                       </div>
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
                         isHighContrast ? 'bg-white border-zinc-300 text-zinc-700' : 'bg-[#191b24] border-white/10 text-zinc-300'
@@ -4992,78 +5075,114 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       </span>
                     </div>
 
-                    {/* Donut & Legend Layout */}
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center py-2">
-                      {/* SVG Multi-Segment Donut Chart */}
-                      <div className="sm:col-span-6 flex flex-col items-center justify-center relative select-none">
-                        <svg width="140" height="140" viewBox="0 0 100 100" className="transform -rotate-90">
-                          {/* Segment 1: Yellow/Amber */}
-                          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#facc15" strokeWidth="12" strokeDasharray="65 240" strokeDashoffset="0" strokeLinecap="round" />
-                          {/* Segment 2: Pink/Rose */}
-                          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#f43f5e" strokeWidth="12" strokeDasharray="45 240" strokeDashoffset="-70" strokeLinecap="round" />
-                          {/* Segment 3: Violet */}
-                          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#8b5cf6" strokeWidth="12" strokeDasharray="50 240" strokeDashoffset="-120" strokeLinecap="round" />
-                          {/* Segment 4: Emerald */}
-                          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10b981" strokeWidth="12" strokeDasharray="40 240" strokeDashoffset="-175" strokeLinecap="round" />
-                          {/* Segment 5: Cyan */}
-                          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#06b6d4" strokeWidth="12" strokeDasharray="30 240" strokeDashoffset="-220" strokeLinecap="round" />
-                        </svg>
+                    {/* Donut & Legend Layout with Exact Monetary Amounts */}
+                    {(() => {
+                      const catColors = ['#facc15', '#f43f5e', '#8b5cf6', '#10b981', '#06b6d4', '#f97316', '#3b82f6'];
+                      const catBgs = ['bg-yellow-400', 'bg-rose-500', 'bg-violet-500', 'bg-emerald-500', 'bg-cyan-500', 'bg-orange-500', 'bg-blue-500'];
 
-                        {/* Center Total Text */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500">
-                            Total
-                          </span>
-                          <span className="text-sm font-black text-white font-mono mt-0.5">
-                            {formatCurrency(totalOutflow)}
-                          </span>
-                        </div>
-                      </div>
+                      const topOutflowCats = categories
+                        .filter(c => c.type === 'saida' || c.type === 'ambas')
+                        .map((c, idx) => {
+                          const amount = filteredDashboardTxs
+                            .filter(t => t.type === 'saida' && t.categoryId === c.id)
+                            .reduce((s, t) => s + t.value, 0);
+                          const pct = totalOutflow > 0 ? (amount / totalOutflow) * 100 : 0;
+                          return {
+                            name: c.name,
+                            amount,
+                            pct: Math.round(pct),
+                            pctExact: pct,
+                            color: catColors[idx % catColors.length],
+                            bgClass: catBgs[idx % catBgs.length]
+                          };
+                        })
+                        .filter(c => c.amount > 0)
+                        .sort((a, b) => b.amount - a.amount);
 
-                      {/* Right Legend Column */}
-                      <div className="sm:col-span-6 space-y-2">
-                        {(() => {
-                          const topOutflowCats = categories
-                            .filter(c => c.type === 'saida')
-                            .map(c => {
-                              const amount = filteredDashboardTxs.filter(t => t.categoryId === c.id).reduce((s, t) => s + t.value, 0);
-                              const pct = totalOutflow > 0 ? Math.round((amount / totalOutflow) * 100) : 0;
-                              return { name: c.name, amount, pct };
-                            })
-                            .sort((a, b) => b.amount - a.amount)
-                            .slice(0, 4);
+                      const displayedCats = topOutflowCats.slice(0, 4);
+                      const circumference = 2 * Math.PI * 38; // ~238.76
 
-                          const colors = ['bg-yellow-400', 'bg-rose-500', 'bg-violet-500', 'bg-emerald-500'];
+                      let cumulativeOffset = 0;
 
-                          return topOutflowCats.length > 0 ? (
-                            topOutflowCats.map((cat, i) => (
-                              <div key={i} className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <div className={`w-1 h-3 rounded-full ${colors[i % colors.length]}`} />
-                                  <span className="text-zinc-300 font-bold truncate max-w-[85px] text-[11px]">{cat.name}</span>
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center py-2">
+                          {/* SVG Multi-Segment Donut Chart */}
+                          <div className="sm:col-span-5 flex flex-col items-center justify-center relative select-none">
+                            <svg width="130" height="130" viewBox="0 0 100 100" className="transform -rotate-90">
+                              {/* Background track circle */}
+                              <circle cx="50" cy="50" r="38" fill="transparent" stroke={isHighContrast ? '#e4e4e7' : '#1f2430'} strokeWidth="11" />
+                              
+                              {displayedCats.length > 0 ? (
+                                displayedCats.map((cat, idx) => {
+                                  const strokeLength = (cat.pctExact / 100) * circumference;
+                                  const strokeDasharray = `${strokeLength} ${circumference - strokeLength}`;
+                                  const strokeDashoffset = -cumulativeOffset;
+                                  cumulativeOffset += strokeLength;
+
+                                  return (
+                                    <circle
+                                      key={idx}
+                                      cx="50"
+                                      cy="50"
+                                      r="38"
+                                      fill="transparent"
+                                      stroke={cat.color}
+                                      strokeWidth="11"
+                                      strokeDasharray={strokeDasharray}
+                                      strokeDashoffset={strokeDashoffset}
+                                      strokeLinecap="round"
+                                      className="transition-all duration-500"
+                                    />
+                                  );
+                                })
+                              ) : (
+                                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#3b82f6" strokeWidth="11" strokeDasharray="60 180" strokeDashoffset="0" strokeLinecap="round" />
+                              )}
+                            </svg>
+
+                            {/* Center Total Text */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <span className={`text-[8.5px] font-extrabold uppercase tracking-wider ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                Total
+                              </span>
+                              <span className={`text-xs sm:text-sm font-black font-mono mt-0.5 ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                {formatCurrency(totalOutflow)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Right Legend Column with Exact Values */}
+                          <div className="sm:col-span-7 space-y-2">
+                            {displayedCats.length > 0 ? (
+                              displayedCats.map((cat, i) => (
+                                <div key={i} className="flex items-center justify-between gap-1.5 text-xs py-0.5 border-b border-white/5">
+                                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <div className={`w-1.5 h-3.5 rounded-full ${cat.bgClass} shrink-0`} />
+                                    <span className={`font-bold truncate text-[11px] ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                      {cat.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`font-mono font-bold text-[11px] ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                      {formatCurrency(cat.amount)}
+                                    </span>
+                                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                                      {cat.pct}%
+                                    </span>
+                                  </div>
                                 </div>
-                                <span className="font-mono font-bold text-white text-[11px]">{cat.pct}%</span>
+                              ))
+                            ) : (
+                              <div className="text-center py-4">
+                                <p className={`text-[11px] font-medium ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                  Nenhuma despesa lançada neste período
+                                </p>
                               </div>
-                            ))
-                          ) : (
-                            <>
-                              <div className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-1.5"><div className="w-1 h-3 rounded-full bg-yellow-400" /><span className="text-zinc-300 font-bold text-[11px]">Fixas</span></div>
-                                <span className="font-mono font-bold text-white text-[11px]">30%</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-1.5"><div className="w-1 h-3 rounded-full bg-rose-500" /><span className="text-zinc-300 font-bold text-[11px]">Variáveis</span></div>
-                                <span className="font-mono font-bold text-white text-[11px]">20%</span>
-                              </div>
-                              <div className="flex justify-between items-center text-xs">
-                                <div className="flex items-center gap-1.5"><div className="w-1 h-3 rounded-full bg-violet-500" /><span className="text-zinc-300 font-bold text-[11px]">Ministério</span></div>
-                                <span className="font-mono font-bold text-white text-[11px]">15%</span>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                 </div>
@@ -5201,57 +5320,99 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     const activeCard = creditCards[safeIndex] || creditCards[0];
                     if (!activeCard) return null;
 
+                    const activeCardInvoice = getCardInvoiceForPeriod(activeCard.id);
+                    const activeCardLimit = Number(activeCard.limit || 0);
+                    const activeCardAvailable = Math.max(0, activeCardLimit - activeCardInvoice);
+                    const usedPct = activeCardLimit > 0 ? Math.min(100, Math.round((activeCardInvoice / activeCardLimit) * 100)) : 0;
+                    const selectedMonthName = dashSelectedMonth === 'all' 
+                      ? (dashSelectedYear === 'all' ? 'Geral' : dashSelectedYear)
+                      : `${monthsList.find(m => m.value === dashSelectedMonth)?.label || ''} ${dashSelectedYear === 'all' ? '' : dashSelectedYear}`;
+
                     return (
                       <div className="relative pt-6 pb-2 select-none">
                         {/* 1st Top Stack Peeking Card (Orange Gradient / First Inactive) */}
-                        {creditCards.length > 1 && (
-                          <div 
-                            onClick={() => setDashSelectedCardIndex((safeIndex + 1) % creditCards.length)}
-                            className="w-[88%] mx-auto h-16 rounded-2xl p-3 bg-gradient-to-r from-orange-400 to-amber-300 text-zinc-900 shadow-md cursor-pointer transition-all duration-300 transform -translate-y-4 hover:-translate-y-6 flex justify-between items-center opacity-85 hover:opacity-100 border border-white/20"
-                          >
-                            <span className="font-extrabold text-[10px] uppercase tracking-wider">
-                              {creditCards[(safeIndex + 1) % creditCards.length]?.bankName || 'Corporativo'}
-                            </span>
-                            <span className="font-mono font-bold text-[10px]">
-                              •••• {creditCards[(safeIndex + 1) % creditCards.length]?.lastFourDigits}
-                            </span>
-                          </div>
-                        )}
+                        {creditCards.length > 1 && (() => {
+                          const c1 = creditCards[(safeIndex + 1) % creditCards.length];
+                          const c1Invoice = getCardInvoiceForPeriod(c1.id);
+                          return (
+                            <div 
+                              onClick={() => setDashSelectedCardIndex((safeIndex + 1) % creditCards.length)}
+                              className="w-[88%] mx-auto h-16 rounded-2xl p-3 bg-gradient-to-r from-orange-400 to-amber-300 text-zinc-950 shadow-md cursor-pointer transition-all duration-300 transform -translate-y-4 hover:-translate-y-6 flex justify-between items-center opacity-90 hover:opacity-100 border border-white/20"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-extrabold text-[10px] uppercase tracking-wider block truncate">
+                                  {c1?.bankName || c1?.name || 'Cartão 2'}
+                                </span>
+                                <span className="font-mono text-[9px] font-bold text-zinc-800">
+                                  Fatura: {formatCurrency(c1Invoice)}
+                                </span>
+                              </div>
+                              <span className="font-mono font-black text-[10px] shrink-0 bg-black/10 px-2 py-0.5 rounded-full">
+                                •••• {c1?.lastFourDigits}
+                              </span>
+                            </div>
+                          );
+                        })()}
 
                         {/* 2nd Middle Stack Peeking Card (Mint/Teal Gradient) */}
-                        {creditCards.length > 2 && (
-                          <div 
-                            onClick={() => setDashSelectedCardIndex((safeIndex + 2) % creditCards.length)}
-                            className="w-[94%] mx-auto h-16 rounded-2xl p-3 bg-gradient-to-r from-teal-300 via-emerald-300 to-teal-400 text-zinc-900 shadow-md cursor-pointer transition-all duration-300 transform -translate-y-8 hover:-translate-y-10 flex justify-between items-center opacity-90 hover:opacity-100 border border-white/20"
-                          >
-                            <span className="font-extrabold text-[10px] uppercase tracking-wider">
-                              {creditCards[(safeIndex + 2) % creditCards.length]?.bankName || 'PayPal'}
-                            </span>
-                            <span className="font-mono font-bold text-[10px]">
-                              •••• {creditCards[(safeIndex + 2) % creditCards.length]?.lastFourDigits}
-                            </span>
-                          </div>
-                        )}
+                        {creditCards.length > 2 && (() => {
+                          const c2 = creditCards[(safeIndex + 2) % creditCards.length];
+                          const c2Invoice = getCardInvoiceForPeriod(c2.id);
+                          return (
+                            <div 
+                              onClick={() => setDashSelectedCardIndex((safeIndex + 2) % creditCards.length)}
+                              className="w-[94%] mx-auto h-16 rounded-2xl p-3 bg-gradient-to-r from-teal-300 via-emerald-300 to-teal-400 text-zinc-950 shadow-md cursor-pointer transition-all duration-300 transform -translate-y-8 hover:-translate-y-10 flex justify-between items-center opacity-95 hover:opacity-100 border border-white/20"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-extrabold text-[10px] uppercase tracking-wider block truncate">
+                                  {c2?.bankName || c2?.name || 'Cartão 3'}
+                                </span>
+                                <span className="font-mono text-[9px] font-bold text-zinc-800">
+                                  Fatura: {formatCurrency(c2Invoice)}
+                                </span>
+                              </div>
+                              <span className="font-mono font-black text-[10px] shrink-0 bg-black/10 px-2 py-0.5 rounded-full">
+                                •••• {c2?.lastFourDigits}
+                              </span>
+                            </div>
+                          );
+                        })()}
 
-                        {/* Front Active Main Card (Purple/Indigo or Custom Image) */}
+                        {/* Front Active Main Card (Custom Image, Solid Color, or Gradient) */}
                         <div 
                           onClick={() => {
                             if (creditCards.length > 1) {
                               setDashSelectedCardIndex((safeIndex + 1) % creditCards.length);
                             }
                           }}
-                          className={`w-full aspect-[1.586/1] rounded-2xl p-5 relative overflow-hidden shadow-2xl flex flex-col justify-between border cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
+                          className={`w-full aspect-[1.586/1] rounded-2xl p-5 relative overflow-hidden shadow-2xl flex flex-col justify-between border cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
                             creditCards.length > 2 ? '-translate-y-12' : creditCards.length === 2 ? '-translate-y-6' : ''
                           } ${activeCard.image ? 'border-zinc-700' : 'border-white/10'}`}
+                          style={
+                            !activeCard.image && activeCard.color?.startsWith('#') 
+                              ? { backgroundColor: activeCard.color } 
+                              : undefined
+                          }
                         >
-                          {/* Card Background: Custom Image or Sleek Gradient */}
+                          {/* Card Background: Custom Image, Gradient or Solid */}
                           {activeCard.image ? (
                             <div className="absolute inset-0 z-0">
                               <img src={activeCard.image} alt={activeCard.name} className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/60 backdrop-blur-[0.5px]" />
                             </div>
+                          ) : !activeCard.color?.startsWith('#') ? (
+                            <div className={`absolute inset-0 z-0 ${
+                              activeCard.color?.startsWith('from-') 
+                                ? `bg-gradient-to-br ${activeCard.color}` 
+                                : activeCard.color?.startsWith('bg-')
+                                  ? activeCard.color
+                                  : 'bg-gradient-to-br from-[#8b5cf6] via-[#6366f1] to-[#3b82f6]'
+                            }`}>
+                              <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
+                              <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
+                            </div>
                           ) : (
-                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#8b5cf6] via-[#6366f1] to-[#3b82f6]">
+                            <div className="absolute inset-0 z-0">
                               <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
                               <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
                             </div>
@@ -5266,10 +5427,10 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                 <div className="border border-amber-800/30 rounded-xs" />
                                 <div className="border border-amber-800/30 rounded-xs" />
                               </div>
-                              <Wifi size={13} className="rotate-90 text-white/70" />
+                              <Wifi size={13} className="rotate-90 text-white/80" />
                             </div>
 
-                            <span className="font-extrabold uppercase text-xs tracking-widest text-white drop-shadow">
+                            <span className="font-black uppercase text-xs tracking-widest text-white drop-shadow">
                               {activeCard.brand.toUpperCase()}
                             </span>
                           </div>
@@ -5284,13 +5445,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           {/* Bottom: Holder & Expiry */}
                           <div className="relative z-10 flex justify-between items-end">
                             <div>
-                              <p className="text-[7.5px] uppercase tracking-widest text-white/70 font-bold">Titular</p>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow">
+                              <p className="text-[7.5px] uppercase tracking-widest text-white/80 font-bold">Titular</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow max-w-[160px]">
                                 {activeCard.cardholderName || 'MINISTÉRIO NOVA VIDA'}
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[7.5px] uppercase tracking-widest text-white/70 font-bold">Venc.</p>
+                              <p className="text-[7.5px] uppercase tracking-widest text-white/80 font-bold">Venc.</p>
                               <p className="text-[10px] font-bold text-white font-mono">
                                 Dia {activeCard.dueDay}
                               </p>
@@ -5298,10 +5459,52 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           </div>
                         </div>
 
-                        {/* Card Quick Actions */}
-                        <div className={`flex items-center justify-between gap-2 pt-1 ${
-                          creditCards.length > 2 ? '-mt-8' : creditCards.length === 2 ? '-mt-3' : ''
+                        {/* Invoice & Limit Panel for Selected Month */}
+                        <div className={`p-3.5 rounded-2xl border space-y-2.5 transition-all shadow-md mt-2 ${
+                          isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#181a24] border-white/5'
                         }`}>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                                isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                              }`}>
+                                Fatura ({selectedMonthName})
+                              </span>
+                              <h5 className="text-base font-black font-mono text-rose-400">
+                                {formatCurrency(activeCardInvoice)}
+                              </h5>
+                            </div>
+                            <div className="text-right">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                                isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                              }`}>
+                                Limite Disp.
+                              </span>
+                              <h5 className={`text-xs font-bold font-mono ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                {formatCurrency(activeCardAvailable)}
+                              </h5>
+                            </div>
+                          </div>
+
+                          {/* Limit Progress Bar */}
+                          <div className="space-y-1">
+                            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  usedPct > 85 ? 'bg-rose-500' : usedPct > 60 ? 'bg-amber-400' : 'bg-indigo-500'
+                                }`}
+                                style={{ width: `${Math.max(4, usedPct)}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[9px] font-mono font-bold text-zinc-500">
+                              <span>{usedPct}% do limite</span>
+                              <span>Total: {formatCurrency(activeCardLimit)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Quick Actions */}
+                        <div className="flex items-center justify-between gap-2 pt-2">
                           <button
                             type="button"
                             onClick={() => {
@@ -5311,7 +5514,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               setTxCreditCardId(activeCard.id);
                               setShowTxModal(true);
                             }}
-                            className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all text-center cursor-pointer"
+                            className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all text-center cursor-pointer active:scale-95"
                           >
                             + Lançar no Cartão
                           </button>
@@ -5321,8 +5524,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               setCardTxSelectedCardId(activeCard.id);
                               setActiveSubTab('cards');
                             }}
-                            className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                              isHighContrast ? 'bg-white border-zinc-300 text-zinc-700' : 'bg-[#181a24] border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                              isHighContrast ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100' : 'bg-[#181a24] border-white/10 text-zinc-300 hover:bg-zinc-800'
                             }`}
                           >
                             Extrato
@@ -5333,124 +5536,162 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   })()}
                 </div>
 
-                {/* 2. "Subscriptions" (Despesas Recorrentes & Fixas) */}
-                <div className="space-y-4 pt-2 border-t border-zinc-800/40">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className={`text-sm font-extrabold tracking-tight ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
-                        Despesas Recorrentes
-                      </h4>
-                      <sup className="text-[10px] font-bold text-emerald-400 font-mono">
-                        5
-                      </sup>
-                    </div>
+                {/* 2. "Subscriptions" (Despesas Recorrentes Reais Baseadas em Lançamentos) */}
+                <div className="space-y-3 pt-2 border-t border-zinc-800/40">
+                  {(() => {
+                    // Extract real recurring and fixed expenses from system transactions
+                    const recurringMap = new Map<string, { name: string; val: number; dueDay: string; icon: string; color: string }>();
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveSubTab('categories')}
-                      className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-0.5 cursor-pointer"
-                    >
-                      Gerenciar <ChevronRight size={12} />
-                    </button>
-                  </div>
+                    const iconPresets = ['⚡', '🌐', '🏢', '💧', '📡', '🛡️', '📦'];
+                    const colorPresets = [
+                      'bg-amber-500/20 text-amber-300 border-amber-500/30',
+                      'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+                      'bg-purple-500/20 text-purple-300 border-purple-500/30',
+                      'bg-blue-500/20 text-blue-300 border-blue-500/30',
+                      'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    ];
 
-                  {/* Brand Logos Row */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 flex items-center justify-center shrink-0 font-black text-xs">
-                      ⚡
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0 font-black text-xs">
-                      💧
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-purple-600/30 text-purple-400 border border-purple-500/40 flex items-center justify-center shrink-0 font-black text-xs">
-                      🌐
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-pink-600/30 text-pink-400 border border-pink-500/40 flex items-center justify-center shrink-0 font-black text-xs">
-                      🏢
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-sky-600/30 text-sky-400 border border-sky-500/40 flex items-center justify-center shrink-0 font-black text-xs">
-                      📡
-                    </div>
-                  </div>
+                    // 1. Explicit recurring or fixed category transactions
+                    const candidateTxs = transactions.filter(t => {
+                      if (t.type !== 'saida') return false;
+                      const cat = categories.find(c => c.id === t.categoryId);
+                      return t.parcelamento === 'recorrente' || Boolean(t.frequenciaParcelas) || cat?.mainCategory === 'Despesas Fixas';
+                    });
 
-                  {/* Subscriptions Pills List */}
-                  <div className="space-y-2.5">
-                    {[
-                      { name: 'Energia Elétrica (Enel)', due: 'Próx. 10 de Outubro', val: 345.80, icon: '⚡', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-                      { name: 'Internet Fibra 600MB', due: 'Próx. 15 de Outubro', val: 129.90, icon: '🌐', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
-                      { name: 'Aluguel do Imóvel Sede', due: 'Próx. 20 de Outubro', val: 2400.00, icon: '🏢', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-                      { name: 'Água e Saneamento', due: 'Próx. 25 de Outubro', val: 89.50, icon: '💧', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-                    ].map((sub, sIdx) => (
-                      <div 
-                        key={sIdx}
-                        className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition-all hover:border-zinc-700 ${
-                          isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#181a24] border-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm shrink-0 ${sub.color}`}>
-                            {sub.icon}
+                    candidateTxs.forEach((t, idx) => {
+                      const desc = t.description.trim();
+                      if (!recurringMap.has(desc)) {
+                        const day = t.dataVencimento ? t.dataVencimento.substring(8, 10) : (t.date ? t.date.substring(8, 10) : '10');
+                        recurringMap.set(desc, {
+                          name: desc,
+                          val: t.value,
+                          dueDay: `Todo dia ${day}`,
+                          icon: iconPresets[idx % iconPresets.length],
+                          color: colorPresets[idx % colorPresets.length]
+                        });
+                      }
+                    });
+
+                    // Fallback to top standard expense descriptions if none explicitly recurring
+                    if (recurringMap.size === 0) {
+                      transactions.filter(t => t.type === 'saida').slice(0, 4).forEach((t, idx) => {
+                        const desc = t.description.trim();
+                        if (!recurringMap.has(desc)) {
+                          const day = t.dataVencimento ? t.dataVencimento.substring(8, 10) : (t.date ? t.date.substring(8, 10) : '15');
+                          recurringMap.set(desc, {
+                            name: desc,
+                            val: t.value,
+                            dueDay: `Venc. dia ${day}`,
+                            icon: iconPresets[idx % iconPresets.length],
+                            color: colorPresets[idx % colorPresets.length]
+                          });
+                        }
+                      });
+                    }
+
+                    const recurringList = Array.from(recurringMap.values()).slice(0, 4);
+
+                    return (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className={`text-sm font-extrabold tracking-tight ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                              Despesas Recorrentes
+                            </h4>
+                            <sup className="text-[10px] font-bold text-emerald-400 font-mono">
+                              {recurringList.length}
+                            </sup>
                           </div>
-                          <div className="min-w-0">
-                            <h6 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
-                              {sub.name}
-                            </h6>
-                            <p className="text-[9.5px] text-zinc-500 font-medium">
-                              {sub.due}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="font-mono font-bold text-xs text-white">
-                            {formatCurrency(sub.val)}
-                          </span>
-                          <button type="button" className="p-1 text-zinc-500 hover:text-zinc-300">
-                            <MoreVertical size={12} />
+                          <button
+                            type="button"
+                            onClick={() => setActiveSubTab('transactions')}
+                            className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-0.5 cursor-pointer"
+                          >
+                            Ver Lançamentos <ChevronRight size={12} />
                           </button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+
+                        {/* Recurrent Items List */}
+                        <div className="space-y-2">
+                          {recurringList.length > 0 ? (
+                            recurringList.map((sub, sIdx) => (
+                              <div 
+                                key={sIdx}
+                                className={`p-2.5 rounded-2xl border flex items-center justify-between gap-2.5 transition-all hover:border-zinc-700 ${
+                                  isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#181a24] border-white/5'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-7 h-7 rounded-xl border flex items-center justify-center text-xs shrink-0 ${sub.color}`}>
+                                    {sub.icon}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h6 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                      {sub.name}
+                                    </h6>
+                                    <p className={`text-[9px] font-medium ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                      {sub.dueDay}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <span className={`font-mono font-bold text-xs shrink-0 ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                  {formatCurrency(sub.val)}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className={`text-[11px] text-center py-2 ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                              Nenhuma despesa recorrente cadastrada
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
-                {/* 3. Registered Bank Accounts Mini List */}
+                {/* 3. Registered Bank Accounts Mini List (Com Saldos Reais Calculados) */}
                 <div className="space-y-3 pt-2 border-t border-zinc-800/40">
                   <div className="flex justify-between items-center">
                     <h4 className={`text-xs font-extrabold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-400'}`}>
-                      Contas Bancárias
+                      Contas Bancárias ({accounts.length})
                     </h4>
                     <button
                       type="button"
                       onClick={() => setActiveSubTab('accounts')}
-                      className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                      className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
                     >
                       Ver Todas
                     </button>
                   </div>
 
                   <div className="space-y-2">
-                    {accounts.slice(0, 3).map((acc) => (
-                      <div 
-                        key={acc.id}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
-                          isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#181a24] border-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={22} />
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-bold text-white truncate">{acc.name}</p>
-                            <p className="text-[8.5px] text-zinc-500 font-mono truncate">{acc.bankName}</p>
+                    {accounts.slice(0, 4).map((acc) => {
+                      const realBalance = getAccountRealBalance(acc.id);
+                      return (
+                        <div 
+                          key={acc.id}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
+                            isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#181a24] border-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={22} />
+                            <div className="min-w-0">
+                              <p className={`text-[11px] font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</p>
+                              <p className={`text-[8.5px] font-mono truncate ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>{acc.bankName}</p>
+                            </div>
                           </div>
+                          <span className={`font-mono font-bold text-xs ${
+                            realBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          }`}>
+                            {formatCurrency(realBalance)}
+                          </span>
                         </div>
-                        <span className={`font-mono font-bold text-xs ${
-                          acc.currentBalance >= 0 ? 'text-indigo-400' : 'text-rose-400'
-                        }`}>
-                          {formatCurrency(acc.currentBalance)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -6956,8 +7197,20 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             {/* Glassmorphic lighting gradient overlay for high readability */}
                             <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
                           </div>
+                        ) : card.color?.startsWith('#') ? (
+                          <div className="absolute inset-0 z-0" style={{ backgroundColor: card.color }}>
+                            {/* Subtle geometric lines */}
+                            <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                            <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                          </div>
                         ) : (
-                          <div className={`absolute inset-0 z-0 bg-gradient-to-br ${card.color || 'from-zinc-950 via-neutral-900 to-black'}`}>
+                          <div className={`absolute inset-0 z-0 ${
+                            card.color?.startsWith('from-') 
+                              ? `bg-gradient-to-br ${card.color}` 
+                              : card.color?.startsWith('bg-')
+                                ? card.color
+                                : 'bg-gradient-to-br from-zinc-950 via-neutral-900 to-black'
+                          }`}>
                             {/* Subtle geometric lines */}
                             <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
                             <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
@@ -11704,8 +11957,22 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       <img src={cardImage} alt="Preview" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-tr from-black/85 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
                     </div>
+                  ) : cardColor?.startsWith('#') ? (
+                    <div className="absolute inset-0 z-0" style={{ backgroundColor: cardColor }}>
+                      <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
+                      <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
+                    </div>
                   ) : (
-                    <div className={`absolute inset-0 z-0 bg-gradient-to-br ${cardColor}`} />
+                    <div className={`absolute inset-0 z-0 ${
+                      cardColor?.startsWith('from-') 
+                        ? `bg-gradient-to-br ${cardColor}` 
+                        : cardColor?.startsWith('bg-')
+                          ? cardColor
+                          : 'bg-gradient-to-br from-zinc-950 via-neutral-900 to-black'
+                    }`}>
+                      <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
+                      <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
+                    </div>
                   )}
 
                   <div className="relative z-10 flex justify-between items-center">
@@ -11976,30 +12243,94 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   </div>
                 </div>
 
-                {/* Card Color Theme Presets (used when no custom image is uploaded) */}
+                {/* Card Color Theme Presets & Solid / Gradient Customizer */}
                 {!cardImage && (
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Estilo de Gradiente do Cartão</label>
-                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                      {[
-                        { label: 'Black Ônix', color: 'from-zinc-950 via-neutral-900 to-black' },
-                        { label: 'Roxo Nu', color: 'from-purple-950 via-indigo-950 to-zinc-950' },
-                        { label: 'Azul Real', color: 'from-blue-950 via-indigo-950 to-slate-950' },
-                        { label: 'Ruby', color: 'from-rose-950 via-red-950 to-zinc-950' },
-                        { label: 'Esmeralda', color: 'from-emerald-950 via-teal-950 to-zinc-950' },
-                        { label: 'Dourado', color: 'from-amber-900 via-yellow-950 to-zinc-950' },
-                        { label: 'Grafite', color: 'from-slate-800 via-zinc-900 to-black' }
-                      ].map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setCardColor(preset.color)}
-                          className={`h-8 rounded-lg bg-gradient-to-br ${preset.color} border transition-all cursor-pointer relative ${
-                            cardColor === preset.color ? 'ring-2 ring-indigo-500 border-white' : 'border-zinc-700/60'
-                          }`}
-                          title={preset.label}
-                        />
-                      ))}
+                  <div className="space-y-3 pt-1 border-t border-zinc-800/40">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                        Cores & Estilos do Cartão
+                      </label>
+                      <span className="text-[9px] font-mono text-indigo-400">
+                        {cardColor?.startsWith('#') ? 'Cor Sólida (Sem Gradiente)' : 'Gradiente'}
+                      </span>
+                    </div>
+
+                    {/* Gradient Presets */}
+                    <div className="space-y-1.5">
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                        Gradientes Modernos
+                      </span>
+                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                        {[
+                          { label: 'Black Ônix', color: 'from-zinc-950 via-neutral-900 to-black' },
+                          { label: 'Roxo Ultravioleta', color: 'from-purple-950 via-indigo-950 to-zinc-950' },
+                          { label: 'Azul Real', color: 'from-blue-950 via-indigo-950 to-slate-950' },
+                          { label: 'Ruby Elegance', color: 'from-rose-950 via-red-950 to-zinc-950' },
+                          { label: 'Esmeralda Nobre', color: 'from-emerald-950 via-teal-950 to-zinc-950' },
+                          { label: 'Ouro Imperial', color: 'from-amber-900 via-yellow-950 to-zinc-950' },
+                          { label: 'Titânio / Grafite', color: 'from-slate-800 via-zinc-900 to-black' },
+                          { label: 'Cyber Neon', color: 'from-cyan-900 via-blue-900 to-purple-950' },
+                          { label: 'Sunset Coral', color: 'from-orange-900 via-rose-900 to-zinc-950' },
+                          { label: 'Midnight Ocean', color: 'from-slate-900 via-sky-950 to-zinc-950' },
+                        ].map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setCardColor(preset.color)}
+                            className={`h-7 rounded-lg bg-gradient-to-br ${preset.color} border transition-all cursor-pointer relative ${
+                              cardColor === preset.color ? 'ring-2 ring-indigo-500 border-white scale-105' : 'border-zinc-700/60 hover:border-zinc-500'
+                            }`}
+                            title={preset.label}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Solid Colors (Sem Gradiente) & Color Picker */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                          Cores Sólidas (Sem Gradiente)
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[9px] font-bold text-zinc-500 cursor-pointer">
+                            Cor Livre (Hex):
+                          </label>
+                          <input 
+                            type="color"
+                            value={cardColor.startsWith('#') ? cardColor : '#09090b'}
+                            onChange={(e) => setCardColor(e.target.value)}
+                            className="w-5 h-5 rounded-md border border-white/20 cursor-pointer bg-transparent"
+                            title="Seletor de cor personalizada"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                        {[
+                          { label: 'Preto Absoluto', hex: '#09090b' },
+                          { label: 'Grafite Escuro', hex: '#18181b' },
+                          { label: 'Cinza Titânio', hex: '#27272a' },
+                          { label: 'Azul Noturno', hex: '#0f172a' },
+                          { label: 'Roxo Imperial', hex: '#3b0764' },
+                          { label: 'Verde Floresta', hex: '#064e3b' },
+                          { label: 'Vinho Tinto', hex: '#4c0519' },
+                          { label: 'Bronze / Âmbar', hex: '#451a03' },
+                          { label: 'Azul Cobalto', hex: '#1e3a8a' },
+                          { label: 'Chumbo Slate', hex: '#334155' },
+                        ].map((solid, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setCardColor(solid.hex)}
+                            className={`h-7 rounded-lg border transition-all cursor-pointer relative ${
+                              cardColor === solid.hex ? 'ring-2 ring-indigo-500 border-white scale-105' : 'border-zinc-700/60 hover:border-zinc-500'
+                            }`}
+                            style={{ backgroundColor: solid.hex }}
+                            title={solid.label}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
