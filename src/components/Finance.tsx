@@ -4933,74 +4933,210 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       isHighContrast ? 'bg-zinc-50 border-zinc-200 shadow-sm' : 'bg-zinc-900/30 border-zinc-800'
                     }`}>
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                        {/* Visual Credit Card Preview with image */}
-                        <div className="lg:col-span-5 max-w-[380px] w-full mx-auto">
-                          <div className={`w-full aspect-[1.586/1] rounded-2xl relative p-4 sm:p-5 overflow-hidden shadow-2xl flex flex-col justify-between border select-none transition-transform duration-300 hover:scale-[1.02] ${
-                            activeCard.image ? 'border-zinc-700/60' : 'border-white/10'
-                          }`}>
-                            {/* Background: Custom Image or Color Gradient */}
-                            {activeCard.image ? (
-                              <div className="absolute inset-0 z-0">
-                                <img 
-                                  src={activeCard.image} 
-                                  alt={activeCard.name} 
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
-                              </div>
-                            ) : (
-                              <div className={`absolute inset-0 z-0 bg-gradient-to-br ${activeCard.color || 'from-zinc-950 via-neutral-900 to-black'}`}>
-                                <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
-                                <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                        {/* Visual Credit Card Preview with Interactive Card Deck & Swapping */}
+                        <div className="lg:col-span-5 max-w-[400px] w-full mx-auto flex flex-col items-center">
+                          {/* Card Stack Container */}
+                          <div className="relative w-full pt-4 pb-1">
+                            {/* If more than 1 card, render the stacked cards behind with depth & clickable interaction */}
+                            {creditCards.length > 1 && (
+                              <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
+                                {creditCards.map((card, idx) => {
+                                  if (idx === safeIndex) return null;
+                                  const diff = (idx - safeIndex + creditCards.length) % creditCards.length;
+                                  const isNext = diff === 1;
+                                  
+                                  return (
+                                    <div
+                                      key={`stack-${card.id}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDashSelectedCardIndex(idx);
+                                      }}
+                                      title={`Clique para alternar para ${card.name}`}
+                                      className={`absolute top-0 w-[92%] aspect-[1.586/1] rounded-2xl p-3 sm:p-4 overflow-hidden border shadow-lg cursor-pointer pointer-events-auto transition-all duration-300 transform select-none hover:-translate-y-2 hover:scale-[0.96] hover:opacity-100 ${
+                                        isNext 
+                                          ? '-translate-y-2.5 scale-[0.95] opacity-75 z-0' 
+                                          : '-translate-y-4 scale-[0.90] opacity-45 -z-10'
+                                      } ${card.image ? 'border-zinc-700/60' : 'border-white/10'}`}
+                                      style={{ left: '4%' }}
+                                    >
+                                      {card.image ? (
+                                        <div className="absolute inset-0 z-0">
+                                          <img src={card.image} alt={card.name} className="w-full h-full object-cover" />
+                                          <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px]" />
+                                        </div>
+                                      ) : (
+                                        <div className={`absolute inset-0 z-0 bg-gradient-to-br ${card.color || 'from-zinc-950 via-neutral-900 to-black'}`}>
+                                          <div className="absolute inset-0 bg-black/40" />
+                                        </div>
+                                      )}
+                                      <div className="relative z-10 flex justify-between items-center text-white/80">
+                                        <div className="flex items-center gap-1.5">
+                                          <BankLogo bankName={card.bankName} size={14} />
+                                          <span className="text-[9px] font-bold truncate max-w-[100px]">{card.bankName}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[9px] font-mono font-bold">•••• {card.lastFourDigits}</span>
+                                          <CreditCardBrandLogo brand={card.brand} size={18} />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
 
-                            {/* Card Top Row */}
-                            <div className="relative z-10 flex justify-between items-center">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-6.5 rounded-md bg-gradient-to-tr from-amber-400 via-amber-200 to-yellow-500 border border-amber-600/40 shadow-inner grid grid-cols-2 gap-0.5 p-1">
-                                  <div className="border border-amber-800/30 rounded-xs" />
-                                  <div className="border border-amber-800/30 rounded-xs" />
-                                  <div className="border border-amber-800/30 rounded-xs" />
-                                  <div className="border border-amber-800/30 rounded-xs" />
+                            {/* Main Active Card */}
+                            <div 
+                              onClick={() => {
+                                if (creditCards.length > 1) {
+                                  setDashSelectedCardIndex((safeIndex + 1) % creditCards.length);
+                                }
+                              }}
+                              className={`w-full aspect-[1.586/1] rounded-2xl relative p-4 sm:p-5 overflow-hidden shadow-2xl flex flex-col justify-between border select-none transition-all duration-300 z-10 group ${
+                                creditCards.length > 1 ? 'cursor-pointer hover:shadow-indigo-500/10 hover:scale-[1.01]' : ''
+                              } ${
+                                activeCard.image ? 'border-zinc-700/60' : 'border-white/10'
+                              }`}
+                            >
+                              {/* Background: Custom Image or Color Gradient */}
+                              {activeCard.image ? (
+                                <div className="absolute inset-0 z-0">
+                                  <img 
+                                    src={activeCard.image} 
+                                    alt={activeCard.name} 
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
                                 </div>
-                                <Wifi size={15} className="rotate-90 text-white/70" />
+                              ) : (
+                                <div className={`absolute inset-0 z-0 bg-gradient-to-br ${activeCard.color || 'from-zinc-950 via-neutral-900 to-black'}`}>
+                                  <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                                  <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                                </div>
+                              )}
+
+                              {/* Card Top Row */}
+                              <div className="relative z-10 flex justify-between items-center">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-9 h-6.5 rounded-md bg-gradient-to-tr from-amber-400 via-amber-200 to-yellow-500 border border-amber-600/40 shadow-inner grid grid-cols-2 gap-0.5 p-1">
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                  </div>
+                                  <Wifi size={15} className="rotate-90 text-white/70" />
+                                </div>
+
+                                {/* Central Switch Hint Badge */}
+                                {creditCards.length > 1 && (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDashSelectedCardIndex((safeIndex + 1) % creditCards.length);
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white text-[9px] font-bold transition-all shadow-sm cursor-pointer active:scale-95"
+                                    title="Alternar para o próximo cartão"
+                                  >
+                                    <ArrowRightLeft size={10} className="text-amber-300" />
+                                    <span>{safeIndex + 1}/{creditCards.length} Alternar</span>
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                                  <BankLogo bankName={activeCard.bankName} size={18} />
+                                  <span className="text-[10px] font-bold text-white tracking-wide truncate max-w-[110px]">
+                                    {activeCard.bankName}
+                                  </span>
+                                </div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                                <BankLogo bankName={activeCard.bankName} size={18} />
-                                <span className="text-[10px] font-bold text-white tracking-wide truncate max-w-[110px]">
-                                  {activeCard.bankName}
-                                </span>
-                              </div>
-                            </div>
+                              {/* Card Middle: Masked Number & Left/Right Quick Switch Arrows */}
+                              <div className="relative z-10 py-1 flex items-center justify-between">
+                                {creditCards.length > 1 ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDashSelectedCardIndex((safeIndex - 1 + creditCards.length) % creditCards.length);
+                                    }}
+                                    className="w-7 h-7 rounded-full bg-black/50 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 hover:opacity-100 cursor-pointer shadow-lg"
+                                    title="Cartão anterior"
+                                  >
+                                    <ChevronLeft size={14} />
+                                  </button>
+                                ) : <div className="w-7" />}
 
-                            {/* Card Middle: Masked Number */}
-                            <div className="relative z-10 py-1">
-                              <p className="font-mono text-sm sm:text-base tracking-[0.25em] text-white font-black drop-shadow-md">
-                                ••••  ••••  ••••  {activeCard.lastFourDigits}
-                              </p>
-                            </div>
-
-                            {/* Card Bottom: Holder, Dates, Brand */}
-                            <div className="relative z-10 flex justify-between items-end">
-                              <div className="space-y-0.5 min-w-0 flex-1 mr-2">
-                                <p className="text-[7.5px] uppercase tracking-widest text-zinc-400 font-bold">Titular</p>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow">
-                                  {activeCard.cardholderName || 'MINISTÉRIO NOVA VIDA'}
+                                <p className="font-mono text-sm sm:text-base tracking-[0.25em] text-white font-black drop-shadow-md text-center">
+                                  ••••  ••••  ••••  {activeCard.lastFourDigits}
                                 </p>
-                                <div className="flex items-center gap-1.5 text-[8px] font-semibold text-zinc-300 pt-0.5">
-                                  <span>FECH: Dia {activeCard.closingDay}</span>
-                                  <span>•</span>
-                                  <span>VENC: Dia {activeCard.dueDay}</span>
-                                </div>
+
+                                {creditCards.length > 1 ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDashSelectedCardIndex((safeIndex + 1) % creditCards.length);
+                                    }}
+                                    className="w-7 h-7 rounded-full bg-black/50 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90 opacity-80 hover:opacity-100 cursor-pointer shadow-lg"
+                                    title="Próximo cartão"
+                                  >
+                                    <ChevronRight size={14} />
+                                  </button>
+                                ) : <div className="w-7" />}
                               </div>
 
-                              <div className="shrink-0 flex flex-col items-end">
-                                <CreditCardBrandLogo brand={activeCard.brand} size={28} />
+                              {/* Card Bottom: Holder, Dates, Brand */}
+                              <div className="relative z-10 flex justify-between items-end">
+                                <div className="space-y-0.5 min-w-0 flex-1 mr-2">
+                                  <p className="text-[7.5px] uppercase tracking-widest text-zinc-400 font-bold">Titular</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow">
+                                    {activeCard.cardholderName || 'MINISTÉRIO NOVA VIDA'}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[8px] font-semibold text-zinc-300 pt-0.5">
+                                    <span>FECH: Dia {activeCard.closingDay}</span>
+                                    <span>•</span>
+                                    <span>VENC: Dia {activeCard.dueDay}</span>
+                                  </div>
+                                </div>
+
+                                <div className="shrink-0 flex flex-col items-end">
+                                  <CreditCardBrandLogo brand={activeCard.brand} size={28} />
+                                </div>
                               </div>
                             </div>
                           </div>
+
+                          {/* Interactive Thumbnail Carousel / Mini Selector */}
+                          {creditCards.length > 1 && (
+                            <div className="flex items-center justify-center gap-2 mt-2.5 w-full max-w-full overflow-x-auto pb-1 px-1 custom-scrollbar">
+                              {creditCards.map((c, i) => {
+                                const isCurrent = i === safeIndex;
+                                return (
+                                  <button
+                                    key={`thumb-${c.id}`}
+                                    type="button"
+                                    onClick={() => setDashSelectedCardIndex(i)}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[10px] font-bold transition-all cursor-pointer select-none shrink-0 ${
+                                      isCurrent
+                                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm ring-2 ring-indigo-500/30'
+                                        : isHighContrast
+                                        ? 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:bg-zinc-100'
+                                        : 'bg-zinc-900/80 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
+                                    }`}
+                                  >
+                                    {c.image ? (
+                                      <img src={c.image} alt="" className="w-4 h-2.5 object-cover rounded-xs border border-white/20" />
+                                    ) : (
+                                      <div className={`w-4 h-2.5 rounded-xs bg-gradient-to-br ${c.color || 'from-zinc-700 to-zinc-900'} border border-white/10`} />
+                                    )}
+                                    <span className="truncate max-w-[85px]">{c.name}</span>
+                                    <span className="text-[8.5px] opacity-75 font-mono">•••• {c.lastFourDigits}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Financial Details & Quick Actions */}
