@@ -955,6 +955,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [cardSearchQuery, setCardSearchQuery] = useState('');
   const [cardBrandFilter, setCardBrandFilter] = useState('todos');
   const [cardFilterByAccount, setCardFilterByAccount] = useState('todos');
+  const [cardTxSelectedYear, setCardTxSelectedYear] = useState<string>('all');
+  const [cardTxSelectedMonth, setCardTxSelectedMonth] = useState<string>('all');
+  const [cardTxSelectedCardId, setCardTxSelectedCardId] = useState<string>('all');
+  const [cardTxStatusFilter, setCardTxStatusFilter] = useState<string>('all');
+  const [cardTxSearchQuery, setCardTxSearchQuery] = useState<string>('');
   const [selectedCardForView, setSelectedCardForView] = useState<CreditCard | null>(null);
   const [selectedCardPreviewImage, setSelectedCardPreviewImage] = useState<string | null>(null);
   const [selectedCardForExpense, setSelectedCardForExpense] = useState<CreditCard | null>(null);
@@ -7458,108 +7463,407 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             </div>
 
             {/* Extrato de Lançamentos dos Cartões */}
-            <div className="px-5 pb-6">
-              <div className={`rounded-2xl border overflow-hidden ${
-                isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/30 border-zinc-800'
-              }`}>
-                <div className="p-4 border-b flex justify-between items-center bg-zinc-950/20">
-                  <div>
-                    <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
-                      isHighContrast ? 'text-zinc-800' : 'text-zinc-200'
-                    }`}>
-                      <FileText size={14} className="text-indigo-400" />
-                      Extrato de Compras nos Cartões
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">
-                      Transações realizadas via Cartão de Crédito
-                    </p>
-                  </div>
+            {(() => {
+              const allCardTransactions = transactions.filter(t => t.formaPagamento === 'cartão' || t.creditCardId);
+              
+              const availableCardTxYears = Array.from(new Set([
+                new Date().getFullYear().toString(),
+                ...allCardTransactions.map(t => t.date.substring(0, 4))
+              ])).sort().reverse();
 
-                  <span className="text-[11px] font-mono text-zinc-400">
-                    {transactions.filter(t => t.formaPagamento === 'cartão' || t.creditCardId).length} lançamentos encontrados
-                  </span>
-                </div>
+              const filteredCardTransactions = allCardTransactions.filter(t => {
+                if (cardTxSelectedYear !== 'all') {
+                  if (t.date.substring(0, 4) !== cardTxSelectedYear) return false;
+                }
+                if (cardTxSelectedMonth !== 'all') {
+                  if (t.date.substring(5, 7) !== cardTxSelectedMonth) return false;
+                }
+                if (cardTxSelectedCardId !== 'all') {
+                  if (t.creditCardId !== cardTxSelectedCardId) return false;
+                }
+                if (cardTxStatusFilter !== 'all') {
+                  if (cardTxStatusFilter === 'pago' && t.pago !== 'sim') return false;
+                  if (cardTxStatusFilter === 'pendente' && t.pago === 'sim') return false;
+                }
+                if (cardTxSearchQuery.trim()) {
+                  const q = cardTxSearchQuery.toLowerCase();
+                  const cardMatch = creditCards.find(c => c.id === t.creditCardId);
+                  const catMatch = categories.find(c => c.id === t.categoryId);
+                  const descMatch = (t.description || '').toLowerCase().includes(q);
+                  const obsMatch = (t.observation || '').toLowerCase().includes(q);
+                  const valMatch = (t.value || 0).toString().includes(q);
+                  const catNameMatch = (catMatch?.name || '').toLowerCase().includes(q);
+                  const cardNameMatch = cardMatch ? (
+                    cardMatch.name.toLowerCase().includes(q) || 
+                    cardMatch.bankName.toLowerCase().includes(q) || 
+                    cardMatch.lastFourDigits.includes(q) ||
+                    (cardMatch.cardholderName || '').toLowerCase().includes(q)
+                  ) : false;
+                  if (!descMatch && !obsMatch && !valMatch && !catNameMatch && !cardNameMatch) return false;
+                }
+                return true;
+              }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-                {transactions.filter(t => t.formaPagamento === 'cartão' || t.creditCardId).length === 0 ? (
-                  <div className="p-10 text-center text-zinc-500 text-xs">
-                    Nenhuma despesa ou compra com cartão registrada até o momento.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 ${
-                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/40 border-zinc-800'
+              const totalFilteredCardAmount = filteredCardTransactions.reduce((acc, t) => acc + (t.value || 0), 0);
+              const totalFilteredCardPaid = filteredCardTransactions.filter(t => t.pago === 'sim').reduce((acc, t) => acc + (t.value || 0), 0);
+              const totalFilteredCardPending = filteredCardTransactions.filter(t => t.pago !== 'sim').reduce((acc, t) => acc + (t.value || 0), 0);
+              const isAnyCardTxFilterActive = cardTxSelectedYear !== 'all' || cardTxSelectedMonth !== 'all' || cardTxSelectedCardId !== 'all' || cardTxStatusFilter !== 'all' || cardTxSearchQuery.trim() !== '';
+
+              return (
+                <div className="px-5 pb-8 space-y-4">
+                  {/* Extrato Header & Summary Cards */}
+                  <div className={`p-5 rounded-2xl border ${
+                    isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/40 border-zinc-800'
+                  }`}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800/40">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+                          <FileText size={20} />
+                        </div>
+                        <div>
+                          <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
+                            isHighContrast ? 'text-zinc-800' : 'text-zinc-100'
+                          }`}>
+                            Extrato de Compras nos Cartões
+                          </h4>
+                          <p className="text-[11px] text-zinc-500 mt-0.5">
+                            Detalhamento de faturas com filtros por ano, mês, cartão e status
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Summary Badges */}
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className={`px-3 py-1.5 rounded-xl border text-right ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800'
                         }`}>
-                          <th className="py-3 px-4">Data</th>
-                          <th className="py-3 px-4">Descrição</th>
-                          <th className="py-3 px-4">Cartão Utilizado</th>
-                          <th className="py-3 px-4">Categoria</th>
-                          <th className="py-3 px-4">Parcelamento</th>
-                          <th className="py-3 px-4 text-right">Valor</th>
-                          <th className="py-3 px-4 text-center">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800/40">
-                        {transactions
-                          .filter(t => t.formaPagamento === 'cartão' || t.creditCardId)
-                          .map(tx => {
-                            const cardMatch = creditCards.find(c => c.id === tx.creditCardId);
-                            const catMatch = categories.find(c => c.id === tx.categoryId);
+                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block">Total no Período</span>
+                          <span className="font-mono font-bold text-xs text-rose-400">
+                            {formatCurrency(totalFilteredCardAmount)}
+                          </span>
+                        </div>
 
-                            return (
-                              <tr key={tx.id} className="hover:bg-zinc-800/20 transition-colors">
-                                <td className="py-3 px-4 font-mono text-zinc-400 whitespace-nowrap">
-                                  {tx.date.split('-').reverse().join('/')}
-                                </td>
-                                <td className="py-3 px-4 font-semibold text-zinc-200">
-                                  {tx.description}
-                                </td>
-                                <td className="py-3 px-4 whitespace-nowrap">
-                                  {cardMatch ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-[10px]">
-                                      <CreditCardBrandLogo brand={cardMatch.brand} size={16} />
-                                      {cardMatch.name} (•••• {cardMatch.lastFourDigits})
-                                    </span>
-                                  ) : (
-                                    <span className="text-zinc-500 text-[11px]">Cartão Geral</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 text-zinc-400">
-                                  {catMatch?.name || '—'}
-                                </td>
-                                <td className="py-3 px-4 whitespace-nowrap">
-                                  {tx.parcelamento === 'sim' ? (
-                                    <span className="font-bold text-indigo-400">
-                                      {tx.parcelaAtual || 1}/{tx.numeroParcelas || 1}
-                                    </span>
-                                  ) : tx.parcelamento === 'recorrente' ? (
-                                    <span className="text-purple-400 font-semibold">Recorrente</span>
-                                  ) : (
-                                    <span className="text-zinc-500">À Vista</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 text-right font-mono font-bold text-rose-400 whitespace-nowrap">
-                                  - {formatCurrency(tx.value)}
-                                </td>
-                                <td className="py-3 px-4 text-center whitespace-nowrap">
-                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
-                                    tx.pago === 'sim' 
-                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                      : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                  }`}>
-                                    {tx.pago === 'sim' ? 'Pago' : 'Pendente'}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                        <div className={`px-3 py-1.5 rounded-xl border text-right ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800'
+                        }`}>
+                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block">Pago</span>
+                          <span className="font-mono font-bold text-xs text-emerald-400">
+                            {formatCurrency(totalFilteredCardPaid)}
+                          </span>
+                        </div>
+
+                        <div className={`px-3 py-1.5 rounded-xl border text-right ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800'
+                        }`}>
+                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block">Pendente / Aberto</span>
+                          <span className="font-mono font-bold text-xs text-amber-400">
+                            {formatCurrency(totalFilteredCardPending)}
+                          </span>
+                        </div>
+
+                        <div className={`px-3 py-1.5 rounded-xl border text-right ${
+                          isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800'
+                        }`}>
+                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold block">Lançamentos</span>
+                          <span className={`font-mono font-bold text-xs ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                            {filteredCardTransactions.length} / {allCardTransactions.length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter Bar with Year, Month, Card, Status, Search */}
+                    <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2.5 flex-wrap flex-1 min-w-[280px]">
+                        {/* Filtro por Ano */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                            <Calendar size={11} className="text-indigo-400" /> Ano:
+                          </span>
+                          <select
+                            value={cardTxSelectedYear}
+                            onChange={(e) => setCardTxSelectedYear(e.target.value)}
+                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}
+                          >
+                            <option value="all">Todos os Anos</option>
+                            {availableCardTxYears.map(yr => (
+                              <option key={yr} value={yr}>{yr}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Filtro por Mês */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Mês:</span>
+                          <select
+                            value={cardTxSelectedMonth}
+                            onChange={(e) => setCardTxSelectedMonth(e.target.value)}
+                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}
+                          >
+                            <option value="all">Todos os Meses</option>
+                            {monthsList.map(m => (
+                              <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Filtro por Cartão */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                            <CreditCard size={11} className="text-indigo-400" /> Cartão:
+                          </span>
+                          <select
+                            value={cardTxSelectedCardId}
+                            onChange={(e) => setCardTxSelectedCardId(e.target.value)}
+                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer max-w-[200px] truncate ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}
+                          >
+                            <option value="all">Todos os Cartões</option>
+                            {creditCards.map(c => (
+                              <option key={c.id} value={c.id}>{c.name} (•••• {c.lastFourDigits})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Filtro por Status */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Status:</span>
+                          <select
+                            value={cardTxStatusFilter}
+                            onChange={(e) => setCardTxStatusFilter(e.target.value)}
+                            className={`text-xs font-semibold px-2.5 py-1.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                              isHighContrast ? 'bg-white border-zinc-200 text-zinc-800' : 'bg-zinc-950 border-zinc-800 text-zinc-200'
+                            }`}
+                          >
+                            <option value="all">Todos os Status</option>
+                            <option value="pago">Pagas</option>
+                            <option value="pendente">Pendentes / Aberto</option>
+                          </select>
+                        </div>
+
+                        {/* Botão Limpar Filtros */}
+                        {isAnyCardTxFilterActive && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCardTxSelectedYear('all');
+                              setCardTxSelectedMonth('all');
+                              setCardTxSelectedCardId('all');
+                              setCardTxStatusFilter('all');
+                              setCardTxSearchQuery('');
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors cursor-pointer"
+                            title="Limpar todos os filtros aplicados ao extrato"
+                          >
+                            <X size={12} /> Limpar Filtros
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Busca dentro do Extrato */}
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border min-w-[220px] ${
+                        isHighContrast ? 'bg-white border-zinc-200' : 'bg-zinc-950/80 border-zinc-800'
+                      }`}>
+                        <Search size={13} className="text-zinc-500" />
+                        <input
+                          type="text"
+                          value={cardTxSearchQuery}
+                          onChange={(e) => setCardTxSearchQuery(e.target.value)}
+                          placeholder="Buscar no extrato..."
+                          className="w-full bg-transparent text-xs focus:outline-none text-zinc-200 placeholder-zinc-500"
+                        />
+                        {cardTxSearchQuery && (
+                          <button onClick={() => setCardTxSearchQuery('')} className="text-zinc-500 hover:text-white">
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
+
+                  {/* Extrato Table View */}
+                  <div className={`rounded-2xl border overflow-hidden ${
+                    isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/30 border-zinc-800'
+                  }`}>
+                    {filteredCardTransactions.length === 0 ? (
+                      <div className="p-12 text-center flex flex-col items-center justify-center gap-3 text-zinc-500 text-xs">
+                        <div className="w-12 h-12 rounded-2xl bg-zinc-800/40 border border-zinc-700/40 flex items-center justify-center text-zinc-400">
+                          <CreditCard size={22} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-zinc-300">Nenhum lançamento encontrado</p>
+                          <p className="text-[11px] text-zinc-500 mt-0.5">
+                            {isAnyCardTxFilterActive 
+                              ? 'Nenhum lançamento corresponde aos filtros selecionados (Ano/Mês/Cartão/Status).' 
+                              : 'Nenhuma despesa ou compra com cartão registrada até o momento.'}
+                          </p>
+                        </div>
+                        {isAnyCardTxFilterActive && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCardTxSelectedYear('all');
+                              setCardTxSelectedMonth('all');
+                              setCardTxSelectedCardId('all');
+                              setCardTxStatusFilter('all');
+                              setCardTxSearchQuery('');
+                            }}
+                            className="mt-1 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] transition-colors cursor-pointer"
+                          >
+                            Limpar Filtros
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className={`border-b text-[10px] font-bold uppercase tracking-wider text-zinc-500 ${
+                              isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800'
+                            }`}>
+                              <th className="py-3.5 px-4">Data</th>
+                              <th className="py-3.5 px-4">Descrição</th>
+                              <th className="py-3.5 px-4">Cartão Utilizado</th>
+                              <th className="py-3.5 px-4">Categoria</th>
+                              <th className="py-3.5 px-4">Parcelamento</th>
+                              <th className="py-3.5 px-4 text-right">Valor</th>
+                              <th className="py-3.5 px-4 text-center">Status</th>
+                              <th className="py-3.5 px-4 text-right">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-800/40">
+                            {filteredCardTransactions.map(tx => {
+                              const cardMatch = creditCards.find(c => c.id === tx.creditCardId);
+                              const catMatch = categories.find(c => c.id === tx.categoryId);
+
+                              return (
+                                <tr key={tx.id} className="hover:bg-zinc-800/20 transition-colors">
+                                  <td className="py-3.5 px-4 font-mono text-zinc-400 whitespace-nowrap">
+                                    {tx.date.split('-').reverse().join('/')}
+                                  </td>
+                                  <td className="py-3.5 px-4">
+                                    <div className="font-semibold text-zinc-200">{tx.description}</div>
+                                    {tx.observation && (
+                                      <div className="text-[10px] text-zinc-500 line-clamp-1">{tx.observation}</div>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {cardMatch ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/80 border border-zinc-700/80 text-zinc-200 font-bold text-[10px]">
+                                        <CreditCardBrandLogo brand={cardMatch.brand} size={16} />
+                                        {cardMatch.name} (•••• {cardMatch.lastFourDigits})
+                                      </span>
+                                    ) : (
+                                      <span className="text-zinc-500 text-[11px]">Cartão Geral</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold border ${catMatch?.color || 'bg-zinc-800/50 text-zinc-400 border-zinc-700/50'}`}>
+                                      {catMatch?.name || '—'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {tx.parcelamento === 'sim' ? (
+                                      <span className="font-bold text-indigo-400">
+                                        {tx.parcelaAtual || 1}/{tx.numeroParcelas || 1}
+                                      </span>
+                                    ) : tx.parcelamento === 'recorrente' ? (
+                                      <span className="text-purple-400 font-semibold">Recorrente</span>
+                                    ) : (
+                                      <span className="text-zinc-500">À Vista</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-400 whitespace-nowrap">
+                                    - {formatCurrency(tx.value)}
+                                  </td>
+                                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const nextStatus = tx.pago === 'sim' ? 'nao' : 'sim';
+                                        setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, pago: nextStatus } : t));
+                                      }}
+                                      className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase border cursor-pointer transition-all hover:scale-105 ${
+                                        tx.pago === 'sim' 
+                                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                      }`}
+                                      title="Clique para alternar entre Pago e Pendente"
+                                    >
+                                      {tx.pago === 'sim' ? 'Pago' : 'Pendente'}
+                                    </button>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                    <div className="flex justify-end gap-1 items-center">
+                                      {tx.receiptImage && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedReceiptImage(tx.receiptImage || null)}
+                                          className="p-1.5 text-zinc-500 hover:text-indigo-400 rounded-lg hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                                          title="Visualizar Comprovante Anexado"
+                                        >
+                                          <Eye size={13} />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingTx(tx);
+                                          setTxDescription(tx.description);
+                                          setTxValue(tx.value.toString());
+                                          setTxType(tx.type);
+                                          setTxCategoryId(tx.categoryId);
+                                          setTxSubcategory(tx.subcategory || '');
+                                          setTxAccountId(tx.accountId);
+                                          setTxDate(tx.date);
+                                          setTxObservation(tx.observation || '');
+                                          setTxRecebido(tx.recebido || 'sim');
+                                          setTxRecebidoDe(tx.recebidoDe || '');
+                                          setTxDataRecebido(tx.dataRecebido || tx.date);
+                                          setTxDataLancamento(tx.dataLancamento || tx.date);
+                                          setTxParcelamento(tx.parcelamento || 'nao');
+                                          setTxFrequenciaParcelas(tx.frequenciaParcelas || 'mensal');
+                                          setTxNumeroParcelas(tx.numeroParcelas ? tx.numeroParcelas.toString() : '1');
+                                          setTxParcelaAtual(tx.parcelaAtual ? tx.parcelaAtual.toString() : '1');
+                                          setTxFormaPagamento(tx.formaPagamento || 'cartão');
+                                          setTxCreditCardId(tx.creditCardId || '');
+                                          setTxPago(tx.pago || 'sim');
+                                          setTxVaiPagarQuem(tx.vaiPagarQuem || '');
+                                          setTxDataVencimento(tx.dataVencimento || tx.date);
+                                          setTxReceiptImage(tx.receiptImage || null);
+                                          setShowTxModal(true);
+                                        }}
+                                        className="p-1.5 text-zinc-500 hover:text-indigo-400 rounded-lg hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                                        title="Editar Lançamento"
+                                      >
+                                        <Edit3 size={13} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteTx(tx.id)}
+                                        className="p-1.5 text-zinc-500 hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
+                                        title="Excluir Lançamento"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
