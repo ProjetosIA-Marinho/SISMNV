@@ -4838,81 +4838,132 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                 </div>
 
-                {/* ROW 2: REVENUE FLOW PILL BARS & EXPENSE SPLIT DONUT */}
+                {/* ROW 2: COMPARATIVE FLOW & EXPENSE SPLIT */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                   
-                  {/* Card 1: Revenue Flow (Fluxo Financeiro de Lançamentos) */}
+                  {/* Card 1: Comparative Flow (Fluxo Comparativo de Entradas vs Saídas) */}
                   <div className={`md:col-span-7 p-6 rounded-[26px] border flex flex-col justify-between shadow-lg ${
                     isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
                   }`}>
                     {/* Card Header */}
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                       <div>
-                        <h4 className={`text-sm font-extrabold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
-                          Fluxo de Receita
-                        </h4>
-                        <p className="text-[10px] text-zinc-500">Histórico de entradas e saídas</p>
+                        <div className="flex items-center gap-2">
+                          <h4 className={`text-sm font-extrabold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                            Fluxo Comparativo
+                          </h4>
+                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                            Entradas vs Saídas
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">Evolução mensal de receitas arrecadadas versus despesas</p>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                          isHighContrast ? 'bg-white border-zinc-300 text-zinc-700' : 'bg-[#191b24] border-white/10 text-zinc-300'
-                        }`}>
-                          Mensal
-                        </span>
-                        <div className="w-7 h-7 rounded-full bg-[#191b24] text-zinc-300 border border-white/10 flex items-center justify-center">
-                          <ArrowUpRight size={13} />
+                      {/* Legend */}
+                      <div className="flex items-center gap-3 self-start sm:self-auto">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
+                          <span className="text-[10px] font-bold text-zinc-400">Entradas</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-xs shadow-rose-400/50" />
+                          <span className="text-[10px] font-bold text-zinc-400">Saídas</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Rounded Pill Bar Chart */}
+                    {/* Comparative Dual Pill Bar Chart */}
                     <div className="pt-2 pb-1">
-                      {/* Active Tooltip Callout */}
-                      <div className="flex justify-end mb-1">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 shadow-xl text-white">
-                          <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-                          <span className="font-mono font-bold text-xs text-white">
-                            {formatCurrency(totalInflow || 2456)}
+                      {/* Active Tooltip / Aggregate Preview Callout */}
+                      <div className="flex items-center justify-between mb-2 px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-zinc-500 font-medium">Saldo Líquido do Período:</span>
+                          <span className={`text-[11px] font-mono font-black ${
+                            netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          }`}>
+                            {netCashFlow >= 0 ? '+' : ''}{formatCurrency(netCashFlow)}
                           </span>
-                          <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded-md">
-                            +16%
-                          </span>
+                        </div>
+
+                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-xl text-white text-[10px]">
+                          <span className="text-emerald-400 font-bold font-mono">+{formatCurrency(totalInflow)}</span>
+                          <span className="text-zinc-600">/</span>
+                          <span className="text-rose-400 font-bold font-mono">-{formatCurrency(totalOutflow)}</span>
                         </div>
                       </div>
 
-                      {/* Bars Track */}
-                      <div className="h-[170px] flex items-end justify-between gap-2 sm:gap-3 pt-4">
-                        {chartData.slice(-5).map((d, idx) => {
-                          const isLast = idx === 4;
-                          const inHeight = maxChartVal > 0 ? Math.max(15, Math.min(100, (d.inflows / maxChartVal) * 100)) : 35 + (idx * 12);
+                      {/* Paired Bars Track */}
+                      <div className="h-[175px] flex items-end justify-between gap-1.5 sm:gap-3 pt-3 border-b border-white/5 pb-2">
+                        {chartData.slice(-6).map((d, idx) => {
+                          const isLast = idx === chartData.slice(-6).length - 1;
+                          const inHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.inflows / maxChartVal) * 100)) : 15 + (idx * 10);
+                          const outHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.outflows / maxChartVal) * 100)) : 12 + (idx * 8);
+                          const net = d.inflows - d.outflows;
+
                           return (
-                            <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group cursor-pointer">
-                              {/* Pill Bar */}
-                              <div className="w-full flex items-end justify-center h-full">
-                                <div 
-                                  className={`w-9 sm:w-11 rounded-2xl transition-all duration-500 flex items-center justify-center p-1 relative overflow-hidden ${
-                                    isLast 
-                                      ? 'bg-gradient-to-t from-violet-600 via-indigo-500 to-purple-400 ring-2 ring-violet-400/40 shadow-lg shadow-violet-500/20' 
-                                      : 'bg-zinc-800/60 group-hover:bg-zinc-700/60'
-                                  }`}
-                                  style={{ height: `${inHeight}%` }}
-                                >
-                                  {isLast && (
-                                    <div className="w-3 h-3 rounded-full border-2 border-white bg-transparent shadow-md" />
-                                  )}
+                            <div 
+                              key={idx} 
+                              className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group cursor-pointer relative"
+                              title={`${d.label}\nEntradas: ${formatCurrency(d.inflows)}\nSaídas: ${formatCurrency(d.outflows)}\nSaldo Líquido: ${net >= 0 ? '+' : ''}${formatCurrency(net)}`}
+                            >
+                              {/* Hover Floating Tooltip */}
+                              <div className="absolute -top-14 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-30 bg-zinc-950/95 border border-white/20 px-2.5 py-1.5 rounded-xl shadow-2xl backdrop-blur-md whitespace-nowrap flex flex-col items-center">
+                                <span className="text-[9px] font-black text-white uppercase">{d.label}</span>
+                                <div className="flex items-center gap-1.5 text-[8.5px] font-mono font-bold mt-0.5">
+                                  <span className="text-emerald-400">+{formatCurrency(d.inflows)}</span>
+                                  <span className="text-zinc-600">|</span>
+                                  <span className="text-rose-400">-{formatCurrency(d.outflows)}</span>
                                 </div>
                               </div>
 
-                              {/* Amount Pill below bar */}
-                              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
-                                isLast ? 'bg-violet-500/20 text-violet-300 font-black' : 'text-zinc-400'
+                              {/* Side-by-Side Dual Bars Container */}
+                              <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full px-0.5">
+                                {/* Inflow (Entrada) Bar */}
+                                <div className="flex-1 max-w-[18px] sm:max-w-[22px] flex items-end justify-center h-full">
+                                  <div 
+                                    className={`w-full rounded-t-lg rounded-b-sm transition-all duration-500 relative overflow-hidden ${
+                                      d.inflows > 0 
+                                        ? 'bg-gradient-to-t from-emerald-600 via-teal-500 to-emerald-400 shadow-sm shadow-emerald-500/30 group-hover:brightness-110' 
+                                        : 'bg-zinc-800/40'
+                                    }`}
+                                    style={{ height: `${inHeight}%` }}
+                                  >
+                                    {isLast && d.inflows > 0 && (
+                                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Outflow (Saída) Bar */}
+                                <div className="flex-1 max-w-[18px] sm:max-w-[22px] flex items-end justify-center h-full">
+                                  <div 
+                                    className={`w-full rounded-t-lg rounded-b-sm transition-all duration-500 relative overflow-hidden ${
+                                      d.outflows > 0 
+                                        ? 'bg-gradient-to-t from-rose-600 via-pink-500 to-rose-400 shadow-sm shadow-rose-500/30 group-hover:brightness-110' 
+                                        : 'bg-zinc-800/40'
+                                    }`}
+                                    style={{ height: `${outHeight}%` }}
+                                  >
+                                    {isLast && d.outflows > 0 && (
+                                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Net Balance Micro Badge below bars */}
+                              <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                net >= 0 
+                                  ? 'bg-emerald-500/10 text-emerald-400' 
+                                  : 'bg-rose-500/10 text-rose-400'
                               }`}>
-                                +R${(d.inflows / 1000).toFixed(1)}k
+                                {net >= 0 ? '+' : ''}{(net / 1000).toFixed(1)}k
                               </span>
 
                               {/* Month label */}
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                                isLast ? 'text-white font-extrabold' : 'text-zinc-500'
+                              }`}>
                                 {d.label}
                               </span>
                             </div>
