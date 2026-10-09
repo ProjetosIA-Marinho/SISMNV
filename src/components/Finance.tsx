@@ -60,7 +60,12 @@ import {
   Phone,
   Mail,
   BookmarkPlus,
-  BookmarkCheck
+  BookmarkCheck,
+  Zap,
+  BarChart3,
+  Activity,
+  Percent,
+  TrendingDown
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -5107,6 +5112,419 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 })()}
               </div>
             )}
+
+            {/* 1.6. INTELIGÊNCIA FINANCEIRA & INDICADORES ESTRATÉGICOS (KPIs MODERNOS) */}
+            {(() => {
+              const savingsRate = totalInflow > 0 ? Math.round(((totalInflow - totalOutflow) / totalInflow) * 100) : 0;
+              const fixedPct = totalOutflow > 0 ? Math.round((totalDespesasFixas / totalOutflow) * 100) : 0;
+              const varPct = totalOutflow > 0 ? Math.round((totalDespesasVariaveis / totalOutflow) * 100) : 0;
+
+              // Daily average calculation
+              const daysInMonth = 30;
+              const dailyInflow = totalInflow / daysInMonth;
+              const dailyOutflow = totalOutflow / daysInMonth;
+
+              // Top expense category
+              const expenseCatTotals = categories
+                .filter(c => c.type === 'saida')
+                .map(c => ({
+                  category: c,
+                  total: filteredDashboardTxs.filter(t => t.categoryId === c.id).reduce((sum, t) => sum + t.value, 0)
+                }))
+                .sort((a, b) => b.total - a.total);
+              const topExpenseCat = expenseCatTotals[0];
+              const topExpensePct = totalOutflow > 0 && topExpenseCat ? Math.round((topExpenseCat.total / totalOutflow) * 100) : 0;
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Card 1: Taxa de Superávit / Poupança */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/30 border-zinc-800/80 hover:border-zinc-700'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                        <Activity size={13} className="text-emerald-400" />
+                        Taxa de Retenção
+                      </span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                        savingsRate >= 20 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                          : savingsRate >= 0 
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                      }`}>
+                        {savingsRate >= 20 ? 'Excelente' : savingsRate >= 0 ? 'Equilibrado' : 'Atenção'}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className={`text-xl font-extrabold font-mono ${savingsRate >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {savingsRate}%
+                      </span>
+                      <span className="text-[10px] text-zinc-500">das receitas poupadas</span>
+                    </div>
+                    {/* Visual Bar */}
+                    <div className="w-full h-1.5 rounded-full bg-zinc-800/60 overflow-hidden mt-3">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          savingsRate >= 20 ? 'bg-emerald-500' : savingsRate >= 0 ? 'bg-amber-500' : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${Math.max(0, Math.min(100, savingsRate))}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Card 2: Fixas vs Variáveis */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/30 border-zinc-800/80 hover:border-zinc-700'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                        <Percent size={13} className="text-indigo-400" />
+                        Fixas vs Variáveis
+                      </span>
+                      <span className="text-[9px] font-mono font-bold text-zinc-400">
+                        {fixedPct}% / {varPct}%
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between text-xs">
+                      <div>
+                        <span className="text-[9px] text-zinc-500 block">Fixas</span>
+                        <span className="font-bold text-indigo-400 text-xs font-mono">{formatCurrency(totalDespesasFixas)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] text-zinc-500 block">Variáveis</span>
+                        <span className="font-bold text-pink-400 text-xs font-mono">{formatCurrency(totalDespesasVariaveis)}</span>
+                      </div>
+                    </div>
+                    {/* Segmented Bi-color Bar */}
+                    <div className="w-full h-1.5 rounded-full bg-zinc-800/60 flex overflow-hidden mt-3 gap-0.5">
+                      <div className="bg-indigo-500 h-full transition-all duration-500" style={{ width: `${fixedPct}%` }} title={`Fixas: ${fixedPct}%`} />
+                      <div className="bg-pink-500 h-full transition-all duration-500" style={{ width: `${varPct}%` }} title={`Variáveis: ${varPct}%`} />
+                    </div>
+                  </div>
+
+                  {/* Card 3: Média Diária */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/30 border-zinc-800/80 hover:border-zinc-700'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                        <TrendingUp size={13} className="text-violet-400" />
+                        Média Diária
+                      </span>
+                      <span className="text-[9px] font-mono text-zinc-400 font-bold">30 dias</span>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between text-xs">
+                      <div>
+                        <span className="text-[9px] text-zinc-500 block">Entradas / dia</span>
+                        <span className="font-bold text-emerald-400 text-xs font-mono">{formatCurrency(dailyInflow)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] text-zinc-500 block">Saídas / dia</span>
+                        <span className="font-bold text-rose-400 text-xs font-mono">{formatCurrency(dailyOutflow)}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-between items-center text-[9px] text-zinc-500 pt-1 border-t border-zinc-800/40 font-mono">
+                      <span>Saldo Diário Médio:</span>
+                      <span className={dailyInflow >= dailyOutflow ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                        {formatCurrency(dailyInflow - dailyOutflow)}/dia
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Maior Centro de Custo */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/30 border-zinc-800/80 hover:border-zinc-700'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                        <AlertCircle size={13} className="text-rose-400" />
+                        Maior Centro de Custo
+                      </span>
+                      {topExpensePct > 0 && (
+                        <span className="text-[9px] font-mono font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">
+                          {topExpensePct}% do Total
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2">
+                      <p className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                        {topExpenseCat && topExpenseCat.total > 0 ? topExpenseCat.category.name : 'Nenhuma despesa'}
+                      </p>
+                      <p className="font-mono font-bold text-base text-rose-400 mt-0.5">
+                        {topExpenseCat && topExpenseCat.total > 0 ? formatCurrency(topExpenseCat.total) : 'R$ 0,00'}
+                      </p>
+                    </div>
+                    <p className="text-[9px] text-zinc-500 mt-1 truncate">
+                      {topExpenseCat?.category.mainCategory || 'Despesas operacionais'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 1.7. DESDOBRAMENTO MODERNO POR CATEGORIAS (ENTRADAS & SAÍDAS COM SUB-ITENS) */}
+            {(() => {
+              const inflowCats = categories
+                .filter(c => c.type === 'entrada')
+                .map(cat => {
+                  const catTxs = filteredDashboardTxs.filter(t => t.categoryId === cat.id);
+                  const amount = catTxs.reduce((sum, t) => sum + t.value, 0);
+                  const count = catTxs.length;
+                  const pct = totalInflow > 0 ? Math.round((amount / totalInflow) * 100) : 0;
+                  const subBreakdown = (cat.subcategories || []).map(sub => {
+                    const subAmount = catTxs.filter(t => t.subcategory?.toLowerCase() === sub.toLowerCase() || t.description?.toLowerCase().includes(sub.toLowerCase())).reduce((sum, t) => sum + t.value, 0);
+                    return { name: sub, amount: subAmount };
+                  }).filter(s => s.amount > 0);
+                  return { cat, amount, count, pct, subBreakdown };
+                })
+                .sort((a, b) => b.amount - a.amount);
+
+              const outflowCats = categories
+                .filter(c => c.type === 'saida')
+                .map(cat => {
+                  const catTxs = filteredDashboardTxs.filter(t => t.categoryId === cat.id);
+                  const amount = catTxs.reduce((sum, t) => sum + t.value, 0);
+                  const count = catTxs.length;
+                  const pct = totalOutflow > 0 ? Math.round((amount / totalOutflow) * 100) : 0;
+                  const subBreakdown = (cat.subcategories || []).map(sub => {
+                    const subAmount = catTxs.filter(t => t.subcategory?.toLowerCase() === sub.toLowerCase() || t.description?.toLowerCase().includes(sub.toLowerCase())).reduce((sum, t) => sum + t.value, 0);
+                    return { name: sub, amount: subAmount };
+                  }).filter(s => s.amount > 0);
+                  return { cat, amount, count, pct, subBreakdown };
+                })
+                .sort((a, b) => b.amount - a.amount);
+
+              const paymentMethods = [
+                { key: 'pix', label: 'PIX Instantâneo', icon: Zap, color: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+                { key: 'cartão', label: 'Cartão de Crédito / Débito', icon: CreditCard, color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+                { key: 'boleto', label: 'Boleto Bancário', icon: FileText, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+                { key: 'dinheiro', label: 'Dinheiro em Espécie', icon: DollarSign, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+                { key: 'transferência', label: 'Transferência / TED', icon: ArrowRightLeft, color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
+                { key: 'débito automático', label: 'Débito Automático', icon: RefreshCw, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+              ];
+
+              const grandTotalVolume = totalInflow + totalOutflow || 1;
+              const paymentDistribution = paymentMethods.map(pm => {
+                const pmTxs = filteredDashboardTxs.filter(t => (t.formaPagamento || 'pix') === pm.key || (pm.key === 'cartão' && t.creditCardId));
+                const totalVal = pmTxs.reduce((sum, t) => sum + t.value, 0);
+                const count = pmTxs.length;
+                const pct = Math.round((totalVal / grandTotalVolume) * 100);
+                return { ...pm, totalVal, count, pct };
+              }).filter(pm => pm.totalVal > 0 || pm.count > 0);
+
+              return (
+                <div className="space-y-4">
+                  {/* Category Inflow vs Outflow Cards Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* LEFT COLUMN: ENTRADAS POR CATEGORIA */}
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                      isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/40 border-zinc-800'
+                    }`}>
+                      <div>
+                        <div className="flex justify-between items-center pb-3.5 border-b border-zinc-800/50">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                              <ArrowUpRight size={15} />
+                            </div>
+                            <div>
+                              <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                Arrecadação por Categoria
+                              </h4>
+                              <p className="text-[10px] text-zinc-500">Distribuição de dízimos e ofertas</p>
+                            </div>
+                          </div>
+                          <span className="font-mono font-bold text-xs text-emerald-400">
+                            {formatCurrency(totalInflow)}
+                          </span>
+                        </div>
+
+                        {/* List of Inflow Categories */}
+                        <div className="divide-y divide-zinc-800/40 mt-3 space-y-3">
+                          {inflowCats.map((item, idx) => (
+                            <div key={item.cat.id} className="pt-3 first:pt-0 space-y-1.5 group">
+                              <div className="flex justify-between items-center text-xs">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="w-5 h-5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-400 flex items-center justify-center shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <span className={`font-bold truncate ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                    {item.cat.name}
+                                  </span>
+                                  <span className="text-[10px] text-zinc-500 font-mono hidden sm:inline">
+                                    ({item.count} {item.count === 1 ? 'lançamento' : 'lançamentos'})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <span className="font-mono font-bold text-emerald-400">
+                                    {formatCurrency(item.amount)}
+                                  </span>
+                                  <span className="font-mono text-[10px] text-zinc-400 font-bold w-9 text-right">
+                                    {item.pct}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div className={`w-full h-2 rounded-full overflow-hidden ${isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800/80'}`}>
+                                <div 
+                                  className="h-full rounded-full bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400 transition-all duration-500"
+                                  style={{ width: `${Math.max(item.pct, 2)}%` }}
+                                />
+                              </div>
+
+                              {/* Subcategories Breakdown Chips */}
+                              {item.subBreakdown.length > 0 && (
+                                <div className="flex items-center gap-1.5 flex-wrap pt-1 pl-7">
+                                  {item.subBreakdown.map((sub, sIdx) => (
+                                    <span 
+                                      key={sIdx}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-medium bg-zinc-800/60 border border-zinc-700/60 text-zinc-300"
+                                    >
+                                      <span>{sub.name}:</span>
+                                      <strong className="text-emerald-400 font-mono">{formatCurrency(sub.amount)}</strong>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: DESPESAS POR CATEGORIA */}
+                    <div className={`p-5 rounded-2xl border flex flex-col justify-between ${
+                      isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/40 border-zinc-800'
+                    }`}>
+                      <div>
+                        <div className="flex justify-between items-center pb-3.5 border-b border-zinc-800/50">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                              <ArrowDownRight size={15} />
+                            </div>
+                            <div>
+                              <h4 className={`text-xs font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                Despesas por Categoria
+                              </h4>
+                              <p className="text-[10px] text-zinc-500">Centros de custos e gastos operacionais</p>
+                            </div>
+                          </div>
+                          <span className="font-mono font-bold text-xs text-rose-400">
+                            {formatCurrency(totalOutflow)}
+                          </span>
+                        </div>
+
+                        {/* List of Outflow Categories */}
+                        <div className="divide-y divide-zinc-800/40 mt-3 space-y-3">
+                          {outflowCats.map((item, idx) => (
+                            <div key={item.cat.id} className="pt-3 first:pt-0 space-y-1.5 group">
+                              <div className="flex justify-between items-center text-xs">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="w-5 h-5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-400 flex items-center justify-center shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <span className={`font-bold truncate ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
+                                    {item.cat.name}
+                                  </span>
+                                  <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60 hidden sm:inline">
+                                    {item.cat.mainCategory || 'Despesa'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <span className="font-mono font-bold text-rose-400">
+                                    {formatCurrency(item.amount)}
+                                  </span>
+                                  <span className="font-mono text-[10px] text-zinc-400 font-bold w-9 text-right">
+                                    {item.pct}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div className={`w-full h-2 rounded-full overflow-hidden ${isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800/80'}`}>
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    item.cat.mainCategory === 'Despesas Fixas'
+                                      ? 'bg-gradient-to-r from-indigo-600 via-purple-500 to-indigo-400'
+                                      : 'bg-gradient-to-r from-rose-600 via-pink-500 to-rose-400'
+                                  }`}
+                                  style={{ width: `${Math.max(item.pct, 2)}%` }}
+                                />
+                              </div>
+
+                              {/* Subcategories Breakdown Chips */}
+                              {item.subBreakdown.length > 0 && (
+                                <div className="flex items-center gap-1.5 flex-wrap pt-1 pl-7">
+                                  {item.subBreakdown.map((sub, sIdx) => (
+                                    <span 
+                                      key={sIdx}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-medium bg-zinc-800/60 border border-zinc-700/60 text-zinc-300"
+                                    >
+                                      <span>{sub.name}:</span>
+                                      <strong className="text-rose-400 font-mono">{formatCurrency(sub.amount)}</strong>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BOTTOM: FORMAS DE PAGAMENTO & MOVIMENTAÇÃO */}
+                  {paymentDistribution.length > 0 && (
+                    <div className={`p-4 rounded-2xl border ${
+                      isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900/30 border-zinc-800'
+                    }`}>
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
+                          isHighContrast ? 'text-zinc-800' : 'text-zinc-200'
+                        }`}>
+                          <Layers size={13} className="text-indigo-400" />
+                          Movimentação por Meio de Pagamento
+                        </h4>
+                        <span className="text-[10px] text-zinc-500 font-medium">Consolidado no período</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                        {paymentDistribution.map(pm => {
+                          const IconComp = pm.icon;
+                          return (
+                            <div 
+                              key={pm.key}
+                              className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                                isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800/70 hover:border-zinc-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className={`p-1.5 rounded-lg border ${pm.color}`}>
+                                  <IconComp size={12} />
+                                </div>
+                                <span className="text-[9px] font-mono font-bold text-zinc-400">
+                                  {pm.pct}%
+                                </span>
+                              </div>
+                              <div className="mt-2">
+                                <span className="text-[9px] font-bold text-zinc-400 block truncate">{pm.label}</span>
+                                <span className={`font-mono font-bold text-xs mt-0.5 block ${isHighContrast ? 'text-zinc-900' : 'text-zinc-100'}`}>
+                                  {formatCurrency(pm.totalVal)}
+                                </span>
+                              </div>
+                              <span className="text-[8px] text-zinc-500 font-mono mt-1 block">
+                                {pm.count} {pm.count === 1 ? 'operação' : 'operações'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* FLOW MAPPING MINDMAP DIAGRAM */}
             <div className="space-y-3">
