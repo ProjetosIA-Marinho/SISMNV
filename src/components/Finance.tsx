@@ -5084,18 +5084,18 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         </div>
                       </div>
 
-                      {/* Paired Bars Track */}
-                      <div className="h-[175px] flex items-end justify-between gap-1.5 sm:gap-3 pt-3 border-b border-zinc-200/40 dark:border-white/5 pb-2">
-                        {chartData.slice(-6).map((d, idx) => {
-                          const isLast = idx === chartData.slice(-6).length - 1;
-                          const inHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.inflows / maxChartVal) * 100)) : 15 + (idx * 10);
-                          const outHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.outflows / maxChartVal) * 100)) : 12 + (idx * 8);
+                      {/* Paired Bars Track - All 12 Months Comparison */}
+                      <div className="h-[185px] flex items-end justify-between gap-1 sm:gap-1.5 pt-3 border-b border-zinc-200/40 dark:border-white/5 pb-2 overflow-x-auto scrollbar-none">
+                        {chartData.map((d, idx) => {
+                          const isLast = idx === chartData.length - 1;
+                          const inHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.inflows / maxChartVal) * 100)) : 15 + (idx * 5);
+                          const outHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.outflows / maxChartVal) * 100)) : 12 + (idx * 5);
                           const net = d.inflows - d.outflows;
 
                           return (
                             <div 
                               key={idx} 
-                              className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group cursor-pointer relative"
+                              className="flex-1 flex flex-col items-center gap-1 h-full justify-end group cursor-pointer relative min-w-[22px] sm:min-w-0"
                               title={`${d.label}\nEntradas: ${formatCurrency(d.inflows)}\nSaídas: ${formatCurrency(d.outflows)}\nSaldo Líquido: ${net >= 0 ? '+' : ''}${formatCurrency(net)}`}
                             >
                               {/* Hover Floating Tooltip */}
@@ -5109,11 +5109,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               </div>
 
                               {/* Side-by-Side Dual Bars Container */}
-                              <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full px-0.5">
+                              <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-full px-0.5">
                                 {/* Inflow (Entrada) Bar */}
-                                <div className="flex-1 max-w-[18px] sm:max-w-[22px] flex items-end justify-center h-full">
+                                <div className="flex-1 max-w-[9px] sm:max-w-[13px] flex items-end justify-center h-full">
                                   <div 
-                                    className={`w-full rounded-t-lg rounded-b-sm transition-all duration-500 relative overflow-hidden ${
+                                    className={`w-full rounded-t-md rounded-b-xs transition-all duration-500 relative overflow-hidden ${
                                       d.inflows > 0 
                                         ? 'bg-gradient-to-t from-emerald-600 via-teal-500 to-emerald-400 shadow-sm shadow-emerald-500/30 group-hover:brightness-110' 
                                         : (isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800/40')
@@ -5121,15 +5121,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     style={{ height: `${inHeight}%` }}
                                   >
                                     {isLast && d.inflows > 0 && (
-                                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+                                      <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-xs" />
                                     )}
                                   </div>
                                 </div>
 
                                 {/* Outflow (Saída) Bar */}
-                                <div className="flex-1 max-w-[18px] sm:max-w-[22px] flex items-end justify-center h-full">
+                                <div className="flex-1 max-w-[9px] sm:max-w-[13px] flex items-end justify-center h-full">
                                   <div 
-                                    className={`w-full rounded-t-lg rounded-b-sm transition-all duration-500 relative overflow-hidden ${
+                                    className={`w-full rounded-t-md rounded-b-xs transition-all duration-500 relative overflow-hidden ${
                                       d.outflows > 0 
                                         ? 'bg-gradient-to-t from-rose-600 via-pink-500 to-rose-400 shadow-sm shadow-rose-500/30 group-hover:brightness-110' 
                                         : (isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800/40')
@@ -5137,14 +5137,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     style={{ height: `${outHeight}%` }}
                                   >
                                     {isLast && d.outflows > 0 && (
-                                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
+                                      <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-xs" />
                                     )}
                                   </div>
                                 </div>
                               </div>
 
                               {/* Net Balance Micro Badge below bars */}
-                              <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                              <span className={`text-[7.5px] sm:text-[8px] font-mono font-bold px-1 py-0.2 rounded truncate max-w-full text-center ${
                                 net >= 0 
                                   ? (isHighContrast ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/10 text-emerald-400') 
                                   : (isHighContrast ? 'bg-rose-100 text-rose-800' : 'bg-rose-500/10 text-rose-400')
@@ -5153,12 +5153,12 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               </span>
 
                               {/* Month label */}
-                              <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                              <span className={`text-[8.5px] sm:text-[9.5px] font-bold uppercase tracking-tight truncate ${
                                 isLast 
                                   ? (isHighContrast ? 'text-indigo-600 font-black' : 'text-white font-extrabold') 
                                   : (isHighContrast ? 'text-zinc-600' : 'text-zinc-400')
                               }`}>
-                                {d.label}
+                                {d.label.split(' ')[0]}
                               </span>
                             </div>
                           );
@@ -6392,46 +6392,103 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   })()}
                 </div>
 
-                {/* 3. Registered Bank Accounts Mini List (Com Saldos Reais Calculados) */}
+                {/* 3. Registered Bank Accounts List (Todas as Contas Cadastradas com Saldos Reais) */}
                 <div className="space-y-3 pt-2 border-t border-zinc-800/40">
                   <div className="flex justify-between items-center">
-                    <h4 className={`text-xs font-extrabold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-400'}`}>
-                      Contas Bancárias ({accounts.length})
-                    </h4>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className={`text-xs font-extrabold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-400'}`}>
+                        Contas Bancárias
+                      </h4>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+                        {accounts.length}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setActiveSubTab('accounts')}
-                      className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                      className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-0.5 cursor-pointer"
                     >
-                      Ver Todas
+                      Gerenciar <ChevronRight size={11} />
                     </button>
                   </div>
 
-                  <div className="space-y-2">
-                    {accounts.slice(0, 4).map((acc) => {
+                  {/* Complete list of all registered bank accounts */}
+                  <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-700/50">
+                    {accounts.map((acc) => {
                       const realBalance = getAccountRealBalance(acc.id);
+                      const isInvest = acc.name.toLowerCase().includes('invest') || acc.name.toLowerCase().includes('cdb') || acc.accountType === 'investimento';
+                      const isPoupança = acc.name.toLowerCase().includes('poup') || acc.accountType === 'poupanca';
+
                       return (
                         <div 
                           key={acc.id}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
-                            isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#181a24] border-white/5'
+                          onClick={() => {
+                            setDashEvolutionAccountId(acc.id);
+                          }}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all hover:border-indigo-500/40 cursor-pointer ${
+                            dashEvolutionAccountId === acc.id
+                              ? (isHighContrast ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-400/30' : 'bg-indigo-950/30 border-indigo-500/40 ring-1 ring-indigo-500/20')
+                              : (isHighContrast ? 'bg-white border-zinc-200 hover:bg-zinc-50' : 'bg-[#181a24] border-white/5 hover:bg-[#1f2230]')
                           }`}
+                          title="Clique para filtrar o gráfico por esta conta"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={22} />
-                            <div className="min-w-0">
-                              <p className={`text-[11px] font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</p>
-                              <p className={`text-[8.5px] font-mono truncate ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>{acc.bankName}</p>
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="shrink-0">
+                              <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={24} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className={`text-[11.5px] font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                  {acc.name}
+                                </p>
+                                {isInvest ? (
+                                  <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 shrink-0 uppercase">
+                                    CDB/Inv
+                                  </span>
+                                ) : isPoupança ? (
+                                  <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 shrink-0 uppercase">
+                                    Poup
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-zinc-500/10 text-zinc-400 shrink-0">
+                                    CC
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-[9px] font-mono truncate mt-0.5 ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                                {acc.bankName} {acc.accountNumber ? `• Ag: ${acc.agency || '0000'} C/C: ${acc.accountNumber}` : ''}
+                              </p>
                             </div>
                           </div>
-                          <span className={`font-mono font-bold text-xs ${
-                            realBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                          }`}>
-                            {formatCurrency(realBalance)}
-                          </span>
+
+                          <div className="text-right shrink-0">
+                            <span className={`font-mono font-bold text-xs block ${
+                              realBalance >= 0 ? (isHighContrast ? 'text-emerald-700' : 'text-emerald-400') : 'text-rose-400'
+                            }`}>
+                              {formatCurrency(realBalance)}
+                            </span>
+                            <span className="text-[8px] font-medium text-zinc-500 block">
+                              saldo atual
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Total Bank Balance Summary Footer */}
+                  <div className={`p-2.5 rounded-xl border flex items-center justify-between mt-1 ${
+                    isHighContrast ? 'bg-zinc-100 border-zinc-300' : 'bg-[#151824] border-white/10'
+                  }`}>
+                    <div className="flex items-center gap-1.5">
+                      <Wallet size={13} className="text-indigo-400" />
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>
+                        Total em Bancos
+                      </span>
+                    </div>
+                    <span className={`font-mono font-black text-xs ${isHighContrast ? 'text-zinc-950' : 'text-white'}`}>
+                      {formatCurrency(totalBankBalance)}
+                    </span>
                   </div>
                 </div>
 
