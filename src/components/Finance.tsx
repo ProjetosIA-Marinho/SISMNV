@@ -78,7 +78,59 @@ import { BulkImportModal } from './BulkImportModal';
 import { BulkCategoryImportModal } from './BulkCategoryImportModal';
 import { BulkTransferImportModal } from './BulkTransferImportModal';
 
+export const isLightCardColor = (color?: string) => {
+  if (!color) return false;
+  const c = color.trim().toLowerCase();
+  if (
+    c === '#ffffff' || 
+    c === '#fff' || 
+    c === '#f4f4f5' || 
+    c === '#f8fafc' || 
+    c === '#fafafa' || 
+    c === '#e4e4e7' || 
+    c === '#e2e8f0' ||
+    c === '#f1f5f9' ||
+    c.startsWith('from-white') || 
+    c.startsWith('bg-white') || 
+    c.includes('white') || 
+    c.includes('zinc-100') || 
+    c.includes('gray-100')
+  ) {
+    return true;
+  }
+  if (c.startsWith('#') && (c.length === 7 || c.length === 4)) {
+    let hex = c.substring(1);
+    if (hex.length === 3) {
+      hex = hex.split('').map(x => x + x).join('');
+    }
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 155;
+    }
+  }
+  return false;
+};
+
 export const INITIAL_CREDIT_CARDS: CreditCard[] = [
+  {
+    id: 'card-cora',
+    name: 'Cora Corporativo',
+    cardholderName: 'FINANCEIRO MNV',
+    lastFourDigits: '0447',
+    brand: 'visa',
+    bankName: 'Cora',
+    bankAccountId: 'acc-6',
+    limit: 20000,
+    usedLimit: 0,
+    closingDay: 8,
+    dueDay: 15,
+    color: '#ffffff',
+    status: 'active',
+    notes: 'Cartão Cora Corporativo'
+  },
   {
     id: 'card-1',
     name: 'Itaú Corporate Black',
@@ -270,11 +322,11 @@ export const INITIAL_FINANCIAL_ENTITIES: FinancialEntity[] = [
   }
 ];
 
-export function CreditCardBrandLogo({ brand, size = 28 }: { brand?: string; size?: number }) {
+export function CreditCardBrandLogo({ brand, size = 28, isLight = false }: { brand?: string; size?: number; isLight?: boolean }) {
   const b = (brand || '').toLowerCase();
   if (b === 'visa') {
     return (
-      <span className="font-black italic tracking-tighter text-white font-sans text-sm select-none drop-shadow">
+      <span className={`font-black italic tracking-tighter font-sans text-sm select-none ${isLight ? 'text-zinc-950 font-black' : 'text-white drop-shadow'}`}>
         VISA
       </span>
     );
@@ -289,28 +341,30 @@ export function CreditCardBrandLogo({ brand, size = 28 }: { brand?: string; size
   }
   if (b === 'elo') {
     return (
-      <div className="flex items-center gap-0.5 font-black text-xs text-white tracking-tight select-none drop-shadow">
-        <span className="text-yellow-400">e</span>
+      <div className={`flex items-center gap-0.5 font-black text-xs tracking-tight select-none ${isLight ? 'text-zinc-950' : 'text-white drop-shadow'}`}>
+        <span className="text-yellow-500">e</span>
         <span className="text-red-500">l</span>
-        <span className="text-sky-400">o</span>
+        <span className="text-sky-500">o</span>
       </div>
     );
   }
   if (b === 'amex') {
     return (
-      <span className="font-black text-[9px] tracking-widest text-sky-200 border border-sky-400/50 px-1 py-0.5 rounded bg-sky-950/70 select-none">
+      <span className={`font-black text-[9px] tracking-widest border px-1 py-0.5 rounded select-none ${
+        isLight ? 'text-sky-950 border-sky-500/60 bg-sky-100 font-extrabold' : 'text-sky-200 border-sky-400/50 bg-sky-950/70'
+      }`}>
         AMEX
       </span>
     );
   }
   if (b === 'hipercard') {
     return (
-      <span className="font-black text-[10px] text-red-400 italic tracking-tighter select-none">
+      <span className="font-black text-[10px] text-red-500 italic tracking-tighter select-none">
         HIPERCARD
       </span>
     );
   }
-  return <CreditCard size={size * 0.65} className="text-zinc-300" />;
+  return <CreditCard size={size * 0.65} className={isLight ? 'text-zinc-800' : 'text-zinc-300'} />;
 }
 
 export const getAccountTypeLabel = (type?: BankAccountType | string) => {
@@ -362,6 +416,10 @@ function BankLogo({ bankName, imageUrl, size = 32 }: { bankName: string; imageUr
         <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[#f29100]" />
       </div>
     );
+  } else if (normalized.includes('cora')) {
+    bg = 'bg-[#6b1236]';
+    fg = 'text-white font-extrabold';
+    content = <span className="text-[9px] font-black tracking-tighter">cora</span>;
   } else if (normalized.includes('nubank')) {
     bg = 'bg-[#820ad1]';
     fg = 'text-white font-bold';
@@ -463,7 +521,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
     const saved = localStorage.getItem('admmnv_finance_credit_cards');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (!parsed.some((c: any) => c.id === 'card-cora' || c.lastFourDigits === '0447')) {
+            return [...INITIAL_CREDIT_CARDS.filter(ic => ic.id === 'card-cora'), ...parsed];
+          }
+          return parsed;
+        }
       } catch (e) {
         console.error(e);
       }
@@ -5379,85 +5443,109 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         })()}
 
                         {/* Front Active Main Card (Custom Image, Solid Color, or Gradient) */}
-                        <div 
-                          onClick={() => {
-                            if (creditCards.length > 1) {
-                              setDashSelectedCardIndex((safeIndex + 1) % creditCards.length);
-                            }
-                          }}
-                          className={`w-full aspect-[1.586/1] rounded-2xl p-5 relative overflow-hidden shadow-2xl flex flex-col justify-between border cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
-                            creditCards.length > 2 ? '-translate-y-12' : creditCards.length === 2 ? '-translate-y-6' : ''
-                          } ${activeCard.image ? 'border-zinc-700' : 'border-white/10'}`}
-                          style={
-                            !activeCard.image && activeCard.color?.startsWith('#') 
-                              ? { backgroundColor: activeCard.color } 
-                              : undefined
-                          }
-                        >
-                          {/* Card Background: Custom Image, Gradient or Solid */}
-                          {activeCard.image ? (
-                            <div className="absolute inset-0 z-0">
-                              <img src={activeCard.image} alt={activeCard.name} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/60 backdrop-blur-[0.5px]" />
-                            </div>
-                          ) : !activeCard.color?.startsWith('#') ? (
-                            <div className={`absolute inset-0 z-0 ${
-                              activeCard.color?.startsWith('from-') 
-                                ? `bg-gradient-to-br ${activeCard.color}` 
-                                : activeCard.color?.startsWith('bg-')
-                                  ? activeCard.color
-                                  : 'bg-gradient-to-br from-[#8b5cf6] via-[#6366f1] to-[#3b82f6]'
-                            }`}>
-                              <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
-                              <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
-                            </div>
-                          ) : (
-                            <div className="absolute inset-0 z-0">
-                              <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
-                              <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
-                            </div>
-                          )}
+                        {(() => {
+                          const isLight = !activeCard.image && isLightCardColor(activeCard.color);
+                          return (
+                            <div 
+                              onClick={() => {
+                                if (creditCards.length > 1) {
+                                  setDashSelectedCardIndex((safeIndex + 1) % creditCards.length);
+                                }
+                              }}
+                              className={`w-full aspect-[1.586/1] rounded-2xl p-5 relative overflow-hidden shadow-2xl flex flex-col justify-between border cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
+                                creditCards.length > 2 ? '-translate-y-12' : creditCards.length === 2 ? '-translate-y-6' : ''
+                              } ${isLight ? 'border-zinc-300 shadow-xl' : activeCard.image ? 'border-zinc-700' : 'border-white/10'}`}
+                              style={
+                                !activeCard.image && (activeCard.color?.startsWith('#') || isLight)
+                                  ? { backgroundColor: activeCard.color || '#ffffff' } 
+                                  : undefined
+                              }
+                            >
+                              {/* Card Background: Custom Image, Gradient or Solid */}
+                              {activeCard.image ? (
+                                <div className="absolute inset-0 z-0">
+                                  <img src={activeCard.image} alt={activeCard.name} className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[0.5px]" />
+                                </div>
+                              ) : !activeCard.color?.startsWith('#') && !isLight ? (
+                                <div className={`absolute inset-0 z-0 ${
+                                  activeCard.color?.startsWith('from-') 
+                                    ? `bg-gradient-to-br ${activeCard.color}` 
+                                    : activeCard.color?.startsWith('bg-')
+                                      ? activeCard.color
+                                      : 'bg-gradient-to-br from-[#8b5cf6] via-[#6366f1] to-[#3b82f6]'
+                                }`}>
+                                  <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
+                                  <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
+                                </div>
+                              ) : (
+                                <div className="absolute inset-0 z-0">
+                                  <div className={`absolute -right-8 -top-8 w-36 h-36 rounded-full border ${isLight ? 'border-zinc-900/10' : 'border-white/10'}`} />
+                                  <div className={`absolute -left-8 -bottom-8 w-36 h-36 rounded-full border ${isLight ? 'border-zinc-900/10' : 'border-white/10'}`} />
+                                </div>
+                              )}
 
-                          {/* Top row */}
-                          <div className="relative z-10 flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-5.5 rounded-md bg-gradient-to-tr from-amber-400 via-amber-200 to-yellow-500 border border-amber-600/40 shadow-inner grid grid-cols-2 gap-0.5 p-0.5">
-                                <div className="border border-amber-800/30 rounded-xs" />
-                                <div className="border border-amber-800/30 rounded-xs" />
-                                <div className="border border-amber-800/30 rounded-xs" />
-                                <div className="border border-amber-800/30 rounded-xs" />
+                              {/* Top row */}
+                              <div className="relative z-10 flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-5.5 rounded-md bg-gradient-to-tr from-amber-400 via-amber-200 to-yellow-500 border border-amber-600/40 shadow-inner grid grid-cols-2 gap-0.5 p-0.5">
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                    <div className="border border-amber-800/30 rounded-xs" />
+                                  </div>
+                                  <Wifi size={13} className={`rotate-90 ${isLight ? 'text-zinc-800' : 'text-white/80'}`} />
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {activeCard.bankName && (
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border truncate max-w-[110px] ${
+                                      isLight 
+                                        ? 'bg-zinc-100 text-zinc-900 border-zinc-300 shadow-xs' 
+                                        : 'bg-black/40 text-white border-white/10'
+                                    }`}>
+                                      {activeCard.bankName}
+                                    </span>
+                                  )}
+                                  <CreditCardBrandLogo brand={activeCard.brand} size={28} isLight={isLight} />
+                                </div>
                               </div>
-                              <Wifi size={13} className="rotate-90 text-white/80" />
-                            </div>
 
-                            <span className="font-black uppercase text-xs tracking-widest text-white drop-shadow">
-                              {activeCard.brand.toUpperCase()}
-                            </span>
-                          </div>
+                              {/* Middle: Masked Number */}
+                              <div className="relative z-10 py-1">
+                                <p className={`font-mono text-base tracking-[0.2em] font-black ${
+                                  isLight ? 'text-zinc-950' : 'text-white drop-shadow-md'
+                                }`}>
+                                  •••• •••• •••• {activeCard.lastFourDigits}
+                                </p>
+                              </div>
 
-                          {/* Middle: Masked Number */}
-                          <div className="relative z-10 py-1">
-                            <p className="font-mono text-base tracking-[0.2em] text-white font-black drop-shadow-md">
-                              •••• •••• •••• {activeCard.lastFourDigits}
-                            </p>
-                          </div>
-
-                          {/* Bottom: Holder & Expiry */}
-                          <div className="relative z-10 flex justify-between items-end">
-                            <div>
-                              <p className="text-[7.5px] uppercase tracking-widest text-white/80 font-bold">Titular</p>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow max-w-[160px]">
-                                {activeCard.cardholderName || 'MINISTÉRIO NOVA VIDA'}
-                              </p>
+                              {/* Bottom: Holder & Expiry */}
+                              <div className="relative z-10 flex justify-between items-end">
+                                <div>
+                                  <p className={`text-[7.5px] uppercase tracking-widest font-bold ${
+                                    isLight ? 'text-zinc-500' : 'text-white/80'
+                                  }`}>Titular</p>
+                                  <p className={`text-[10px] font-black uppercase tracking-wider truncate font-mono max-w-[160px] ${
+                                    isLight ? 'text-zinc-950' : 'text-white drop-shadow'
+                                  }`}>
+                                    {activeCard.cardholderName || 'MINISTÉRIO NOVA VIDA'}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`text-[7.5px] uppercase tracking-widest font-bold ${
+                                    isLight ? 'text-zinc-500' : 'text-white/80'
+                                  }`}>Venc.</p>
+                                  <p className={`text-[10px] font-bold font-mono ${
+                                    isLight ? 'text-zinc-950 font-black' : 'text-white'
+                                  }`}>
+                                    Dia {activeCard.dueDay}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-[7.5px] uppercase tracking-widest text-white/80 font-bold">Venc.</p>
-                              <p className="text-[10px] font-bold text-white font-mono">
-                                Dia {activeCard.dueDay}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                          );
+                        })()}
 
                         {/* Invoice & Limit Panel for Selected Month */}
                         <div className={`p-3.5 rounded-2xl border space-y-2.5 transition-all shadow-md mt-2 ${
@@ -7174,6 +7262,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   const limit = card.limit || 1;
                   const usagePct = Math.min(100, Math.round((used / limit) * 100));
                   const available = Math.max(0, limit - used);
+                  const isLight = !card.image && isLightCardColor(card.color);
 
                   return (
                     <div 
@@ -7184,8 +7273,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     >
                       {/* Realistic Visual Credit Card */}
                       <div className={`w-full aspect-[1.586/1] rounded-2xl relative p-5 overflow-hidden shadow-2xl flex flex-col justify-between border select-none transition-transform duration-300 group-hover:scale-[1.01] ${
-                        card.image ? 'border-zinc-700/60' : 'border-white/10'
-                      }`}>
+                        isLight ? 'border-zinc-300 shadow-xl' : card.image ? 'border-zinc-700/60' : 'border-white/10'
+                      }`}
+                      style={
+                        !card.image && (card.color?.startsWith('#') || isLight)
+                          ? { backgroundColor: card.color || '#ffffff' }
+                          : undefined
+                      }>
                         {/* Background: Custom Image or Color Gradient */}
                         {card.image ? (
                           <div className="absolute inset-0 z-0">
@@ -7197,11 +7291,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             {/* Glassmorphic lighting gradient overlay for high readability */}
                             <div className="absolute inset-0 bg-gradient-to-tr from-black/90 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
                           </div>
-                        ) : card.color?.startsWith('#') ? (
-                          <div className="absolute inset-0 z-0" style={{ backgroundColor: card.color }}>
+                        ) : card.color?.startsWith('#') || isLight ? (
+                          <div className="absolute inset-0 z-0" style={{ backgroundColor: card.color || '#ffffff' }}>
                             {/* Subtle geometric lines */}
-                            <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
-                            <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+                            <div className={`absolute -right-12 -top-12 w-48 h-48 rounded-full border pointer-events-none ${isLight ? 'border-zinc-900/10' : 'border-white/5'}`} />
+                            <div className={`absolute -left-12 -bottom-12 w-48 h-48 rounded-full border pointer-events-none ${isLight ? 'border-zinc-900/10' : 'border-white/5'}`} />
                           </div>
                         ) : (
                           <div className={`absolute inset-0 z-0 ${
@@ -7229,13 +7323,19 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             </div>
 
                             {/* Contactless Wifi Icon */}
-                            <Wifi size={17} className="rotate-90 text-white/70" />
+                            <Wifi size={17} className={`rotate-90 ${isLight ? 'text-zinc-800' : 'text-white/70'}`} />
                           </div>
 
                           {/* Bank Name / Logo */}
-                          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                          <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full border ${
+                            isLight 
+                              ? 'bg-zinc-100 text-zinc-900 border-zinc-300 shadow-xs' 
+                              : 'bg-black/40 backdrop-blur-md border-white/10 text-white'
+                          }`}>
                             <BankLogo bankName={card.bankName} size={20} />
-                            <span className="text-[11px] font-bold text-white tracking-wide truncate max-w-[120px]">
+                            <span className={`text-[11px] font-bold tracking-wide truncate max-w-[120px] ${
+                              isLight ? 'text-zinc-900' : 'text-white'
+                            }`}>
                               {card.bankName}
                             </span>
                           </div>
@@ -7243,7 +7343,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                         {/* Card Middle Row: Masked Number */}
                         <div className="relative z-10 py-1">
-                          <p className="font-mono text-base tracking-[0.25em] text-white font-black drop-shadow-md">
+                          <p className={`font-mono text-base tracking-[0.25em] font-black ${
+                            isLight ? 'text-zinc-950' : 'text-white drop-shadow-md'
+                          }`}>
                             ••••  ••••  ••••  {card.lastFourDigits}
                           </p>
                         </div>
@@ -7251,11 +7353,17 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         {/* Card Bottom Row: Cardholder, Dates & Brand Logo */}
                         <div className="relative z-10 flex justify-between items-end">
                           <div className="space-y-0.5 min-w-0 flex-1 mr-2">
-                            <p className="text-[8px] uppercase tracking-widest text-zinc-400 font-bold">Titular</p>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-white truncate font-mono drop-shadow">
+                            <p className={`text-[8px] uppercase tracking-widest font-bold ${
+                              isLight ? 'text-zinc-500' : 'text-zinc-400'
+                            }`}>Titular</p>
+                            <p className={`text-[11px] font-black uppercase tracking-wider truncate font-mono ${
+                              isLight ? 'text-zinc-950' : 'text-white drop-shadow'
+                            }`}>
                               {card.cardholderName || 'MINISTÉRIO NOVA VIDA'}
                             </p>
-                            <div className="flex items-center gap-2 text-[8px] font-semibold text-zinc-300 pt-0.5">
+                            <div className={`flex items-center gap-2 text-[8px] font-bold pt-0.5 ${
+                              isLight ? 'text-zinc-600' : 'text-zinc-300'
+                            }`}>
                               <span>FECH: Dia {card.closingDay}</span>
                               <span>•</span>
                               <span>VENC: Dia {card.dueDay}</span>
@@ -7263,7 +7371,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           </div>
 
                           <div className="shrink-0 flex flex-col items-end">
-                            <CreditCardBrandLogo brand={card.brand} size={32} />
+                            <CreditCardBrandLogo brand={card.brand} size={32} isLight={isLight} />
                           </div>
                         </div>
 
@@ -11951,59 +12059,85 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
               <form onSubmit={handleSaveCard} className="p-6 space-y-4 overflow-y-auto scrollbar-thin">
                 {/* Real-time Card Visual Preview */}
-                <div className="w-full aspect-[2.2/1] rounded-xl relative p-4 overflow-hidden shadow-xl flex flex-col justify-between border border-white/10 select-none">
-                  {cardImage ? (
-                    <div className="absolute inset-0 z-0">
-                      <img src={cardImage} alt="Preview" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-tr from-black/85 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
-                    </div>
-                  ) : cardColor?.startsWith('#') ? (
-                    <div className="absolute inset-0 z-0" style={{ backgroundColor: cardColor }}>
-                      <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
-                      <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
-                    </div>
-                  ) : (
-                    <div className={`absolute inset-0 z-0 ${
-                      cardColor?.startsWith('from-') 
-                        ? `bg-gradient-to-br ${cardColor}` 
-                        : cardColor?.startsWith('bg-')
-                          ? cardColor
-                          : 'bg-gradient-to-br from-zinc-950 via-neutral-900 to-black'
-                    }`}>
-                      <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
-                      <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
-                    </div>
-                  )}
+                {(() => {
+                  const isLight = !cardImage && isLightCardColor(cardColor);
+                  return (
+                    <div 
+                      className={`w-full aspect-[2.2/1] rounded-xl relative p-4 overflow-hidden shadow-xl flex flex-col justify-between border select-none ${
+                        isLight ? 'border-zinc-300 shadow-xl' : 'border-white/10'
+                      }`}
+                      style={
+                        !cardImage && (cardColor?.startsWith('#') || isLight)
+                          ? { backgroundColor: cardColor || '#ffffff' }
+                          : undefined
+                      }
+                    >
+                      {cardImage ? (
+                        <div className="absolute inset-0 z-0">
+                          <img src={cardImage} alt="Preview" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-tr from-black/85 via-black/55 to-black/35 backdrop-blur-[0.5px]" />
+                        </div>
+                      ) : cardColor?.startsWith('#') || isLight ? (
+                        <div className="absolute inset-0 z-0" style={{ backgroundColor: cardColor || '#ffffff' }}>
+                          <div className={`absolute -right-8 -top-8 w-36 h-36 rounded-full border ${isLight ? 'border-zinc-900/10' : 'border-white/10'}`} />
+                          <div className={`absolute -left-8 -bottom-8 w-36 h-36 rounded-full border ${isLight ? 'border-zinc-900/10' : 'border-white/10'}`} />
+                        </div>
+                      ) : (
+                        <div className={`absolute inset-0 z-0 ${
+                          cardColor?.startsWith('from-') 
+                            ? `bg-gradient-to-br ${cardColor}` 
+                            : cardColor?.startsWith('bg-')
+                              ? cardColor
+                              : 'bg-gradient-to-br from-zinc-950 via-neutral-900 to-black'
+                        }`}>
+                          <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/10" />
+                          <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full border border-white/10" />
+                        </div>
+                      )}
 
-                  <div className="relative z-10 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-5 rounded bg-gradient-to-tr from-amber-400 to-yellow-500 border border-amber-600/40 shadow-inner" />
-                      <Wifi size={14} className="rotate-90 text-white/70" />
-                    </div>
-                    <span className="text-[10px] font-bold text-white bg-black/40 px-2 py-0.5 rounded-full border border-white/10 truncate max-w-[120px]">
-                      {cardBankName || 'Nome do Banco'}
-                    </span>
-                  </div>
+                      <div className="relative z-10 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-5 rounded bg-gradient-to-tr from-amber-400 to-yellow-500 border border-amber-600/40 shadow-inner" />
+                          <Wifi size={14} className={`rotate-90 ${isLight ? 'text-zinc-800' : 'text-white/70'}`} />
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border truncate max-w-[120px] ${
+                          isLight 
+                            ? 'text-zinc-900 bg-zinc-100 border-zinc-300 shadow-xs' 
+                            : 'text-white bg-black/40 border-white/10'
+                        }`}>
+                          {cardBankName || 'Nome do Banco'}
+                        </span>
+                      </div>
 
-                  <div className="relative z-10">
-                    <p className="font-mono text-sm tracking-widest text-white font-black drop-shadow">
-                      ••••  ••••  ••••  {cardLastFourDigits.replace(/\D/g, '').slice(-4) || '0000'}
-                    </p>
-                  </div>
+                      <div className="relative z-10">
+                        <p className={`font-mono text-sm tracking-widest font-black ${
+                          isLight ? 'text-zinc-950' : 'text-white drop-shadow'
+                        }`}>
+                          ••••  ••••  ••••  {cardLastFourDigits.replace(/\D/g, '').slice(-4) || '0000'}
+                        </p>
+                      </div>
 
-                  <div className="relative z-10 flex justify-between items-end">
-                    <div>
-                      <p className="text-[7px] uppercase tracking-wider text-zinc-400 font-bold">Titular</p>
-                      <p className="text-[10px] font-bold uppercase text-white truncate max-w-[180px] font-mono">
-                        {cardCardholderName || 'MINISTÉRIO NOVA VIDA'}
-                      </p>
+                      <div className="relative z-10 flex justify-between items-end">
+                        <div>
+                          <p className={`text-[7px] uppercase tracking-wider font-bold ${
+                            isLight ? 'text-zinc-500' : 'text-zinc-400'
+                          }`}>Titular</p>
+                          <p className={`text-[10px] font-black uppercase truncate max-w-[180px] font-mono ${
+                            isLight ? 'text-zinc-950' : 'text-white'
+                          }`}>
+                            {cardCardholderName || 'MINISTÉRIO NOVA VIDA'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[8px] font-bold font-mono ${
+                            isLight ? 'text-zinc-600' : 'text-zinc-300'
+                          }`}>F:{cardClosingDay || 20} V:{cardDueDay || 28}</span>
+                          <CreditCardBrandLogo brand={cardBrand} size={24} isLight={isLight} />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[8px] text-zinc-300 font-mono">F:{cardClosingDay || 20} V:{cardDueDay || 28}</span>
-                      <CreditCardBrandLogo brand={cardBrand} size={24} />
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Form fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -12306,8 +12440,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5">
                         {[
+                          { label: 'Branco Puro', hex: '#ffffff' },
+                          { label: 'Branco Gelo', hex: '#f4f4f5' },
+                          { label: 'Cinza Platina', hex: '#e2e8f0' },
                           { label: 'Preto Absoluto', hex: '#09090b' },
                           { label: 'Grafite Escuro', hex: '#18181b' },
                           { label: 'Cinza Titânio', hex: '#27272a' },
@@ -12317,7 +12454,6 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           { label: 'Vinho Tinto', hex: '#4c0519' },
                           { label: 'Bronze / Âmbar', hex: '#451a03' },
                           { label: 'Azul Cobalto', hex: '#1e3a8a' },
-                          { label: 'Chumbo Slate', hex: '#334155' },
                         ].map((solid, idx) => (
                           <button
                             key={idx}
