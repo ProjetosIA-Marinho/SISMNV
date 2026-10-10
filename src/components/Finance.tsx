@@ -1039,6 +1039,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [dashEvolutionAccountId, setDashEvolutionAccountId] = useState<string>('all');
   const [dashEvolutionTimeframe, setDashEvolutionTimeframe] = useState<'1S' | '1M' | '1A' | 'TOTAL'>('1M');
   const [dashEvolutionHoverIdx, setDashEvolutionHoverIdx] = useState<number | null>(null);
+  const overviewChipsScrollRef = React.useRef<HTMLDivElement | null>(null);
+
+  const scrollOverviewChips = (direction: 'left' | 'right') => {
+    if (!overviewChipsScrollRef.current) return;
+    overviewChipsScrollRef.current.scrollBy({
+      left: direction === 'left' ? -260 : 260,
+      behavior: 'smooth'
+    });
+  };
   
   const [txReceiptImage, setTxReceiptImage] = useState<string | null>(null);
   const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
@@ -5547,53 +5556,97 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         </div>
                       </div>
 
-                      {/* Quick Account Filter Chips Horizontal Bar */}
-                      <div className="py-3.5 flex items-center gap-2 overflow-x-auto scrollbar-none">
-                        <button
-                          type="button"
-                          onClick={() => setDashEvolutionAccountId('all')}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
-                            dashEvolutionAccountId === 'all'
-                              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/30'
-                              : isHighContrast
-                                ? 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
-                                : 'bg-[#181a24]/80 border-white/10 text-zinc-300 hover:bg-[#181a24] hover:text-white'
-                          }`}
-                        >
-                          <Wallet size={15} className={dashEvolutionAccountId === 'all' ? 'text-white' : 'text-indigo-400'} />
-                          <span>Todas as Contas ({accounts.length})</span>
-                          <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
-                            dashEvolutionAccountId === 'all' ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
-                          }`}>
-                            {formatCurrency(totalBankBalance)}
-                          </span>
-                        </button>
+                      {/* Quick Account Filter Chips Horizontal Bar with Visible Scrollbar & Navigation Arrows */}
+                      <div className="py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          {/* Left scroll arrow button */}
+                          <button
+                            type="button"
+                            onClick={() => scrollOverviewChips('left')}
+                            className={`p-2 rounded-xl border shrink-0 transition-all cursor-pointer shadow-xs ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700 active:scale-95' 
+                                : 'bg-[#181a24] hover:bg-[#202330] border-white/10 text-zinc-300 hover:text-white active:scale-95'
+                            }`}
+                            title="Rolar contas para a esquerda"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
 
-                        {accounts.map(acc => {
-                          const isSelected = dashEvolutionAccountId === acc.id;
-                          return (
+                          {/* Scrollable Container with custom visible horizontal scrollbar */}
+                          <div 
+                            ref={overviewChipsScrollRef}
+                            className={`flex-1 flex items-center gap-2 overflow-x-auto pb-2 pt-0.5 px-0.5 scroll-smooth select-none ${
+                              isHighContrast
+                                ? '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-zinc-100 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-purple-300/80 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-purple-500'
+                                : '[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-black/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-purple-600/40 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-purple-500'
+                            }`}
+                            style={{
+                              scrollbarWidth: 'thin',
+                              scrollbarColor: isHighContrast ? '#c084fc #f4f4f5' : '#8b5cf6 #181a24'
+                            }}
+                          >
                             <button
-                              key={acc.id}
                               type="button"
-                              onClick={() => setDashEvolutionAccountId(acc.id)}
+                              onClick={() => setDashEvolutionAccountId('all')}
                               className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
-                                isSelected
+                                dashEvolutionAccountId === 'all'
                                   ? 'bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/30'
                                   : isHighContrast
                                     ? 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
                                     : 'bg-[#181a24]/80 border-white/10 text-zinc-300 hover:bg-[#181a24] hover:text-white'
                               }`}
                             >
-                              <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={16} />
-                              <span>{acc.name}</span>
-                              <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
-                                isSelected ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
+                              <Wallet size={15} className={dashEvolutionAccountId === 'all' ? 'text-white' : 'text-indigo-400'} />
+                              <span className="whitespace-nowrap">Todas as Contas ({accounts.length})</span>
+                              <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md shrink-0 ${
+                                dashEvolutionAccountId === 'all' ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
                               }`}>
-                                {formatCurrency(acc.currentBalance)}
+                                {formatCurrency(totalBankBalance)}
                               </span>
                             </button>
-                          );
-                        })}
+
+                            {accounts.map(acc => {
+                              const isSelected = dashEvolutionAccountId === acc.id;
+                              return (
+                                <button
+                                  key={acc.id}
+                                  type="button"
+                                  onClick={() => setDashEvolutionAccountId(acc.id)}
+                                  className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/30'
+                                      : isHighContrast
+                                        ? 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
+                                        : 'bg-[#181a24]/80 border-white/10 text-zinc-300 hover:bg-[#181a24] hover:text-white'
+                                  }`}
+                                >
+                                  <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={16} />
+                                  <span className="whitespace-nowrap">{acc.name}</span>
+                                  <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md shrink-0 ${
+                                    isSelected ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
+                                  }`}>
+                                    {formatCurrency(acc.currentBalance)}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Right scroll arrow button */}
+                          <button
+                            type="button"
+                            onClick={() => scrollOverviewChips('right')}
+                            className={`p-2 rounded-xl border shrink-0 transition-all cursor-pointer shadow-xs ${
+                              isHighContrast 
+                                ? 'bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700 active:scale-95' 
+                                : 'bg-[#181a24] hover:bg-[#202330] border-white/10 text-zinc-300 hover:text-white active:scale-95'
+                            }`}
+                            title="Rolar contas para a direita"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Main Chart Canvas Area */}
