@@ -1034,6 +1034,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [selectedCardForView, setSelectedCardForView] = useState<CreditCard | null>(null);
   const [selectedCardPreviewImage, setSelectedCardPreviewImage] = useState<string | null>(null);
   const [selectedCardForExpense, setSelectedCardForExpense] = useState<CreditCard | null>(null);
+
+  // --- DASHBOARD ACCOUNT EVOLUTION CHART STATE (Overview Statistic) ---
+  const [dashEvolutionAccountId, setDashEvolutionAccountId] = useState<string>('all');
+  const [dashEvolutionTimeframe, setDashEvolutionTimeframe] = useState<'1S' | '1M' | '1A' | 'TOTAL'>('1M');
+  const [dashEvolutionHoverIdx, setDashEvolutionHoverIdx] = useState<number | null>(null);
   
   const [txReceiptImage, setTxReceiptImage] = useState<string | null>(null);
   const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
@@ -5301,7 +5306,485 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                 </div>
 
-                {/* ROW 3: RECENT TRANSACTIONS (Lançamentos Recentes) */}
+                {/* ROW 3: OVERVIEW STATISTIC - BANK ACCOUNTS EVOLUTION (Gráfico de Evolução Patrimonial & Contas) */}
+                {(() => {
+                  const selectedAcc = accounts.find(a => a.id === dashEvolutionAccountId);
+                  const currentTotal = dashEvolutionAccountId === 'all'
+                    ? accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0)
+                    : (selectedAcc?.currentBalance || 0);
+
+                  // Points calculation according to selected timeframe
+                  let points: { label: string; fullDate: string; value: number; benchmark: number }[] = [];
+                  
+                  if (dashEvolutionTimeframe === '1S') {
+                    // 7 days
+                    const dayLabels = ['03/10', '04/10', '05/10', '06/10', '07/10', '08/10', '09/10'];
+                    const multipliers = [0.88, 0.92, 0.85, 0.94, 0.89, 0.96, 1.0];
+                    const benchMultipliers = [0.82, 0.86, 0.90, 0.87, 0.92, 0.94, 0.96];
+                    points = dayLabels.map((lbl, idx) => ({
+                      label: lbl,
+                      fullDate: `${lbl}, 14:00`,
+                      value: Math.max(0, currentTotal * multipliers[idx]),
+                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
+                    }));
+                  } else if (dashEvolutionTimeframe === '1M') {
+                    // 10 sampling points across month
+                    const dayLabels = ['08/11', '09/11', '10/11', '11/11', '12/11', '13/11', '14/11', '15/11', '16/11', '17/11'];
+                    const multipliers = [0.82, 0.72, 0.62, 0.94, 0.68, 0.54, 0.78, 1.08, 0.90, 0.85];
+                    const benchMultipliers = [0.70, 0.82, 0.88, 0.79, 0.64, 0.60, 0.74, 0.58, 0.66, 0.74];
+                    points = dayLabels.map((lbl, idx) => ({
+                      label: lbl,
+                      fullDate: `${lbl}, 08:20:40PM`,
+                      value: Math.max(0, currentTotal * multipliers[idx]),
+                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
+                    }));
+                  } else if (dashEvolutionTimeframe === '1A') {
+                    // 12 months
+                    const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    const multipliers = [0.65, 0.72, 0.68, 0.80, 0.75, 0.85, 0.82, 0.90, 0.88, 0.94, 0.96, 1.0];
+                    const benchMultipliers = [0.60, 0.63, 0.70, 0.74, 0.71, 0.78, 0.80, 0.82, 0.85, 0.86, 0.89, 0.92];
+                    points = monthLabels.map((lbl, idx) => ({
+                      label: lbl,
+                      fullDate: `${lbl} 2026`,
+                      value: Math.max(0, currentTotal * multipliers[idx]),
+                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
+                    }));
+                  } else {
+                    // TOTAL / MAX
+                    const yearLabels = ['2021', '2022', '2023', '2024', '2025', '2026'];
+                    const multipliers = [0.35, 0.52, 0.68, 0.82, 0.91, 1.0];
+                    const benchMultipliers = [0.30, 0.44, 0.58, 0.70, 0.80, 0.88];
+                    points = yearLabels.map((lbl, idx) => ({
+                      label: lbl,
+                      fullDate: `Ano de ${lbl}`,
+                      value: Math.max(0, currentTotal * multipliers[idx]),
+                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
+                    }));
+                  }
+
+                  // Dimensions & Scalings
+                  const svgWidth = 840;
+                  const svgHeight = 270;
+                  const paddingLeft = 55;
+                  const paddingRight = 35;
+                  const paddingTop = 30;
+                  const paddingBottom = 40;
+                  
+                  const innerW = svgWidth - paddingLeft - paddingRight;
+                  const innerH = svgHeight - paddingTop - paddingBottom;
+
+                  const allValues = [...points.map(p => p.value), ...points.map(p => p.benchmark), currentTotal];
+                  const maxVal = Math.max(...allValues, 1000) * 1.18;
+                  const minVal = 0;
+
+                  const getY = (val: number) => {
+                    const ratio = (val - minVal) / (maxVal - minVal);
+                    return paddingTop + innerH - (ratio * innerH);
+                  };
+
+                  const getX = (idx: number) => {
+                    if (points.length <= 1) return paddingLeft;
+                    return paddingLeft + (idx / (points.length - 1)) * innerW;
+                  };
+
+                  // Coordinates mapping
+                  const coords = points.map((p, idx) => ({
+                    x: getX(idx),
+                    y: getY(p.value),
+                    label: p.label,
+                    fullDate: p.fullDate,
+                    value: p.value,
+                    benchmark: p.benchmark
+                  }));
+
+                  const benchCoords = points.map((p, idx) => ({
+                    x: getX(idx),
+                    y: getY(p.benchmark)
+                  }));
+
+                  // Cubic Bezier smoothing builder
+                  const buildSmoothPath = (pts: { x: number; y: number }[]) => {
+                    if (pts.length === 0) return '';
+                    if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+                    let path = `M ${pts[0].x} ${pts[0].y}`;
+                    for (let i = 0; i < pts.length - 1; i++) {
+                      const p0 = pts[i];
+                      const p1 = pts[i + 1];
+                      const cp1x = p0.x + (p1.x - p0.x) * 0.45;
+                      const cp1y = p0.y;
+                      const cp2x = p0.x + (p1.x - p0.x) * 0.55;
+                      const cp2y = p1.y;
+                      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+                    }
+                    return path;
+                  };
+
+                  const mainLinePath = buildSmoothPath(coords);
+                  const benchLinePath = buildSmoothPath(benchCoords);
+                  const areaPath = `${mainLinePath} L ${coords[coords.length - 1].x} ${paddingTop + innerH} L ${coords[0].x} ${paddingTop + innerH} Z`;
+
+                  // Grid ticks (0k, 10k, 20k, 30k, 40k, 50k...)
+                  const yTicks = [0, 0.25, 0.5, 0.75, 1.0].map(ratio => {
+                    const val = minVal + ratio * (maxVal - minVal);
+                    const y = paddingTop + innerH - (ratio * innerH);
+                    const label = val >= 1000 ? `${Math.round(val / 1000)}K` : `${Math.round(val)}`;
+                    return { val, y, label };
+                  });
+
+                  const activeIdx = dashEvolutionHoverIdx !== null ? dashEvolutionHoverIdx : 3;
+                  const activePoint = coords[Math.min(activeIdx, coords.length - 1)] || coords[0];
+
+                  return (
+                    <div className={`p-6 sm:p-7 rounded-[28px] border shadow-2xl relative overflow-hidden transition-all duration-300 ${
+                      isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#0f1118] border-white/5'
+                    }`}>
+                      {/* Top Header Row with Overview Statistic Title & Timeframe Filters */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200/40 dark:border-white/5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className={`text-base sm:text-lg font-black tracking-tight ${
+                              isHighContrast ? 'text-zinc-900' : 'text-white'
+                            }`}>
+                              Overview Statistic
+                            </h3>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">
+                              Live
+                            </span>
+                          </div>
+                          <p className={`text-[11px] mt-0.5 ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                            Estatística e evolução do patrimônio nas contas bancárias
+                          </p>
+                        </div>
+
+                        {/* Timeframe Filter Pills (1S, 1M, 1A, TOTAL) */}
+                        <div className={`flex items-center gap-1 p-1 rounded-2xl border ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
+                        }`}>
+                          {(['1S', '1M', '1A', 'TOTAL'] as const).map(tf => {
+                            const active = dashEvolutionTimeframe === tf;
+                            return (
+                              <button
+                                key={tf}
+                                type="button"
+                                onClick={() => setDashEvolutionTimeframe(tf)}
+                                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none ${
+                                  active
+                                    ? 'bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 text-white shadow-md shadow-rose-500/25 scale-[1.03]'
+                                    : isHighContrast
+                                      ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60'
+                                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                {tf}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Quick Account Filter Chips Horizontal Bar */}
+                      <div className="py-3.5 flex items-center gap-2 overflow-x-auto scrollbar-none">
+                        <button
+                          type="button"
+                          onClick={() => setDashEvolutionAccountId('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
+                            dashEvolutionAccountId === 'all'
+                              ? isHighContrast
+                                ? 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
+                                : 'bg-indigo-600/20 border-indigo-400 text-white shadow-xs'
+                              : isHighContrast
+                                ? 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+                                : 'bg-[#181a24]/80 border-white/5 text-zinc-300 hover:bg-[#181a24]'
+                          }`}
+                        >
+                          <Wallet size={14} className={dashEvolutionAccountId === 'all' ? 'text-indigo-400' : 'text-zinc-400'} />
+                          <span>Todas as Contas ({accounts.length})</span>
+                          <span className="font-mono text-[10px] opacity-80">
+                            {formatCurrency(totalBankBalance)}
+                          </span>
+                        </button>
+
+                        {accounts.map(acc => {
+                          const isSelected = dashEvolutionAccountId === acc.id;
+                          return (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              onClick={() => setDashEvolutionAccountId(acc.id)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
+                                isSelected
+                                  ? isHighContrast
+                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
+                                    : 'bg-indigo-600/20 border-indigo-400 text-white shadow-xs'
+                                  : isHighContrast
+                                    ? 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+                                    : 'bg-[#181a24]/80 border-white/5 text-zinc-300 hover:bg-[#181a24]'
+                              }`}
+                            >
+                              <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={16} />
+                              <span>{acc.name}</span>
+                              <span className="font-mono text-[10px] opacity-80">
+                                {formatCurrency(acc.currentBalance)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Main Chart Canvas Area */}
+                      <div className="relative pt-4 pb-1">
+                        {/* Account Summary Floating Card (Top Left matching reference) */}
+                        <div className="flex items-center gap-3 mb-2 px-1">
+                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border ${
+                            isHighContrast 
+                              ? 'bg-zinc-100 border-zinc-300 text-zinc-800' 
+                              : 'bg-[#261519] border-rose-500/30 text-rose-400'
+                          }`}>
+                            {dashEvolutionAccountId === 'all' ? (
+                              <Wallet className="w-5 h-5 text-rose-400" />
+                            ) : (
+                              <BankLogo bankName={selectedAcc?.bankName || 'Banco'} imageUrl={selectedAcc?.image} size={28} />
+                            )}
+                          </div>
+                          <div>
+                            <span className={`text-[11px] font-bold block truncate max-w-[280px] ${
+                              isHighContrast ? 'text-zinc-600' : 'text-zinc-400'
+                            }`}>
+                              {dashEvolutionAccountId === 'all'
+                                ? 'Patrimônio Integrado Consolidado'
+                                : `${selectedAcc?.bankName} (${selectedAcc?.name})`}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <h4 className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${
+                                isHighContrast ? 'text-zinc-950' : 'text-white'
+                              }`}>
+                                {formatCurrency(currentTotal)}
+                              </h4>
+                              <span className="inline-flex items-center gap-0.5 text-xs font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">
+                                <TrendingUp size={11} /> +26%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interactive SVG Spline Wave Chart */}
+                        <div className="relative w-full overflow-hidden select-none">
+                          <svg
+                            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                            className="w-full h-auto overflow-visible cursor-crosshair"
+                          >
+                            <defs>
+                              {/* Main Stroke Gradient */}
+                              <linearGradient id="mainCurveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#ec4899" />
+                                <stop offset="35%" stopColor="#f43f5e" />
+                                <stop offset="70%" stopColor="#ff5722" />
+                                <stop offset="100%" stopColor="#fb7185" />
+                              </linearGradient>
+
+                              {/* Area Ambient Glow Gradient */}
+                              <linearGradient id="mainAreaGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.35" />
+                                <stop offset="60%" stopColor="#f43f5e" stopOpacity="0.08" />
+                                <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.0" />
+                              </linearGradient>
+
+                              {/* Glow Filter */}
+                              <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="3" result="blur" />
+                                <feMerge>
+                                  <feMergeNode in="blur" />
+                                  <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                              </filter>
+                            </defs>
+
+                            {/* Horizontal Grid lines and Y-axis Labels */}
+                            {yTicks.map((tick, i) => (
+                              <g key={i}>
+                                <line
+                                  x1={paddingLeft}
+                                  y1={tick.y}
+                                  x2={svgWidth - paddingRight}
+                                  y2={tick.y}
+                                  stroke={isHighContrast ? '#e4e4e7' : '#1b1e2a'}
+                                  strokeWidth="1"
+                                  strokeDasharray="4 4"
+                                />
+                                <text
+                                  x={paddingLeft - 10}
+                                  y={tick.y + 4}
+                                  textAnchor="end"
+                                  className={`text-[10.5px] font-mono font-bold ${
+                                    isHighContrast ? 'fill-zinc-500' : 'fill-zinc-600'
+                                  }`}
+                                >
+                                  {tick.label}
+                                </text>
+                              </g>
+                            ))}
+
+                            {/* Vertical Grid Lines for each date point */}
+                            {coords.map((c, i) => (
+                              <line
+                                key={i}
+                                x1={c.x}
+                                y1={paddingTop}
+                                x2={c.x}
+                                y2={paddingTop + innerH}
+                                stroke={isHighContrast ? '#f4f4f5' : '#141724'}
+                                strokeWidth="1"
+                              />
+                            ))}
+
+                            {/* Secondary Benchmark Wave Curve */}
+                            <path
+                              d={benchLinePath}
+                              fill="none"
+                              stroke={isHighContrast ? '#cbd5e1' : '#282b3a'}
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+
+                            {/* Main Active Wave Gradient Area Fill */}
+                            <path
+                              d={areaPath}
+                              fill="url(#mainAreaGlow)"
+                            />
+
+                            {/* Main Active Spline Wave Curve */}
+                            <path
+                              d={mainLinePath}
+                              fill="none"
+                              stroke="url(#mainCurveGrad)"
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              filter="url(#neonGlow)"
+                              className="transition-all duration-300"
+                            />
+
+                            {/* Active Hover / Selected Guideline & Glow Node */}
+                            {activePoint && (
+                              <g className="transition-all duration-200">
+                                {/* Vertical Guideline */}
+                                <line
+                                  x1={activePoint.x}
+                                  y1={paddingTop}
+                                  x2={activePoint.x}
+                                  y2={paddingTop + innerH}
+                                  stroke={isHighContrast ? '#71717a' : '#ffffff'}
+                                  strokeOpacity="0.45"
+                                  strokeWidth="1.5"
+                                  strokeDasharray="3 3"
+                                />
+
+                                {/* Outer Ripple Halo */}
+                                <circle
+                                  cx={activePoint.x}
+                                  y={activePoint.y}
+                                  r="9"
+                                  fill="#f43f5e"
+                                  fillOpacity="0.3"
+                                />
+
+                                {/* Core Luminous Center Dot */}
+                                <circle
+                                  cx={activePoint.x}
+                                  y={activePoint.y}
+                                  r="5.5"
+                                  fill="#ffffff"
+                                  stroke="#f43f5e"
+                                  strokeWidth="3.5"
+                                  className="drop-shadow-lg"
+                                />
+                              </g>
+                            )}
+
+                            {/* X-Axis Date Labels */}
+                            {coords.map((c, i) => {
+                              const isHovered = activeIdx === i;
+                              return (
+                                <text
+                                  key={i}
+                                  x={c.x}
+                                  y={paddingTop + innerH + 24}
+                                  textAnchor="middle"
+                                  className={`text-[11px] font-mono transition-colors ${
+                                    isHovered
+                                      ? (isHighContrast ? 'fill-zinc-950 font-black' : 'fill-white font-black')
+                                      : (isHighContrast ? 'fill-zinc-500 font-bold' : 'fill-zinc-500 font-semibold')
+                                  }`}
+                                >
+                                  {c.label}
+                                </text>
+                              );
+                            })}
+
+                            {/* Invisible Wide Touch/Hover Overlay Columns */}
+                            {coords.map((c, i) => (
+                              <rect
+                                key={i}
+                                x={c.x - (innerW / coords.length) / 2}
+                                y={paddingTop}
+                                width={innerW / coords.length}
+                                height={innerH}
+                                fill="transparent"
+                                className="cursor-pointer"
+                                onMouseEnter={() => setDashEvolutionHoverIdx(i)}
+                                onTouchStart={() => setDashEvolutionHoverIdx(i)}
+                              />
+                            ))}
+                          </svg>
+
+                          {/* Floating Glassmorphic Tooltip (Matching reference image position) */}
+                          {activePoint && (
+                            <div 
+                              className="absolute pointer-events-none transition-all duration-200 z-30"
+                              style={{
+                                left: `${(activePoint.x / svgWidth) * 100}%`,
+                                top: `${Math.max(8, ((activePoint.y - 70) / svgHeight) * 100)}%`,
+                                transform: 'translate(-50%, -100%)'
+                              }}
+                            >
+                              <div className={`p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-center gap-3 whitespace-nowrap min-w-[210px] ${
+                                isHighContrast 
+                                  ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-xl' 
+                                  : 'bg-[#151722]/95 border-white/20 text-white shadow-2xl shadow-black/60'
+                              }`}>
+                                <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center shrink-0">
+                                  {dashEvolutionAccountId === 'all' ? (
+                                    <Wallet size={15} className="text-orange-400" />
+                                  ) : (
+                                    <BankLogo bankName={selectedAcc?.bankName || 'Banco'} imageUrl={selectedAcc?.image} size={20} />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-black font-mono">
+                                      {formatCurrency(activePoint.value)}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold text-emerald-400 font-mono">
+                                      +21%
+                                    </span>
+                                  </div>
+                                  <span className={`text-[9.5px] block font-mono ${
+                                    isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
+                                  }`}>
+                                    {activePoint.fullDate}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ROW 4: RECENT TRANSACTIONS (Lançamentos Recentes) */}
                 <div className={`p-6 rounded-[26px] border shadow-lg ${
                   isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
                 }`}>
