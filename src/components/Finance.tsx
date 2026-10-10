@@ -4812,34 +4812,35 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 {/* ROW 1: TOTAL BALANCE HERO CARD + INCOME/EXPENSE/SUPERÁVIT CARDS */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                   
-                  {/* Hero Card: Total Balance (Vibrant Soft Neon Lime Gradient) */}
-                  <div className="md:col-span-6 bg-gradient-to-tr from-[#6ee7b7] via-[#a7f3d0] to-[#bef264] text-zinc-950 p-6 sm:p-7 rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[260px] select-none border border-emerald-300/40 group">
+                  {/* Hero Card: Total Balance (Vibrant Purple System Gradient) */}
+                  <div className="md:col-span-6 bg-gradient-to-tr from-indigo-700 via-purple-600 to-violet-500 text-white p-6 sm:p-7 rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[260px] select-none border border-purple-400/30 group">
                     {/* Organic glow shapes in background */}
-                    <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-white/25 rounded-full blur-2xl pointer-events-none" />
-                    <div className="absolute left-1/3 -top-12 w-32 h-32 bg-emerald-300/40 rounded-full blur-xl pointer-events-none" />
+                    <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute left-1/3 -top-12 w-36 h-36 bg-violet-300/20 rounded-full blur-xl pointer-events-none" />
+                    <div className="absolute -left-10 -bottom-8 w-32 h-32 bg-indigo-900/30 rounded-full blur-lg pointer-events-none" />
 
                     {/* Top row: Label */}
                     <div className="relative z-10 flex justify-between items-start">
                       <div>
-                        <span className="text-xs sm:text-sm font-extrabold text-zinc-950 tracking-tight block">
+                        <span className="text-xs sm:text-sm font-extrabold text-white tracking-tight block drop-shadow-xs">
                           Saldo Total em Contas
                         </span>
-                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-800 font-bold mt-0.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-purple-100 font-bold mt-0.5">
                           <span>{accounts.length} contas bancárias ativas</span>
                         </div>
                       </div>
-                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-black/15 text-zinc-950 border border-black/15 font-mono">
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/15 text-white border border-white/20 font-mono shadow-xs backdrop-blur-xs">
                         BRL R$
                       </span>
                     </div>
 
                     {/* Middle: Big Balance Value */}
                     <div className="relative z-10 py-2">
-                      <h3 className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight text-zinc-950 font-sans leading-none drop-shadow-xs">
+                      <h3 className="text-3xl sm:text-4xl lg:text-[38px] font-black tracking-tight text-white font-sans leading-none drop-shadow-md">
                         {formatCurrency(totalBankBalance)}
                       </h3>
-                      <p className="text-[11.5px] font-bold text-zinc-900 mt-2 flex items-center gap-1.5">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-950" />
+                      <p className="text-[11.5px] font-bold text-purple-100 mt-2 flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300 shadow-xs" />
                         <span>+{formatCurrency(totalInflow)} receitas no período selecionado</span>
                       </p>
                     </div>
@@ -4849,7 +4850,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       <button
                         type="button"
                         onClick={() => setShowTransferModal(true)}
-                        className="bg-zinc-950 hover:bg-black text-white px-4 sm:px-5 py-2.5 rounded-full font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
+                        className="bg-white hover:bg-zinc-100 text-purple-950 px-4 sm:px-5 py-2.5 rounded-full font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
                       >
                         <ArrowRightLeft size={13} />
                         <span>Transferir</span>
@@ -4863,7 +4864,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           setEditingTx(null);
                           setShowTxModal(true);
                         }}
-                        className="bg-white hover:bg-zinc-100 text-zinc-950 px-4 sm:px-5 py-2.5 rounded-full font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg border border-black/10 active:scale-95 transition-all"
+                        className="bg-purple-950/70 hover:bg-purple-950 text-white px-4 sm:px-5 py-2.5 rounded-full font-extrabold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg border border-white/20 active:scale-95 transition-all"
                       >
                         <Plus size={14} />
                         <span>Lançar</span>
@@ -4877,7 +4878,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           setEditingTx(null);
                           setShowTxModal(true);
                         }}
-                        className="bg-zinc-950/90 hover:bg-black text-white p-2.5 rounded-full flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-all ml-auto"
+                        className="bg-white/20 hover:bg-white/30 text-white p-2.5 rounded-full flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-all ml-auto border border-white/20"
                         title="Nova Despesa Rápida"
                       >
                         <DollarSign size={15} />
@@ -4890,10 +4891,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     
                     {/* Income (Entradas) */}
                     <div className={`p-4 rounded-[22px] border flex items-center justify-between transition-all shadow-md ${
-                      isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
+                      isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-[#12141c] border-white/5'
                     }`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                          isHighContrast 
+                            ? 'bg-emerald-100 text-emerald-700 border-emerald-300' 
+                            : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+                        }`}>
                           <ArrowUpRight size={18} />
                         </div>
                         <div className="min-w-0">
@@ -4902,23 +4907,33 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           }`}>
                             Entradas (Receitas)
                           </span>
-                          <h4 className="text-xl font-black text-white font-mono tracking-tight">
+                          <h4 className={`text-xl font-black font-mono tracking-tight ${
+                            isHighContrast ? 'text-emerald-700' : 'text-white'
+                          }`}>
                             +{formatCurrency(totalInflow)}
                           </h4>
                         </div>
                       </div>
 
-                      <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono">
+                      <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono border ${
+                        isHighContrast 
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                      }`}>
                         {totalInflow >= totalOutflow ? '+15.7%' : '+8.2%'}
                       </span>
                     </div>
 
                     {/* Expense (Saídas) */}
                     <div className={`p-4 rounded-[22px] border flex items-center justify-between transition-all shadow-md ${
-                      isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
+                      isHighContrast ? 'bg-white border-zinc-200 shadow-sm' : 'bg-[#12141c] border-white/5'
                     }`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                          isHighContrast 
+                            ? 'bg-rose-100 text-rose-700 border-rose-300' 
+                            : 'bg-rose-500/15 text-rose-400 border-rose-500/20'
+                        }`}>
                           <ArrowDownRight size={18} />
                         </div>
                         <div className="min-w-0">
@@ -4927,13 +4942,19 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           }`}>
                             Saídas (Despesas)
                           </span>
-                          <h4 className="text-xl font-black text-white font-mono tracking-tight">
+                          <h4 className={`text-xl font-black font-mono tracking-tight ${
+                            isHighContrast ? 'text-rose-700' : 'text-white'
+                          }`}>
                             -{formatCurrency(totalOutflow)}
                           </h4>
                         </div>
                       </div>
 
-                      <span className="bg-rose-500/15 text-rose-400 border border-rose-500/25 font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono">
+                      <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono border ${
+                        isHighContrast 
+                          ? 'bg-rose-100 text-rose-800 border-rose-300' 
+                          : 'bg-rose-500/15 text-rose-400 border-rose-500/25'
+                      }`}>
                         -10.7%
                       </span>
                     </div>
@@ -4941,14 +4962,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     {/* Superávit / Déficit Líquido (Novo Card Solicitado) */}
                     <div className={`p-4 rounded-[22px] border flex items-center justify-between transition-all shadow-md ${
                       netCashFlow >= 0 
-                        ? (isHighContrast ? 'bg-emerald-50/70 border-emerald-200' : 'bg-[#12141c] border-emerald-500/20 ring-1 ring-emerald-500/10') 
-                        : (isHighContrast ? 'bg-rose-50/70 border-rose-200' : 'bg-[#12141c] border-rose-500/20 ring-1 ring-rose-500/10')
+                        ? (isHighContrast ? 'bg-emerald-50 border-emerald-200' : 'bg-[#12141c] border-emerald-500/20 ring-1 ring-emerald-500/10') 
+                        : (isHighContrast ? 'bg-rose-50 border-rose-200' : 'bg-[#12141c] border-rose-500/20 ring-1 ring-rose-500/10')
                     }`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
                           netCashFlow >= 0 
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                            : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                            ? (isHighContrast ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30') 
+                            : (isHighContrast ? 'bg-rose-100 text-rose-700 border-rose-300' : 'bg-rose-500/20 text-rose-400 border-rose-500/30')
                         }`}>
                           {netCashFlow >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                         </div>
@@ -4959,7 +4980,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             Superávit Líquido
                           </span>
                           <h4 className={`text-xl font-black font-mono tracking-tight ${
-                            netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                            netCashFlow >= 0 
+                              ? (isHighContrast ? 'text-emerald-700' : 'text-emerald-400') 
+                              : (isHighContrast ? 'text-rose-700' : 'text-rose-400')
                           }`}>
                             {netCashFlow >= 0 ? '+' : ''}{formatCurrency(netCashFlow)}
                           </h4>
@@ -4968,8 +4991,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                       <span className={`font-extrabold text-[10px] px-2.5 py-1 rounded-full shadow-xs shrink-0 font-mono border ${
                         netCashFlow >= 0 
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
-                          : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          ? (isHighContrast ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30') 
+                          : (isHighContrast ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-rose-500/20 text-rose-300 border-rose-500/30')
                       }`}>
                         {netCashFlow >= 0 ? 'Superávit' : 'Déficit'}
                       </span>
@@ -4993,7 +5016,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           <h4 className={`text-sm font-extrabold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
                             Fluxo Comparativo
                           </h4>
-                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                          <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
                             Entradas vs Saídas
                           </span>
                         </div>
@@ -5024,21 +5047,31 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             Saldo Líquido do Período:
                           </span>
                           <span className={`text-[11px] font-mono font-black ${
-                            netCashFlow >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                            netCashFlow >= 0 
+                              ? (isHighContrast ? 'text-emerald-700' : 'text-emerald-400') 
+                              : (isHighContrast ? 'text-rose-700' : 'text-rose-400')
                           }`}>
                             {netCashFlow >= 0 ? '+' : ''}{formatCurrency(netCashFlow)}
                           </span>
                         </div>
 
-                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-xl text-white text-[10px]">
-                          <span className="text-emerald-400 font-bold font-mono">+{formatCurrency(totalInflow)}</span>
-                          <span className="text-zinc-600">/</span>
-                          <span className="text-rose-400 font-bold font-mono">-{formatCurrency(totalOutflow)}</span>
+                        <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-xl border shadow-md text-[10px] ${
+                          isHighContrast 
+                            ? 'bg-white border-zinc-200 text-zinc-900' 
+                            : 'bg-black/60 backdrop-blur-md border-white/10 text-white'
+                        }`}>
+                          <span className={`${isHighContrast ? 'text-emerald-700' : 'text-emerald-400'} font-bold font-mono`}>
+                            +{formatCurrency(totalInflow)}
+                          </span>
+                          <span className={isHighContrast ? 'text-zinc-400' : 'text-zinc-600'}>/</span>
+                          <span className={`${isHighContrast ? 'text-rose-700' : 'text-rose-400'} font-bold font-mono`}>
+                            -{formatCurrency(totalOutflow)}
+                          </span>
                         </div>
                       </div>
 
                       {/* Paired Bars Track */}
-                      <div className="h-[175px] flex items-end justify-between gap-1.5 sm:gap-3 pt-3 border-b border-white/5 pb-2">
+                      <div className="h-[175px] flex items-end justify-between gap-1.5 sm:gap-3 pt-3 border-b border-zinc-200/40 dark:border-white/5 pb-2">
                         {chartData.slice(-6).map((d, idx) => {
                           const isLast = idx === chartData.slice(-6).length - 1;
                           const inHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.inflows / maxChartVal) * 100)) : 15 + (idx * 10);
@@ -5069,7 +5102,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     className={`w-full rounded-t-lg rounded-b-sm transition-all duration-500 relative overflow-hidden ${
                                       d.inflows > 0 
                                         ? 'bg-gradient-to-t from-emerald-600 via-teal-500 to-emerald-400 shadow-sm shadow-emerald-500/30 group-hover:brightness-110' 
-                                        : 'bg-zinc-800/40'
+                                        : (isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800/40')
                                     }`}
                                     style={{ height: `${inHeight}%` }}
                                   >
@@ -5085,7 +5118,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     className={`w-full rounded-t-lg rounded-b-sm transition-all duration-500 relative overflow-hidden ${
                                       d.outflows > 0 
                                         ? 'bg-gradient-to-t from-rose-600 via-pink-500 to-rose-400 shadow-sm shadow-rose-500/30 group-hover:brightness-110' 
-                                        : 'bg-zinc-800/40'
+                                        : (isHighContrast ? 'bg-zinc-200' : 'bg-zinc-800/40')
                                     }`}
                                     style={{ height: `${outHeight}%` }}
                                   >
@@ -5099,15 +5132,17 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               {/* Net Balance Micro Badge below bars */}
                               <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded ${
                                 net >= 0 
-                                  ? 'bg-emerald-500/10 text-emerald-400' 
-                                  : 'bg-rose-500/10 text-rose-400'
+                                  ? (isHighContrast ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/10 text-emerald-400') 
+                                  : (isHighContrast ? 'bg-rose-100 text-rose-800' : 'bg-rose-500/10 text-rose-400')
                               }`}>
                                 {net >= 0 ? '+' : ''}{(net / 1000).toFixed(1)}k
                               </span>
 
                               {/* Month label */}
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                                isLast ? 'text-white font-extrabold' : (isHighContrast ? 'text-zinc-600' : 'text-zinc-400')
+                                isLast 
+                                  ? (isHighContrast ? 'text-indigo-600 font-black' : 'text-white font-extrabold') 
+                                  : (isHighContrast ? 'text-zinc-600' : 'text-zinc-400')
                               }`}>
                                 {d.label}
                               </span>
@@ -5164,54 +5199,67 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         .sort((a, b) => b.amount - a.amount);
 
                       const displayedCats = topOutflowCats.slice(0, 4);
-                      const circumference = 2 * Math.PI * 38; // ~238.76
+                      const circumference = 2 * Math.PI * 50; // ~314.159
 
                       let cumulativeOffset = 0;
 
                       return (
                         <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center py-2">
-                          {/* SVG Multi-Segment Donut Chart */}
+                          {/* SVG Multi-Segment Donut Chart - Enlarged to fit Total inside perfectly */}
                           <div className="sm:col-span-5 flex flex-col items-center justify-center relative select-none">
-                            <svg width="130" height="130" viewBox="0 0 100 100" className="transform -rotate-90">
-                              {/* Background track circle */}
-                              <circle cx="50" cy="50" r="38" fill="transparent" stroke={isHighContrast ? '#e4e4e7' : '#1f2430'} strokeWidth="11" />
-                              
-                              {displayedCats.length > 0 ? (
-                                displayedCats.map((cat, idx) => {
-                                  const strokeLength = (cat.pctExact / 100) * circumference;
-                                  const strokeDasharray = `${strokeLength} ${circumference - strokeLength}`;
-                                  const strokeDashoffset = -cumulativeOffset;
-                                  cumulativeOffset += strokeLength;
+                            <div className="w-36 h-36 sm:w-40 sm:h-40 relative flex items-center justify-center">
+                              <svg viewBox="0 0 120 120" className="w-full h-full transform -rotate-90">
+                                {/* Background track circle */}
+                                <circle 
+                                  cx="60" 
+                                  cy="60" 
+                                  r="50" 
+                                  fill="transparent" 
+                                  stroke={isHighContrast ? '#e4e4e7' : '#1f2430'} 
+                                  strokeWidth="10" 
+                                />
+                                
+                                {displayedCats.length > 0 ? (
+                                  displayedCats.map((cat, idx) => {
+                                    const strokeLength = (cat.pctExact / 100) * circumference;
+                                    const strokeDasharray = `${strokeLength} ${circumference - strokeLength}`;
+                                    const strokeDashoffset = -cumulativeOffset;
+                                    cumulativeOffset += strokeLength;
 
-                                  return (
-                                    <circle
-                                      key={idx}
-                                      cx="50"
-                                      cy="50"
-                                      r="38"
-                                      fill="transparent"
-                                      stroke={cat.color}
-                                      strokeWidth="11"
-                                      strokeDasharray={strokeDasharray}
-                                      strokeDashoffset={strokeDashoffset}
-                                      strokeLinecap="round"
-                                      className="transition-all duration-500"
-                                    />
-                                  );
-                                })
-                              ) : (
-                                <circle cx="50" cy="50" r="38" fill="transparent" stroke="#3b82f6" strokeWidth="11" strokeDasharray="60 180" strokeDashoffset="0" strokeLinecap="round" />
-                              )}
-                            </svg>
+                                    return (
+                                      <circle
+                                        key={idx}
+                                        cx="60"
+                                        cy="60"
+                                        r="50"
+                                        fill="transparent"
+                                        stroke={cat.color}
+                                        strokeWidth="10"
+                                        strokeDasharray={strokeDasharray}
+                                        strokeDashoffset={strokeDashoffset}
+                                        strokeLinecap="round"
+                                        className="transition-all duration-500"
+                                      />
+                                    );
+                                  })
+                                ) : (
+                                  <circle cx="60" cy="60" r="50" fill="transparent" stroke="#3b82f6" strokeWidth="10" strokeDasharray="60 250" strokeDashoffset="0" strokeLinecap="round" />
+                                )}
+                              </svg>
 
-                            {/* Center Total Text */}
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                              <span className={`text-[8.5px] font-extrabold uppercase tracking-wider ${isHighContrast ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                                Total
-                              </span>
-                              <span className={`text-xs sm:text-sm font-black font-mono mt-0.5 ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
-                                {formatCurrency(totalOutflow)}
-                              </span>
+                              {/* Center Total Text - Cleanly centered inside the donut hole */}
+                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2 text-center">
+                                <span className={`text-[8.5px] sm:text-[9.5px] font-extrabold uppercase tracking-widest ${
+                                  isHighContrast ? 'text-zinc-500 font-bold' : 'text-zinc-400'
+                                }`}>
+                                  TOTAL
+                                </span>
+                                <span className={`text-[11px] sm:text-[12.5px] font-black font-mono mt-0.5 tracking-tight px-1 text-center whitespace-nowrap ${
+                                  isHighContrast ? 'text-zinc-950 font-black' : 'text-white font-black'
+                                }`}>
+                                  {formatCurrency(totalOutflow)}
+                                </span>
+                              </div>
                             </div>
                           </div>
 
@@ -5219,7 +5267,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           <div className="sm:col-span-7 space-y-2">
                             {displayedCats.length > 0 ? (
                               displayedCats.map((cat, i) => (
-                                <div key={i} className="flex items-center justify-between gap-1.5 text-xs py-0.5 border-b border-white/5">
+                                <div key={i} className="flex items-center justify-between gap-1.5 text-xs py-0.5 border-b border-zinc-200/40 dark:border-white/5">
                                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                     <div className={`w-1.5 h-3.5 rounded-full ${cat.bgClass} shrink-0`} />
                                     <span className={`font-bold truncate text-[11px] ${isHighContrast ? 'text-zinc-800' : 'text-zinc-200'}`}>
@@ -5227,10 +5275,12 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
-                                    <span className={`font-mono font-bold text-[11px] ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
+                                    <span className={`font-mono font-bold text-[11px] ${isHighContrast ? 'text-zinc-950 font-black' : 'text-white'}`}>
                                       {formatCurrency(cat.amount)}
                                     </span>
-                                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                                    <span className={`font-mono text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                                      isHighContrast ? 'bg-zinc-200/80 text-zinc-800' : 'bg-white/10 text-zinc-300'
+                                    }`}>
                                       {cat.pct}%
                                     </span>
                                   </div>
