@@ -5313,72 +5313,130 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     ? accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0)
                     : (selectedAcc?.currentBalance || 0);
 
-                  // Points calculation according to selected timeframe
+                  // Real historical balance computation on any target date string (YYYY-MM-DD)
+                  const getHistoricalBalanceOnDate = (targetDateStr: string, accountIdFilter: string) => {
+                    const txsAfter = transactions.filter(t => {
+                      if (t.pago === 'nao' || t.recebido === 'nao') return false;
+                      const txDate = t.date || '';
+                      return txDate > targetDateStr && (accountIdFilter === 'all' || t.accountId === accountIdFilter);
+                    });
+                    const inflowAfter = txsAfter.filter(t => t.type === 'entrada').reduce((sum, t) => sum + (t.value || 0), 0);
+                    const outflowAfter = txsAfter.filter(t => t.type === 'saida').reduce((sum, t) => sum + (t.value || 0), 0);
+
+                    const transfersAfter = transfers.filter(tr => (tr.date || '') > targetDateStr);
+                    let transferInAfter = 0;
+                    let transferOutAfter = 0;
+                    if (accountIdFilter !== 'all') {
+                      transferInAfter = transfersAfter.filter(tr => tr.destinationAccountId === accountIdFilter).reduce((sum, tr) => sum + (tr.value || 0), 0);
+                      transferOutAfter = transfersAfter.filter(tr => tr.sourceAccountId === accountIdFilter).reduce((sum, tr) => sum + (tr.value || 0), 0);
+                    }
+
+                    const currentBal = accountIdFilter === 'all'
+                      ? accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0)
+                      : (accounts.find(a => a.id === accountIdFilter)?.currentBalance || 0);
+
+                    return Math.max(0, currentBal - inflowAfter + outflowAfter - transferInAfter + transferOutAfter);
+                  };
+
+                  // Generate points according to selected timeframe using real data
                   let points: { label: string; fullDate: string; value: number; benchmark: number }[] = [];
-                  
+                  const now = new Date();
+                  const currentYear = now.getFullYear();
+
                   if (dashEvolutionTimeframe === '1S') {
-                    // 7 days
-                    const dayLabels = ['03/10', '04/10', '05/10', '06/10', '07/10', '08/10', '09/10'];
-                    const multipliers = [0.88, 0.92, 0.85, 0.94, 0.89, 0.96, 1.0];
-                    const benchMultipliers = [0.82, 0.86, 0.90, 0.87, 0.92, 0.94, 0.96];
-                    points = dayLabels.map((lbl, idx) => ({
-                      label: lbl,
-                      fullDate: `${lbl}, 14:00`,
-                      value: Math.max(0, currentTotal * multipliers[idx]),
-                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
-                    }));
+                    // Last 7 days
+                    for (let i = 6; i >= 0; i--) {
+                      const d = new Date(now);
+                      d.setDate(d.getDate() - i);
+                      const isoDate = d.toISOString().split('T')[0];
+                      const dayMonth = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+                      const val = getHistoricalBalanceOnDate(isoDate, dashEvolutionAccountId);
+                      // Benchmark: balance from previous week on equivalent day
+                      const prevWeekD = new Date(d);
+                      prevWeekD.setDate(prevWeekD.getDate() - 7);
+                      const prevIso = prevWeekD.toISOString().split('T')[0];
+                      const benchVal = getHistoricalBalanceOnDate(prevIso, dashEvolutionAccountId) || (val * 0.92);
+
+                      points.push({
+                        label: dayMonth,
+                        fullDate: `${dayMonth}/${d.getFullYear()}`,
+                        value: val,
+                        benchmark: benchVal
+                      });
+                    }
                   } else if (dashEvolutionTimeframe === '1M') {
-                    // 10 sampling points across month
-                    const dayLabels = ['08/11', '09/11', '10/11', '11/11', '12/11', '13/11', '14/11', '15/11', '16/11', '17/11'];
-                    const multipliers = [0.82, 0.72, 0.62, 0.94, 0.68, 0.54, 0.78, 1.08, 0.90, 0.85];
-                    const benchMultipliers = [0.70, 0.82, 0.88, 0.79, 0.64, 0.60, 0.74, 0.58, 0.66, 0.74];
-                    points = dayLabels.map((lbl, idx) => ({
-                      label: lbl,
-                      fullDate: `${lbl}, 08:20:40PM`,
-                      value: Math.max(0, currentTotal * multipliers[idx]),
-                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
-                    }));
+                    // 10 sampling points across the last 30 days
+                    const intervals = [27, 24, 21, 18, 15, 12, 9, 6, 3, 0];
+                    intervals.forEach(offsetDays => {
+                      const d = new Date(now);
+                      d.setDate(d.getDate() - offsetDays);
+                      const isoDate = d.toISOString().split('T')[0];
+                      const dayMonth = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+                      const val = getHistoricalBalanceOnDate(isoDate, dashEvolutionAccountId);
+                      const prevMonthD = new Date(d);
+                      prevMonthD.setDate(prevMonthD.getDate() - 30);
+                      const benchVal = getHistoricalBalanceOnDate(prevMonthD.toISOString().split('T')[0], dashEvolutionAccountId) || (val * 0.88);
+
+                      points.push({
+                        label: dayMonth,
+                        fullDate: `${dayMonth}/${d.getFullYear()}`,
+                        value: val,
+                        benchmark: benchVal
+                      });
+                    });
                   } else if (dashEvolutionTimeframe === '1A') {
-                    // 12 months
-                    const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                    const multipliers = [0.65, 0.72, 0.68, 0.80, 0.75, 0.85, 0.82, 0.90, 0.88, 0.94, 0.96, 1.0];
-                    const benchMultipliers = [0.60, 0.63, 0.70, 0.74, 0.71, 0.78, 0.80, 0.82, 0.85, 0.86, 0.89, 0.92];
-                    points = monthLabels.map((lbl, idx) => ({
-                      label: lbl,
-                      fullDate: `${lbl} 2026`,
-                      value: Math.max(0, currentTotal * multipliers[idx]),
-                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
-                    }));
+                    // 12 months of current year
+                    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                    monthNames.forEach((name, mIdx) => {
+                      // Last day of month
+                      const lastDay = new Date(currentYear, mIdx + 1, 0);
+                      const isoDate = lastDay.toISOString().split('T')[0];
+                      const val = getHistoricalBalanceOnDate(isoDate, dashEvolutionAccountId);
+                      // Benchmark: previous year same month
+                      const prevYearIso = `${currentYear - 1}-${String(mIdx + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+                      const benchVal = getHistoricalBalanceOnDate(prevYearIso, dashEvolutionAccountId) || (val * 0.82);
+
+                      points.push({
+                        label: name,
+                        fullDate: `${name} de ${currentYear}`,
+                        value: val,
+                        benchmark: benchVal
+                      });
+                    });
                   } else {
-                    // TOTAL / MAX
-                    const yearLabels = ['2021', '2022', '2023', '2024', '2025', '2026'];
-                    const multipliers = [0.35, 0.52, 0.68, 0.82, 0.91, 1.0];
-                    const benchMultipliers = [0.30, 0.44, 0.58, 0.70, 0.80, 0.88];
-                    points = yearLabels.map((lbl, idx) => ({
-                      label: lbl,
-                      fullDate: `Ano de ${lbl}`,
-                      value: Math.max(0, currentTotal * multipliers[idx]),
-                      benchmark: Math.max(0, currentTotal * benchMultipliers[idx])
-                    }));
+                    // TOTAL: Last 5 years
+                    const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
+                    years.forEach(yr => {
+                      const isoDate = `${yr}-12-31`;
+                      const val = getHistoricalBalanceOnDate(isoDate, dashEvolutionAccountId);
+                      const benchVal = yr === currentYear ? val * 0.85 : val * 0.9;
+                      points.push({
+                        label: `${yr}`,
+                        fullDate: `Ano de ${yr}`,
+                        value: val,
+                        benchmark: benchVal
+                      });
+                    });
                   }
 
                   // Dimensions & Scalings
-                  const svgWidth = 840;
+                  const svgWidth = 860;
                   const svgHeight = 270;
-                  const paddingLeft = 55;
+                  const paddingLeft = 58;
                   const paddingRight = 35;
-                  const paddingTop = 30;
-                  const paddingBottom = 40;
+                  const paddingTop = 50;
+                  const paddingBottom = 42;
                   
                   const innerW = svgWidth - paddingLeft - paddingRight;
                   const innerH = svgHeight - paddingTop - paddingBottom;
 
                   const allValues = [...points.map(p => p.value), ...points.map(p => p.benchmark), currentTotal];
-                  const maxVal = Math.max(...allValues, 1000) * 1.18;
+                  const rawMax = Math.max(...allValues, 100);
+                  const maxVal = rawMax * 1.22;
                   const minVal = 0;
 
                   const getY = (val: number) => {
-                    const ratio = (val - minVal) / (maxVal - minVal);
+                    const ratio = maxVal > minVal ? (val - minVal) / (maxVal - minVal) : 0;
                     return paddingTop + innerH - (ratio * innerH);
                   };
 
@@ -5431,8 +5489,15 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                     return { val, y, label };
                   });
 
-                  const activeIdx = dashEvolutionHoverIdx !== null ? dashEvolutionHoverIdx : 3;
+                  const activeIdx = dashEvolutionHoverIdx !== null ? dashEvolutionHoverIdx : coords.length - 1;
                   const activePoint = coords[Math.min(activeIdx, coords.length - 1)] || coords[0];
+
+                  // Percentage variation calculation
+                  const firstPointVal = points[0]?.value || 0;
+                  const activePointVal = activePoint?.value || 0;
+                  const pctChange = firstPointVal > 0 
+                    ? ((activePointVal - firstPointVal) / firstPointVal) * 100 
+                    : 0;
 
                   return (
                     <div className={`p-6 sm:p-7 rounded-[28px] border shadow-2xl relative overflow-hidden transition-all duration-300 ${
@@ -5447,7 +5512,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             }`}>
                               Overview Statistic
                             </h3>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">
                               Live
                             </span>
                           </div>
@@ -5469,7 +5534,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                 onClick={() => setDashEvolutionTimeframe(tf)}
                                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none ${
                                   active
-                                    ? 'bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 text-white shadow-md shadow-rose-500/25 scale-[1.03]'
+                                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white shadow-md shadow-purple-500/25 scale-[1.03]'
                                     : isHighContrast
                                       ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60'
                                       : 'text-zinc-400 hover:text-white hover:bg-white/5'
@@ -5487,19 +5552,19 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         <button
                           type="button"
                           onClick={() => setDashEvolutionAccountId('all')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
                             dashEvolutionAccountId === 'all'
-                              ? isHighContrast
-                                ? 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
-                                : 'bg-indigo-600/20 border-indigo-400 text-white shadow-xs'
+                              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/30'
                               : isHighContrast
-                                ? 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
-                                : 'bg-[#181a24]/80 border-white/5 text-zinc-300 hover:bg-[#181a24]'
+                                ? 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
+                                : 'bg-[#181a24]/80 border-white/10 text-zinc-300 hover:bg-[#181a24] hover:text-white'
                           }`}
                         >
-                          <Wallet size={14} className={dashEvolutionAccountId === 'all' ? 'text-indigo-400' : 'text-zinc-400'} />
+                          <Wallet size={15} className={dashEvolutionAccountId === 'all' ? 'text-white' : 'text-indigo-400'} />
                           <span>Todas as Contas ({accounts.length})</span>
-                          <span className="font-mono text-[10px] opacity-80">
+                          <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
+                            dashEvolutionAccountId === 'all' ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
+                          }`}>
                             {formatCurrency(totalBankBalance)}
                           </span>
                         </button>
@@ -5511,19 +5576,19 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               key={acc.id}
                               type="button"
                               onClick={() => setDashEvolutionAccountId(acc.id)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
+                              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
                                 isSelected
-                                  ? isHighContrast
-                                    ? 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
-                                    : 'bg-indigo-600/20 border-indigo-400 text-white shadow-xs'
+                                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/30'
                                   : isHighContrast
-                                    ? 'bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100'
-                                    : 'bg-[#181a24]/80 border-white/5 text-zinc-300 hover:bg-[#181a24]'
+                                    ? 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300'
+                                    : 'bg-[#181a24]/80 border-white/10 text-zinc-300 hover:bg-[#181a24] hover:text-white'
                               }`}
                             >
                               <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={16} />
                               <span>{acc.name}</span>
-                              <span className="font-mono text-[10px] opacity-80">
+                              <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
+                              }`}>
                                 {formatCurrency(acc.currentBalance)}
                               </span>
                             </button>
@@ -5537,11 +5602,11 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         <div className="flex items-center gap-3 mb-2 px-1">
                           <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border ${
                             isHighContrast 
-                              ? 'bg-zinc-100 border-zinc-300 text-zinc-800' 
-                              : 'bg-[#261519] border-rose-500/30 text-rose-400'
+                              ? 'bg-purple-50 border-purple-200 text-purple-700' 
+                              : 'bg-purple-950/40 border-purple-500/30 text-purple-400'
                           }`}>
                             {dashEvolutionAccountId === 'all' ? (
-                              <Wallet className="w-5 h-5 text-rose-400" />
+                              <Wallet className="w-5 h-5 text-purple-400" />
                             ) : (
                               <BankLogo bankName={selectedAcc?.bankName || 'Banco'} imageUrl={selectedAcc?.image} size={28} />
                             )}
@@ -5560,37 +5625,42 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               }`}>
                                 {formatCurrency(currentTotal)}
                               </h4>
-                              <span className="inline-flex items-center gap-0.5 text-xs font-black text-emerald-400 bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">
-                                <TrendingUp size={11} /> +26%
+                              <span className={`inline-flex items-center gap-0.5 text-xs font-black px-2 py-0.5 rounded-full font-mono border ${
+                                pctChange >= 0
+                                  ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/20'
+                                  : 'text-rose-400 bg-rose-500/15 border-rose-500/20'
+                              }`}>
+                                <TrendingUp size={11} className={pctChange < 0 ? 'rotate-180' : ''} />
+                                {pctChange >= 0 ? `+${pctChange.toFixed(1)}%` : `${pctChange.toFixed(1)}%`}
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* Interactive SVG Spline Wave Chart */}
-                        <div className="relative w-full overflow-hidden select-none">
+                        <div className="relative w-full overflow-visible select-none">
                           <svg
                             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
                             className="w-full h-auto overflow-visible cursor-crosshair"
                           >
                             <defs>
-                              {/* Main Stroke Gradient */}
-                              <linearGradient id="mainCurveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#ec4899" />
-                                <stop offset="35%" stopColor="#f43f5e" />
-                                <stop offset="70%" stopColor="#ff5722" />
-                                <stop offset="100%" stopColor="#fb7185" />
+                              {/* Main Purple Stroke Gradient */}
+                              <linearGradient id="mainCurveGradPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#818cf8" />
+                                <stop offset="35%" stopColor="#8b5cf6" />
+                                <stop offset="70%" stopColor="#a855f7" />
+                                <stop offset="100%" stopColor="#c084fc" />
                               </linearGradient>
 
-                              {/* Area Ambient Glow Gradient */}
-                              <linearGradient id="mainAreaGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.35" />
-                                <stop offset="60%" stopColor="#f43f5e" stopOpacity="0.08" />
-                                <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.0" />
+                              {/* Purple Area Ambient Glow Gradient */}
+                              <linearGradient id="mainAreaGlowPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+                                <stop offset="60%" stopColor="#8b5cf6" stopOpacity="0.06" />
+                                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
                               </linearGradient>
 
                               {/* Glow Filter */}
-                              <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                              <filter id="neonGlowPurple" x="-20%" y="-20%" width="140%" height="140%">
                                 <feGaussianBlur stdDeviation="3" result="blur" />
                                 <feMerge>
                                   <feMergeNode in="blur" />
@@ -5650,18 +5720,18 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             {/* Main Active Wave Gradient Area Fill */}
                             <path
                               d={areaPath}
-                              fill="url(#mainAreaGlow)"
+                              fill="url(#mainAreaGlowPurple)"
                             />
 
                             {/* Main Active Spline Wave Curve */}
                             <path
                               d={mainLinePath}
                               fill="none"
-                              stroke="url(#mainCurveGrad)"
+                              stroke="url(#mainCurveGradPurple)"
                               strokeWidth="3.5"
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              filter="url(#neonGlow)"
+                              filter="url(#neonGlowPurple)"
                               className="transition-all duration-300"
                             />
 
@@ -5685,8 +5755,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                   cx={activePoint.x}
                                   y={activePoint.y}
                                   r="9"
-                                  fill="#f43f5e"
-                                  fillOpacity="0.3"
+                                  fill="#8b5cf6"
+                                  fillOpacity="0.35"
                                 />
 
                                 {/* Core Luminous Center Dot */}
@@ -5695,7 +5765,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                   y={activePoint.y}
                                   r="5.5"
                                   fill="#ffffff"
-                                  stroke="#f43f5e"
+                                  stroke="#8b5cf6"
                                   strokeWidth="3.5"
                                   className="drop-shadow-lg"
                                 />
@@ -5727,9 +5797,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               <rect
                                 key={i}
                                 x={c.x - (innerW / coords.length) / 2}
-                                y={paddingTop}
+                                y={paddingTop - 20}
                                 width={innerW / coords.length}
-                                height={innerH}
+                                height={innerH + 40}
                                 fill="transparent"
                                 className="cursor-pointer"
                                 onMouseEnter={() => setDashEvolutionHoverIdx(i)}
@@ -5738,40 +5808,36 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                             ))}
                           </svg>
 
-                          {/* Floating Glassmorphic Tooltip (Matching reference image position) */}
+                          {/* Floating Glassmorphic Tooltip with Smart Auto-Flipping to never be hidden */}
                           {activePoint && (
                             <div 
-                              className="absolute pointer-events-none transition-all duration-200 z-30"
+                              className="absolute pointer-events-none transition-all duration-200 z-40"
                               style={{
-                                left: `${(activePoint.x / svgWidth) * 100}%`,
-                                top: `${Math.max(8, ((activePoint.y - 70) / svgHeight) * 100)}%`,
-                                transform: 'translate(-50%, -100%)'
+                                left: `${Math.max(14, Math.min(86, (activePoint.x / svgWidth) * 100))}%`,
+                                top: `${(activePoint.y / svgHeight) * 100}%`,
+                                transform: activePoint.y < 125 ? 'translate(-50%, 18px)' : 'translate(-50%, -115%)'
                               }}
                             >
-                              <div className={`p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-center gap-3 whitespace-nowrap min-w-[210px] ${
-                                isHighContrast 
-                                  ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-xl' 
-                                  : 'bg-[#151722]/95 border-white/20 text-white shadow-2xl shadow-black/60'
-                              }`}>
-                                <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center shrink-0">
+                              <div className="p-3 rounded-2xl border border-zinc-700/80 bg-zinc-950/95 text-white shadow-2xl backdrop-blur-xl flex items-center gap-3 whitespace-nowrap min-w-[210px]">
+                                <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
                                   {dashEvolutionAccountId === 'all' ? (
-                                    <Wallet size={15} className="text-orange-400" />
+                                    <Wallet size={15} className="text-purple-400" />
                                   ) : (
                                     <BankLogo bankName={selectedAcc?.bankName || 'Banco'} imageUrl={selectedAcc?.image} size={20} />
                                   )}
                                 </div>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-black font-mono">
+                                    <span className="text-xs font-black font-mono text-white">
                                       {formatCurrency(activePoint.value)}
                                     </span>
-                                    <span className="text-[10px] font-extrabold text-emerald-400 font-mono">
-                                      +21%
+                                    <span className={`text-[10px] font-extrabold font-mono px-1.5 py-0.2 rounded ${
+                                      pctChange >= 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'
+                                    }`}>
+                                      {pctChange >= 0 ? `+${pctChange.toFixed(1)}%` : `${pctChange.toFixed(1)}%`}
                                     </span>
                                   </div>
-                                  <span className={`text-[9.5px] block font-mono ${
-                                    isHighContrast ? 'text-zinc-500' : 'text-zinc-400'
-                                  }`}>
+                                  <span className="text-[9.5px] block font-mono text-zinc-400">
                                     {activePoint.fullDate}
                                   </span>
                                 </div>
