@@ -793,13 +793,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [assetFormDesc, setAssetFormDesc] = useState<string>('');
 
   // --- DEMONSTRATIVO (DRE / FLUXO DE CAIXA) STATE ---
-  const [dreSelectedYear, setDreSelectedYear] = useState<string>('2026');
+  const [dreSelectedYear, setDreSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
   const [dreExpandedCategories, setDreExpandedCategories] = useState<Record<string, boolean>>({});
   const [dreExpandAll, setDreExpandAll] = useState<boolean>(true);
 
   // --- DASHBOARD FILTER STATE ---
-  const [dashSelectedYear, setDashSelectedYear] = useState<string>('all');
-  const [dashSelectedMonth, setDashSelectedMonth] = useState<string>('all');
+  const [dashSelectedYear, setDashSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+  const [dashSelectedMonth, setDashSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
   const [showPrintReportModal, setShowPrintReportModal] = useState<boolean>(false);
   const [showPrintBalancoModal, setShowPrintBalancoModal] = useState<boolean>(false);
   const [showPrintDREModal, setShowPrintDREModal] = useState<boolean>(false);
@@ -924,8 +924,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
   // --- EDITING & FILTER STATES FOR TRANSACTIONS ---
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
-  const [txSelectedYear, setTxSelectedYear] = useState<string>('all');
-  const [txSelectedMonth, setTxSelectedMonth] = useState<string>('all');
+  const [txSelectedYear, setTxSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+  const [txSelectedMonth, setTxSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
   const [txSelectedPeriod, setTxSelectedPeriod] = useState<string>('all');
   const [txStartDateFilter, setTxStartDateFilter] = useState<string>('');
   const [txEndDateFilter, setTxEndDateFilter] = useState<string>('');
@@ -1026,8 +1026,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
   const [cardSearchQuery, setCardSearchQuery] = useState('');
   const [cardBrandFilter, setCardBrandFilter] = useState('todos');
   const [cardFilterByAccount, setCardFilterByAccount] = useState('todos');
-  const [cardTxSelectedYear, setCardTxSelectedYear] = useState<string>('all');
-  const [cardTxSelectedMonth, setCardTxSelectedMonth] = useState<string>('all');
+  const [cardTxSelectedYear, setCardTxSelectedYear] = useState<string>(() => new Date().getFullYear().toString());
+  const [cardTxSelectedMonth, setCardTxSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, '0'));
   const [cardTxSelectedCardId, setCardTxSelectedCardId] = useState<string>('all');
   const [cardTxStatusFilter, setCardTxStatusFilter] = useState<string>('all');
   const [cardTxSearchQuery, setCardTxSearchQuery] = useState<string>('');
