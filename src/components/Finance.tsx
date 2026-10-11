@@ -66,7 +66,11 @@ import {
   Activity,
   Percent,
   TrendingDown,
-  MoreVertical
+  MoreVertical,
+  RotateCcw,
+  Maximize2,
+  Minimize2,
+  Columns
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1048,6 +1052,45 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
       behavior: 'smooth'
     });
   };
+
+  // --- DASHBOARD CARDS SIZES & LAYOUT MODELING STATE ---
+  interface DashboardCardSizes {
+    columnSplit: '8-4' | '7-5' | '6-6' | '9-3' | '12-12';
+    bankEvolutionHeight: number;
+    flow12MonthsHeight: number;
+    heroBalanceHeight: 'compact' | 'normal' | 'expanded';
+    recentTxMaxHeight: number;
+    sidebarAccountsMaxHeight: number;
+  }
+
+  const DEFAULT_CARD_SIZES: DashboardCardSizes = {
+    columnSplit: '8-4',
+    bankEvolutionHeight: 270,
+    flow12MonthsHeight: 185,
+    heroBalanceHeight: 'normal',
+    recentTxMaxHeight: 360,
+    sidebarAccountsMaxHeight: 420
+  };
+
+  const [cardSizes, setCardSizes] = useState<DashboardCardSizes>(() => {
+    try {
+      const saved = localStorage.getItem('sismnv_dashboard_card_sizes');
+      if (saved) return { ...DEFAULT_CARD_SIZES, ...JSON.parse(saved) };
+    } catch {
+      // ignore
+    }
+    return DEFAULT_CARD_SIZES;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sismnv_dashboard_card_sizes', JSON.stringify(cardSizes));
+    } catch {
+      // ignore
+    }
+  }, [cardSizes]);
+
+  const [showCustomizeLayoutModal, setShowCustomizeLayoutModal] = useState<boolean>(false);
   
   const [txReceiptImage, setTxReceiptImage] = useState<string | null>(null);
   const [selectedReceiptImage, setSelectedReceiptImage] = useState<string | null>(null);
@@ -4808,32 +4851,47 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowFilterModal(true)}
-                  className="px-3 py-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 shadow-md cursor-pointer transition-all active:scale-95"
+                  onClick={() => setShowCustomizeLayoutModal(true)}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95 ${
+                    isHighContrast
+                      ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100'
+                      : 'bg-[#181a24] hover:bg-[#202330] border-white/10 text-zinc-200 hover:text-white'
+                  }`}
+                  title="Modelar tamanhos, alturas e colunas dos cards do painel"
                 >
-                  <SlidersHorizontal size={12} />
-                  <span>Filtrar</span>
+                  <LayoutGrid size={13} className="text-purple-400" />
+                  <span>Modelar Cards</span>
                 </button>
               </div>
             </div>
 
-            {/* MAIN 2-COLUMN GRID (8 COLS LEFT/MAIN + 4 COLS RIGHT SIDEBAR) */}
+            {/* MAIN 2-COLUMN GRID (Configurável: 8:4, 7:5, 6:6, 9:3 ou 12:12) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
-              {/* === LEFT / MAIN COLUMN (8 COLS) === */}
-              <div className="lg:col-span-8 space-y-6">
+              {/* === LEFT / MAIN COLUMN === */}
+              <div className={`${
+                cardSizes.columnSplit === '8-4' ? 'lg:col-span-8' :
+                cardSizes.columnSplit === '7-5' ? 'lg:col-span-7' :
+                cardSizes.columnSplit === '6-6' ? 'lg:col-span-6' :
+                cardSizes.columnSplit === '9-3' ? 'lg:col-span-9' :
+                'lg:col-span-12'
+              } space-y-6 transition-all duration-300`}>
 
                 {/* ROW 1: TOTAL BALANCE HERO CARD + INCOME/EXPENSE/SUPERÁVIT CARDS */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                   
                   {/* Hero Card: Total Balance (Vibrant Purple System Gradient) */}
-                  <div className="md:col-span-6 bg-gradient-to-tr from-indigo-700 via-purple-600 to-violet-500 text-white p-6 sm:p-7 rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[260px] select-none border border-purple-400/30 group">
+                  <div className={`md:col-span-6 bg-gradient-to-tr from-indigo-700 via-purple-600 to-violet-500 text-white p-6 sm:p-7 rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col justify-between select-none border border-purple-400/30 group transition-all duration-300 ${
+                    cardSizes.heroBalanceHeight === 'compact' ? 'min-h-[200px]' :
+                    cardSizes.heroBalanceHeight === 'expanded' ? 'min-h-[330px]' :
+                    'min-h-[260px]'
+                  }`}>
                     {/* Organic glow shapes in background */}
                     <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                     <div className="absolute left-1/3 -top-12 w-36 h-36 bg-violet-300/20 rounded-full blur-xl pointer-events-none" />
                     <div className="absolute -left-10 -bottom-8 w-32 h-32 bg-indigo-900/30 rounded-full blur-lg pointer-events-none" />
 
-                    {/* Top row: Label */}
+                    {/* Top row: Label & Height Control */}
                     <div className="relative z-10 flex justify-between items-start">
                       <div>
                         <span className="text-xs sm:text-sm font-extrabold text-white tracking-tight block drop-shadow-xs">
@@ -4843,9 +4901,38 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           <span>{accounts.length} contas bancárias ativas</span>
                         </div>
                       </div>
-                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/15 text-white border border-white/20 font-mono shadow-xs backdrop-blur-xs">
-                        BRL R$
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/10 border border-white/20 text-[9px] font-bold" title="Ajustar altura deste card">
+                          <span className="text-purple-200 text-[8px] uppercase px-1">Alt:</span>
+                          <button
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, heroBalanceHeight: 'compact' }))}
+                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.heroBalanceHeight === 'compact' ? 'bg-white text-purple-950 font-black shadow-xs' : 'text-purple-100 hover:text-white'}`}
+                            title="Compacto"
+                          >
+                            P
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, heroBalanceHeight: 'normal' }))}
+                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.heroBalanceHeight === 'normal' ? 'bg-white text-purple-950 font-black shadow-xs' : 'text-purple-100 hover:text-white'}`}
+                            title="Normal"
+                          >
+                            M
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, heroBalanceHeight: 'expanded' }))}
+                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.heroBalanceHeight === 'expanded' ? 'bg-white text-purple-950 font-black shadow-xs' : 'text-purple-100 hover:text-white'}`}
+                            title="Expandido"
+                          >
+                            G
+                          </button>
+                        </div>
+                        <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/15 text-white border border-white/20 font-mono shadow-xs backdrop-blur-xs">
+                          BRL R$
+                        </span>
+                      </div>
                     </div>
 
                     {/* Middle: Big Balance Value */}
@@ -5039,15 +5126,48 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         </p>
                       </div>
 
-                      {/* Legend */}
-                      <div className="flex items-center gap-3 self-start sm:self-auto">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
-                          <span className={`text-[10px] font-bold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>Entradas</span>
+                      {/* Legend & Height Control */}
+                      <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
+                            <span className={`text-[10px] font-bold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>Entradas</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-xs shadow-rose-400/50" />
+                            <span className={`text-[10px] font-bold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>Saídas</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-xs shadow-rose-400/50" />
-                          <span className={`text-[10px] font-bold ${isHighContrast ? 'text-zinc-700' : 'text-zinc-300'}`}>Saídas</span>
+
+                        {/* Quick height toggle */}
+                        <div className={`flex items-center gap-0.5 p-0.5 rounded-lg border text-[9px] font-bold ${
+                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
+                        }`} title="Ajustar altura do fluxo comparativo">
+                          <span className="text-zinc-500 text-[8px] uppercase px-1">Alt:</span>
+                          <button
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, flow12MonthsHeight: 140 }))}
+                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.flow12MonthsHeight === 140 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                            title="Compacto"
+                          >
+                            P
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, flow12MonthsHeight: 185 }))}
+                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.flow12MonthsHeight === 185 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                            title="Normal"
+                          >
+                            M
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, flow12MonthsHeight: 280 }))}
+                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.flow12MonthsHeight === 280 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                            title="Expandido"
+                          >
+                            G
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -5085,7 +5205,10 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       </div>
 
                       {/* Paired Bars Track - All 12 Months Comparison */}
-                      <div className="h-[185px] flex items-end justify-between gap-1 sm:gap-1.5 pt-3 border-b border-zinc-200/40 dark:border-white/5 pb-2 overflow-x-auto scrollbar-none">
+                      <div 
+                        style={{ height: `${cardSizes.flow12MonthsHeight}px` }}
+                        className="flex items-end justify-between gap-1 sm:gap-1.5 pt-3 border-b border-zinc-200/40 dark:border-white/5 pb-2 overflow-x-auto scrollbar-none transition-all duration-300"
+                      >
                         {chartData.map((d, idx) => {
                           const isLast = idx === chartData.length - 1;
                           const inHeight = maxChartVal > 0 ? Math.max(8, Math.min(100, (d.inflows / maxChartVal) * 100)) : 15 + (idx * 5);
@@ -5344,7 +5467,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       ? accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0)
                       : (accounts.find(a => a.id === accountIdFilter)?.currentBalance || 0);
 
-                    return Math.max(0, currentBal - inflowAfter + outflowAfter - transferInAfter + transferOutAfter);
+                    return currentBal - inflowAfter + outflowAfter - transferInAfter + transferOutAfter;
                   };
 
                   // Generate points according to selected timeframe using real data
@@ -5430,7 +5553,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                   // Dimensions & Scalings
                   const svgWidth = 860;
-                  const svgHeight = 270;
+                  const svgHeight = cardSizes.bankEvolutionHeight || 270;
                   const paddingLeft = 58;
                   const paddingRight = 35;
                   const paddingTop = 50;
@@ -5441,11 +5564,13 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                   const allValues = [...points.map(p => p.value), ...points.map(p => p.benchmark), currentTotal];
                   const rawMax = Math.max(...allValues, 100);
-                  const maxVal = rawMax * 1.22;
-                  const minVal = 0;
+                  const rawMin = Math.min(...allValues, 0);
+                  const maxVal = rawMax > 0 ? rawMax * 1.22 : 100;
+                  const minVal = rawMin < 0 ? rawMin * 1.22 : 0;
+                  const range = maxVal - minVal;
 
                   const getY = (val: number) => {
-                    const ratio = maxVal > minVal ? (val - minVal) / (maxVal - minVal) : 0;
+                    const ratio = range > 0 ? (val - minVal) / range : 0.5;
                     return paddingTop + innerH - (ratio * innerH);
                   };
 
@@ -5488,38 +5613,43 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                   const mainLinePath = buildSmoothPath(coords);
                   const benchLinePath = buildSmoothPath(benchCoords);
-                  const areaPath = `${mainLinePath} L ${coords[coords.length - 1].x} ${paddingTop + innerH} L ${coords[0].x} ${paddingTop + innerH} Z`;
+                  const zeroOrBottomY = minVal < 0 ? getY(0) : (paddingTop + innerH);
+                  const areaPath = `${mainLinePath} L ${coords[coords.length - 1].x} ${zeroOrBottomY} L ${coords[0].x} ${zeroOrBottomY} Z`;
 
-                  // Grid ticks (0k, 10k, 20k, 30k, 40k, 50k...)
+                  // Grid ticks (properly from minVal to maxVal, including negative ticks if any)
                   const yTicks = [0, 0.25, 0.5, 0.75, 1.0].map(ratio => {
                     const val = minVal + ratio * (maxVal - minVal);
                     const y = paddingTop + innerH - (ratio * innerH);
-                    const label = val >= 1000 ? `${Math.round(val / 1000)}K` : `${Math.round(val)}`;
+                    const label = Math.abs(val) >= 1000 ? `${(val / 1000).toFixed(0)}K` : `${Math.round(val)}`;
                     return { val, y, label };
                   });
 
                   const activeIdx = dashEvolutionHoverIdx !== null ? dashEvolutionHoverIdx : coords.length - 1;
                   const activePoint = coords[Math.min(activeIdx, coords.length - 1)] || coords[0];
 
-                  // Percentage variation calculation
-                  const firstPointVal = points[0]?.value || 0;
-                  const activePointVal = activePoint?.value || 0;
-                  const pctChange = firstPointVal > 0 
-                    ? ((activePointVal - firstPointVal) / firstPointVal) * 100 
-                    : 0;
+                  // Percentage & Value variation calculation (suporta valores negativos com precisão)
+                  const firstPointVal = points[0]?.value ?? 0;
+                  const activePointVal = activePoint?.value ?? currentTotal;
+                  const diffVal = activePointVal - firstPointVal;
+                  let pctChange = 0;
+                  if (firstPointVal !== 0) {
+                    pctChange = ((activePointVal - firstPointVal) / Math.abs(firstPointVal)) * 100;
+                  } else if (activePointVal !== 0) {
+                    pctChange = activePointVal > 0 ? 100 : -100;
+                  }
 
                   return (
                     <div className={`p-6 sm:p-7 rounded-[28px] border shadow-2xl relative overflow-hidden transition-all duration-300 ${
                       isHighContrast ? 'bg-white border-zinc-200' : 'bg-[#0f1118] border-white/5'
                     }`}>
-                      {/* Top Header Row with Overview Statistic Title & Timeframe Filters */}
+                      {/* Top Header Row with Contas Bancárias Title, Height Buttons & Timeframe Filters */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200/40 dark:border-white/5">
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className={`text-base sm:text-lg font-black tracking-tight ${
                               isHighContrast ? 'text-zinc-900' : 'text-white'
                             }`}>
-                              Overview Statistic
+                              Contas Bancárias
                             </h3>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">
                               Live
@@ -5530,29 +5660,62 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           </p>
                         </div>
 
-                        {/* Timeframe Filter Pills (1S, 1M, 1A, TOTAL) */}
-                        <div className={`flex items-center gap-1 p-1 rounded-2xl border ${
-                          isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
-                        }`}>
-                          {(['1S', '1M', '1A', 'TOTAL'] as const).map(tf => {
-                            const active = dashEvolutionTimeframe === tf;
-                            return (
-                              <button
-                                key={tf}
-                                type="button"
-                                onClick={() => setDashEvolutionTimeframe(tf)}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none ${
-                                  active
-                                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white shadow-md shadow-purple-500/25 scale-[1.03]'
-                                    : isHighContrast
-                                      ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60'
-                                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                                }`}
-                              >
-                                {tf}
-                              </button>
-                            );
-                          })}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Quick height toggle */}
+                          <div className={`flex items-center gap-0.5 p-0.5 rounded-xl border text-[9px] font-bold ${
+                            isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
+                          }`} title="Ajustar altura do gráfico">
+                            <span className="text-zinc-500 text-[8px] uppercase px-1.5">Alt:</span>
+                            <button
+                              type="button"
+                              onClick={() => setCardSizes(prev => ({ ...prev, bankEvolutionHeight: 210 }))}
+                              className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${cardSizes.bankEvolutionHeight === 210 ? 'bg-purple-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                              title="Compacto (210px)"
+                            >
+                              P
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCardSizes(prev => ({ ...prev, bankEvolutionHeight: 270 }))}
+                              className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${cardSizes.bankEvolutionHeight === 270 ? 'bg-purple-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                              title="Normal (270px)"
+                            >
+                              M
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCardSizes(prev => ({ ...prev, bankEvolutionHeight: 380 }))}
+                              className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${cardSizes.bankEvolutionHeight === 380 ? 'bg-purple-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                              title="Grande (380px)"
+                            >
+                              G
+                            </button>
+                          </div>
+
+                          {/* Timeframe Filter Pills (1S, 1M, 1A, TOTAL) */}
+                          <div className={`flex items-center gap-1 p-1 rounded-2xl border ${
+                            isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
+                          }`}>
+                            {(['1S', '1M', '1A', 'TOTAL'] as const).map(tf => {
+                              const active = dashEvolutionTimeframe === tf;
+                              return (
+                                <button
+                                  key={tf}
+                                  type="button"
+                                  onClick={() => setDashEvolutionTimeframe(tf)}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer select-none ${
+                                    active
+                                      ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white shadow-md shadow-purple-500/25 scale-[1.03]'
+                                      : isHighContrast
+                                        ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/60'
+                                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                                  }`}
+                                >
+                                  {tf}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 
@@ -5600,7 +5763,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                               <Wallet size={15} className={dashEvolutionAccountId === 'all' ? 'text-white' : 'text-indigo-400'} />
                               <span className="whitespace-nowrap">Todas as Contas ({accounts.length})</span>
                               <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md shrink-0 ${
-                                dashEvolutionAccountId === 'all' ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
+                                dashEvolutionAccountId === 'all' 
+                                  ? (totalBankBalance < 0 ? 'bg-rose-500/30 text-rose-200 border border-rose-500/40 font-bold' : 'bg-white/20 text-white')
+                                  : (totalBankBalance < 0 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90')
                               }`}>
                                 {formatCurrency(totalBankBalance)}
                               </span>
@@ -5624,7 +5789,9 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                   <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={16} />
                                   <span className="whitespace-nowrap">{acc.name}</span>
                                   <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md shrink-0 ${
-                                    isSelected ? 'bg-white/20 text-white' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90'
+                                    isSelected 
+                                      ? (acc.currentBalance < 0 ? 'bg-rose-500/30 text-rose-200 border border-rose-500/40 font-bold' : 'bg-white/20 text-white')
+                                      : (acc.currentBalance < 0 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold' : 'bg-zinc-200/60 dark:bg-white/10 opacity-90')
                                   }`}>
                                     {formatCurrency(acc.currentBalance)}
                                   </span>
@@ -5651,7 +5818,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                       {/* Main Chart Canvas Area */}
                       <div className="relative pt-4 pb-1">
-                        {/* Account Summary Floating Card (Top Left matching reference) */}
+                        {/* Account Summary Floating Card with Negative Balance & Full Comparative */}
                         <div className="flex items-center gap-3 mb-2 px-1">
                           <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner border ${
                             isHighContrast 
@@ -5672,20 +5839,43 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                 ? 'Patrimônio Integrado Consolidado'
                                 : `${selectedAcc?.bankName} (${selectedAcc?.name})`}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2.5 flex-wrap">
                               <h4 className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${
-                                isHighContrast ? 'text-zinc-950' : 'text-white'
+                                currentTotal >= 0
+                                  ? (isHighContrast ? 'text-zinc-950' : 'text-white')
+                                  : 'text-rose-500 font-black'
                               }`}>
                                 {formatCurrency(currentTotal)}
                               </h4>
-                              <span className={`inline-flex items-center gap-0.5 text-xs font-black px-2 py-0.5 rounded-full font-mono border ${
-                                pctChange >= 0
-                                  ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/20'
-                                  : 'text-rose-400 bg-rose-500/15 border-rose-500/20'
-                              }`}>
-                                <TrendingUp size={11} className={pctChange < 0 ? 'rotate-180' : ''} />
-                                {pctChange >= 0 ? `+${pctChange.toFixed(1)}%` : `${pctChange.toFixed(1)}%`}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`inline-flex items-center gap-0.5 text-xs font-black px-2.5 py-0.5 rounded-full font-mono border ${
+                                  pctChange >= 0
+                                    ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25'
+                                    : 'text-rose-400 bg-rose-500/15 border-rose-500/25'
+                                }`}
+                                title={`Variação percentual: ${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%`}
+                                >
+                                  <TrendingUp size={11} className={pctChange < 0 ? 'rotate-180' : ''} />
+                                  {pctChange >= 0 ? `+${pctChange.toFixed(1)}%` : `${pctChange.toFixed(1)}%`}
+                                </span>
+
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                                  diffVal >= 0
+                                    ? 'text-emerald-400/90 bg-emerald-500/10 border-emerald-500/20'
+                                    : 'text-rose-400/90 bg-rose-500/10 border-rose-500/20'
+                                }`}
+                                title={`Comparativo em valor vs início do período (${points[0]?.label || 'início'}): ${diffVal >= 0 ? '+' : ''}${formatCurrency(diffVal)}`}
+                                >
+                                  <span>{diffVal >= 0 ? '+' : ''}{formatCurrency(diffVal)}</span>
+                                  <span className="text-[9px] opacity-75 font-sans">vs início</span>
+                                </span>
+
+                                {currentTotal < 0 && (
+                                  <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    Saldo Devedor
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -5694,7 +5884,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         <div className="relative w-full overflow-visible select-none">
                           <svg
                             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                            className="w-full h-auto overflow-visible cursor-crosshair"
+                            className="w-full h-auto overflow-visible cursor-crosshair transition-all duration-300"
                           >
                             <defs>
                               {/* Main Purple Stroke Gradient */}
@@ -5721,6 +5911,31 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                                 </feMerge>
                               </filter>
                             </defs>
+
+                            {/* Dashed Zero Line if minVal is negative */}
+                            {minVal < 0 && (
+                              <g>
+                                <line
+                                  x1={paddingLeft}
+                                  y1={getY(0)}
+                                  x2={svgWidth - paddingRight}
+                                  y2={getY(0)}
+                                  stroke={isHighContrast ? '#a1a1aa' : '#52525b'}
+                                  strokeWidth="1.5"
+                                  strokeDasharray="4 4"
+                                />
+                                <text
+                                  x={paddingLeft - 10}
+                                  y={getY(0) + 3.5}
+                                  textAnchor="end"
+                                  className={`text-[10px] font-mono font-black ${
+                                    isHighContrast ? 'fill-zinc-600' : 'fill-zinc-400'
+                                  }`}
+                                >
+                                  0
+                                </text>
+                              </g>
+                            )}
 
                             {/* Horizontal Grid lines and Y-axis Labels */}
                             {yTicks.map((tick, i) => (
@@ -5907,8 +6122,8 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                 <div className={`p-6 rounded-[26px] border shadow-lg ${
                   isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
                 }`}>
-                  {/* Header */}
-                  <div className="flex justify-between items-center mb-4">
+                  {/* Header & Height Control */}
+                  <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <h4 className={`text-sm font-extrabold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>
                         Lançamentos Recentes
@@ -5918,18 +6133,54 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveSubTab('transactions')}
-                      className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      Ver Todos <ChevronRight size={13} />
-                    </button>
+                    <div className="flex items-center gap-2.5">
+                      {/* Quick height toggle */}
+                      <div className={`flex items-center gap-0.5 p-0.5 rounded-lg border text-[9px] font-bold ${
+                        isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
+                      }`} title="Ajustar altura de lançamentos recentes">
+                        <span className="text-zinc-500 text-[8px] uppercase px-1">Alt:</span>
+                        <button
+                          type="button"
+                          onClick={() => setCardSizes(prev => ({ ...prev, recentTxMaxHeight: 240 }))}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.recentTxMaxHeight === 240 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                          title="Compacto"
+                        >
+                          P
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCardSizes(prev => ({ ...prev, recentTxMaxHeight: 360 }))}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.recentTxMaxHeight === 360 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                          title="Normal"
+                        >
+                          M
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCardSizes(prev => ({ ...prev, recentTxMaxHeight: 520 }))}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.recentTxMaxHeight === 520 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                          title="Expandido"
+                        >
+                          G
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('transactions')}
+                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        Ver Todos <ChevronRight size={13} />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Transactions List */}
-                  <div className="space-y-2.5">
-                    {transactions.slice(0, 5).map((tx) => {
+                  {/* Transactions List with dynamic height */}
+                  <div 
+                    style={{ maxHeight: `${cardSizes.recentTxMaxHeight}px` }}
+                    className="space-y-2.5 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-700/50 transition-all duration-300"
+                  >
+                    {transactions.slice(0, cardSizes.recentTxMaxHeight > 400 ? 15 : cardSizes.recentTxMaxHeight > 250 ? 8 : 5).map((tx) => {
                       const category = categories.find(c => c.id === tx.categoryId);
                       const isExpense = tx.type === 'saida';
                       const formattedDate = tx.date.split('-').reverse().join('/');
@@ -6000,8 +6251,14 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
               </div>
 
-              {/* === RIGHT SIDEBAR COLUMN (4 COLS: MY CARDS & RECURRENT SUBSCRIPTIONS) === */}
-              <div className={`lg:col-span-4 p-6 rounded-[28px] border shadow-2xl space-y-6 ${
+              {/* === RIGHT SIDEBAR COLUMN (Configurável: 8:4, 7:5, 6:6, 9:3 ou 12:12) === */}
+              <div className={`${
+                cardSizes.columnSplit === '8-4' ? 'lg:col-span-4' :
+                cardSizes.columnSplit === '7-5' ? 'lg:col-span-5' :
+                cardSizes.columnSplit === '6-6' ? 'lg:col-span-6' :
+                cardSizes.columnSplit === '9-3' ? 'lg:col-span-3' :
+                'lg:col-span-12'
+              } p-6 rounded-[28px] border shadow-2xl space-y-6 transition-all duration-300 ${
                 isHighContrast ? 'bg-zinc-50 border-zinc-200' : 'bg-[#12141c] border-white/5'
               }`}>
                 
@@ -6394,7 +6651,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                 {/* 3. Registered Bank Accounts List (Todas as Contas Cadastradas com Saldos Reais) */}
                 <div className="space-y-3 pt-2 border-t border-zinc-800/40">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center flex-wrap gap-2">
                     <div className="flex items-center gap-1.5">
                       <h4 className={`text-xs font-extrabold uppercase tracking-wider ${isHighContrast ? 'text-zinc-800' : 'text-zinc-400'}`}>
                         Contas Bancárias
@@ -6403,17 +6660,54 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                         {accounts.length}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveSubTab('accounts')}
-                      className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-0.5 cursor-pointer"
-                    >
-                      Gerenciar <ChevronRight size={11} />
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {/* Quick height toggle */}
+                      <div className={`flex items-center gap-0.5 p-0.5 rounded-lg border text-[9px] font-bold ${
+                        isHighContrast ? 'bg-zinc-100 border-zinc-200' : 'bg-[#181a24] border-white/10'
+                      }`} title="Ajustar altura da lista de contas">
+                        <span className="text-zinc-500 text-[8px] uppercase px-1">Alt:</span>
+                        <button
+                          type="button"
+                          onClick={() => setCardSizes(prev => ({ ...prev, sidebarAccountsMaxHeight: 260 }))}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.sidebarAccountsMaxHeight === 260 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                          title="Compacto"
+                        >
+                          P
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCardSizes(prev => ({ ...prev, sidebarAccountsMaxHeight: 420 }))}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.sidebarAccountsMaxHeight === 420 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                          title="Normal"
+                        >
+                          M
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCardSizes(prev => ({ ...prev, sidebarAccountsMaxHeight: 620 }))}
+                          className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${cardSizes.sidebarAccountsMaxHeight === 620 ? 'bg-indigo-600 text-white font-black shadow-xs' : 'text-zinc-400 hover:text-white'}`}
+                          title="Expandido"
+                        >
+                          G
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubTab('accounts')}
+                        className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-0.5 cursor-pointer"
+                      >
+                        Gerenciar <ChevronRight size={11} />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Complete list of all registered bank accounts */}
-                  <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-700/50">
+                  {/* Complete list of all registered bank accounts with dynamic height */}
+                  <div 
+                    style={{ maxHeight: `${cardSizes.sidebarAccountsMaxHeight}px` }}
+                    className="space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-700/50 transition-all duration-300"
+                  >
                     {accounts.map((acc) => {
                       const realBalance = getAccountRealBalance(acc.id);
                       const isInvest = acc.name.toLowerCase().includes('invest') || acc.name.toLowerCase().includes('cdb') || acc.accountType === 'investimento';
@@ -6463,12 +6757,12 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
 
                           <div className="text-right shrink-0">
                             <span className={`font-mono font-bold text-xs block ${
-                              realBalance >= 0 ? (isHighContrast ? 'text-emerald-700' : 'text-emerald-400') : 'text-rose-400'
+                              realBalance >= 0 ? (isHighContrast ? 'text-emerald-700' : 'text-emerald-400') : 'text-rose-400 font-extrabold'
                             }`}>
                               {formatCurrency(realBalance)}
                             </span>
-                            <span className="text-[8px] font-medium text-zinc-500 block">
-                              saldo atual
+                            <span className={`text-[8px] font-medium block ${realBalance < 0 ? 'text-rose-400/90 font-bold' : 'text-zinc-500'}`}>
+                              {realBalance < 0 ? 'saldo devedor' : 'saldo atual'}
                             </span>
                           </div>
                         </div>
@@ -6495,6 +6789,304 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
               </div>
 
             </div>
+
+            {/* Modal de Modelagem de Layout do Painel */}
+            {showCustomizeLayoutModal && (
+              <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+                <div className={`w-full max-w-2xl rounded-3xl border shadow-2xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto ${
+                  isHighContrast ? 'bg-white border-zinc-200 text-zinc-900' : 'bg-[#0f1118] border-white/10 text-white'
+                }`}>
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between pb-4 border-b border-zinc-200/40 dark:border-white/10">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2.5 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-400">
+                        <LayoutGrid size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black tracking-tight">Modelar Tamanhos e Alturas dos Cards</h3>
+                        <p className={`text-xs ${isHighContrast ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                          Ajuste as proporções das colunas e a altura de cada card do painel
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomizeLayoutModal(false)}
+                      className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                        isHighContrast ? 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900' : 'text-zinc-400 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Preset Density Buttons */}
+                  <div className="py-4 border-b border-zinc-200/40 dark:border-white/10">
+                    <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2">
+                      Predefinições Rápidas:
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCardSizes({
+                          columnSplit: '8-4',
+                          bankEvolutionHeight: 210,
+                          flow12MonthsHeight: 140,
+                          heroBalanceHeight: 'compact',
+                          recentTxMaxHeight: 240,
+                          sidebarAccountsMaxHeight: 260
+                        })}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                          cardSizes.bankEvolutionHeight === 210 && cardSizes.flow12MonthsHeight === 140
+                            ? 'bg-purple-600/20 border-purple-500 text-purple-300 ring-1 ring-purple-500/30'
+                            : isHighContrast ? 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200' : 'bg-white/5 hover:bg-white/10 border-white/5'
+                        }`}
+                      >
+                        <span className="block text-xs font-black">Compacto</span>
+                        <span className="text-[10px] text-zinc-500">Mais cards visíveis</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCardSizes(DEFAULT_CARD_SIZES)}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                          cardSizes.bankEvolutionHeight === 270 && cardSizes.flow12MonthsHeight === 185
+                            ? 'bg-purple-600/20 border-purple-500 text-purple-300 ring-1 ring-purple-500/30'
+                            : isHighContrast ? 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200' : 'bg-white/5 hover:bg-white/10 border-white/5'
+                        }`}
+                      >
+                        <span className="block text-xs font-black">Padrão</span>
+                        <span className="text-[10px] text-zinc-500">Equilíbrio ideal</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCardSizes({
+                          columnSplit: '8-4',
+                          bankEvolutionHeight: 380,
+                          flow12MonthsHeight: 280,
+                          heroBalanceHeight: 'expanded',
+                          recentTxMaxHeight: 520,
+                          sidebarAccountsMaxHeight: 620
+                        })}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+                          cardSizes.bankEvolutionHeight === 380 && cardSizes.flow12MonthsHeight === 280
+                            ? 'bg-purple-600/20 border-purple-500 text-purple-300 ring-1 ring-purple-500/30'
+                            : isHighContrast ? 'bg-zinc-50 hover:bg-zinc-100 border-zinc-200' : 'bg-white/5 hover:bg-white/10 border-white/5'
+                        }`}
+                      >
+                        <span className="block text-xs font-black">Expandido</span>
+                        <span className="text-[10px] text-zinc-500">Gráficos amplos</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Controls List */}
+                  <div className="py-4 space-y-4">
+                    {/* Column Split */}
+                    <div>
+                      <label className="text-xs font-black text-zinc-300 block mb-1.5">
+                        Divisão de Colunas do Painel (Principal vs Lateral):
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { id: '8-4', label: '8 : 4', desc: 'Padrão' },
+                          { id: '7-5', label: '7 : 5', desc: 'Equilibrado' },
+                          { id: '9-3', label: '9 : 3', desc: 'Foco Gráficos' },
+                          { id: '6-6', label: '6 : 6', desc: '50% / 50%' },
+                          { id: '12-12', label: '12 : 12', desc: 'Empilhado' },
+                        ].map(col => (
+                          <button
+                            key={col.id}
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, columnSplit: col.id as any }))}
+                            className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                              cardSizes.columnSplit === col.id
+                                ? 'bg-purple-600 text-white border-purple-500 ring-2 ring-purple-400/30 shadow-md'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200' : 'bg-zinc-900/60 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            }`}
+                          >
+                            <span className="block font-mono text-xs font-black">{col.label}</span>
+                            <span className="text-[9px] opacity-80">{col.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bank Evolution Chart Height */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-black text-zinc-300">
+                          Altura do Gráfico Contas Bancárias:
+                        </label>
+                        <span className="font-mono text-xs font-bold text-purple-400">{cardSizes.bankEvolutionHeight}px</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { val: 210, label: 'P (210px)' },
+                          { val: 270, label: 'M (270px)' },
+                          { val: 360, label: 'G (360px)' },
+                          { val: 460, label: 'GG (460px)' }
+                        ].map(item => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, bankEvolutionHeight: item.val }))}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              cardSizes.bankEvolutionHeight === item.val
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200' : 'bg-zinc-900/60 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 12 Months Flow Height */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-black text-zinc-300">
+                          Altura do Fluxo Comparativo (Barras):
+                        </label>
+                        <span className="font-mono text-xs font-bold text-purple-400">{cardSizes.flow12MonthsHeight}px</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { val: 140, label: 'P (140px)' },
+                          { val: 185, label: 'M (185px)' },
+                          { val: 260, label: 'G (260px)' },
+                          { val: 340, label: 'GG (340px)' }
+                        ].map(item => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, flow12MonthsHeight: item.val }))}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              cardSizes.flow12MonthsHeight === item.val
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200' : 'bg-zinc-900/60 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Hero Card Total Balance Height */}
+                    <div>
+                      <label className="text-xs font-black text-zinc-300 block mb-1.5">
+                        Altura do Card Saldo Total em Contas:
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'compact', label: 'Compacto (200px)' },
+                          { id: 'normal', label: 'Normal (260px)' },
+                          { id: 'expanded', label: 'Expandido (330px)' }
+                        ].map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, heroBalanceHeight: item.id as any }))}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              cardSizes.heroBalanceHeight === item.id
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200' : 'bg-zinc-900/60 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Sidebar Bank Accounts List Max Height */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-black text-zinc-300">
+                          Altura da Lista Lateral de Contas:
+                        </label>
+                        <span className="font-mono text-xs font-bold text-purple-400">{cardSizes.sidebarAccountsMaxHeight}px</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { val: 260, label: 'P (260px)' },
+                          { val: 420, label: 'M (420px)' },
+                          { val: 580, label: 'G (580px)' },
+                          { val: 780, label: 'GG (780px)' }
+                        ].map(item => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, sidebarAccountsMaxHeight: item.val }))}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              cardSizes.sidebarAccountsMaxHeight === item.val
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200' : 'bg-zinc-900/60 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Transactions List Max Height */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <label className="text-xs font-black text-zinc-300">
+                          Altura dos Lançamentos Recentes:
+                        </label>
+                        <span className="font-mono text-xs font-bold text-purple-400">{cardSizes.recentTxMaxHeight}px</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { val: 240, label: 'P (240px)' },
+                          { val: 360, label: 'M (360px)' },
+                          { val: 520, label: 'G (520px)' },
+                          { val: 700, label: 'GG (700px)' }
+                        ].map(item => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => setCardSizes(prev => ({ ...prev, recentTxMaxHeight: item.val }))}
+                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              cardSizes.recentTxMaxHeight === item.val
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+                                : isHighContrast ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200' : 'bg-zinc-900/60 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="pt-4 border-t border-zinc-200/40 dark:border-white/10 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setCardSizes(DEFAULT_CARD_SIZES)}
+                      className={`text-xs font-bold flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all cursor-pointer ${
+                        isHighContrast ? 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900' : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <RotateCcw size={13} />
+                      <span>Restaurar Padrões</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomizeLayoutModal(false)}
+                      className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer"
+                    >
+                      Concluir
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         )}
