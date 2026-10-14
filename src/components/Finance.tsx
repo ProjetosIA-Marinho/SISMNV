@@ -7167,7 +7167,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
             </AnimatePresence>
 
             {/* Bank account cards in transactions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 px-4 pt-3 pb-1">
               {accounts.map(acc => {
                 // Determine the date range based on the filters
                 let startDate = '';
@@ -7287,7 +7287,7 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                   <div 
                     key={`tx-acc-${acc.id}`} 
                     onClick={() => setTxSelectedAccountId(isSelected ? 'all' : acc.id)}
-                    className={`p-5 rounded-xl border flex flex-col justify-between relative cursor-pointer transition-all duration-300 select-none hover:scale-[1.01] ${
+                    className={`p-3 rounded-xl border flex flex-col justify-between relative cursor-pointer transition-all duration-200 select-none hover:scale-[1.008] ${
                       isSelected
                         ? isHighContrast
                           ? 'bg-indigo-50 border-indigo-600 ring-2 ring-indigo-600/20 shadow-md'
@@ -7297,68 +7297,69 @@ export default function Finance({ isHighContrast, searchQuery }: FinanceProps) {
                           : 'bg-zinc-900/10 border-[#27272a] hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="flex gap-3 items-center min-w-0 flex-1">
-                        <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={36} />
-                        <div className="min-w-0">
-                          <h4 className={`text-xs font-bold ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</h4>
-                          <p className="text-[10px] text-zinc-500 font-semibold truncate">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex gap-2.5 items-center min-w-0 flex-1">
+                        <BankLogo bankName={acc.bankName} imageUrl={acc.image} size={28} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className={`text-xs font-bold truncate ${isHighContrast ? 'text-zinc-900' : 'text-white'}`}>{acc.name}</h4>
+                            {isSelected && (
+                              <span className="flex items-center gap-1 text-[7px] font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                <span className="w-1 h-1 bg-indigo-400 rounded-full animate-pulse" />
+                                Filtrado
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-zinc-500 font-semibold truncate leading-tight">
                             {acc.bankName} • Ag {acc.agency} | CC {acc.accountNumber}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isSelected && (
-                          <span className="flex items-center gap-1 text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
-                            Filtrado
-                          </span>
-                        )}
+                      <div className="text-right shrink-0">
+                        <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold block leading-none">Saldo Atual</span>
+                        <p className={`font-mono font-bold text-xs sm:text-[13px] mt-0.5 ${finalBalanceForPeriod >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
+                          {formatCurrency(finalBalanceForPeriod)}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-dashed border-zinc-800/60 grid grid-cols-2 gap-y-3 text-xs">
-                      <div>
-                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Mês de Referência</p>
-                        <p className={`font-semibold mt-0.5 ${isHighContrast ? 'text-zinc-800' : 'text-zinc-300'}`}>{referenceLabel}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Diferença</p>
-                        <p className={`font-mono font-bold mt-0.5 ${diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
-                        </p>
-                      </div>
-
-                      <div className={`p-2 rounded-lg border ${
-                        isHighContrast ? 'bg-emerald-50/60 border-emerald-200' : 'bg-emerald-950/20 border-emerald-800/30'
-                      }`}>
-                        <p className="text-[8px] text-emerald-600 dark:text-emerald-400 uppercase tracking-widest font-bold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Entradas
-                        </p>
-                        <p className="font-mono font-bold text-xs text-emerald-500 mt-0.5">
-                          +{formatCurrency(totalEntradas)}
-                        </p>
-                      </div>
-                      <div className={`p-2 rounded-lg border text-right ${
-                        isHighContrast ? 'bg-rose-50/60 border-rose-200' : 'bg-rose-950/20 border-rose-800/30'
-                      }`}>
-                        <p className="text-[8px] text-rose-600 dark:text-rose-400 uppercase tracking-widest font-bold flex items-center justify-end gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Saídas
-                        </p>
-                        <p className="font-mono font-bold text-xs text-rose-500 mt-0.5">
-                          -{formatCurrency(totalSaidas)}
-                        </p>
+                    <div className="mt-2.5 pt-2 border-t border-dashed border-zinc-800/60 flex flex-col gap-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className={`px-2 py-1 rounded-lg border flex items-center justify-between ${
+                          isHighContrast ? 'bg-emerald-50/70 border-emerald-200' : 'bg-emerald-950/20 border-emerald-800/30'
+                        }`}>
+                          <span className="text-[8px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-bold flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span> Entradas
+                          </span>
+                          <span className="font-mono font-bold text-[10px] text-emerald-500 truncate ml-1">
+                            +{formatCurrency(totalEntradas)}
+                          </span>
+                        </div>
+                        <div className={`px-2 py-1 rounded-lg border flex items-center justify-between ${
+                          isHighContrast ? 'bg-rose-50/70 border-rose-200' : 'bg-rose-950/20 border-rose-800/30'
+                        }`}>
+                          <span className="text-[8px] text-rose-600 dark:text-rose-400 uppercase tracking-wider font-bold flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span> Saídas
+                          </span>
+                          <span className="font-mono font-bold text-[10px] text-rose-500 truncate ml-1">
+                            -{formatCurrency(totalSaidas)}
+                          </span>
+                        </div>
                       </div>
 
-                      <div>
-                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Saldo Inicial</p>
-                        <p className="font-mono text-zinc-400 mt-0.5">{formatCurrency(initialBalanceForPeriod)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">Saldo Atual</p>
-                        <p className={`font-mono font-bold text-sm mt-0.5 ${finalBalanceForPeriod >= 0 ? 'text-indigo-400' : 'text-rose-500'}`}>
-                          {formatCurrency(finalBalanceForPeriod)}
-                        </p>
+                      <div className="flex items-center justify-between text-[9px] text-zinc-500 pt-0.5">
+                        <span className="truncate max-w-[48%]" title={referenceLabel}>
+                          Ref: <span className={isHighContrast ? 'text-zinc-700 font-semibold' : 'text-zinc-300 font-semibold'}>{referenceLabel}</span>
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span>
+                            Dif: <span className={`font-mono font-bold ${diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{diff >= 0 ? '+' : ''}{formatCurrency(diff)}</span>
+                          </span>
+                          <span className="text-zinc-600 dark:text-zinc-700">•</span>
+                          <span>
+                            Ini: <span className="font-mono text-zinc-400">{formatCurrency(initialBalanceForPeriod)}</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
